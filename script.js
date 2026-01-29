@@ -47,46 +47,40 @@ let navMenu = null;
 
 // Page Navigation System
 function navigateToPage(pageName) {
-    console.log('🔵 Navegando a:', pageName);
-    
     if (!pageName) {
-        console.error('❌ No se proporcionó nombre de página');
         return;
     }
     
-    // Hide all pages
+    // Ocultar TODAS las páginas primero
     const allPages = document.querySelectorAll('.page-content');
-    console.log('📄 Páginas encontradas:', allPages.length);
-    
     allPages.forEach(page => {
         page.classList.remove('active');
+        // Usar setProperty con important flag
+        page.style.setProperty('display', 'none', 'important');
     });
     
-    // Show selected page
+    // Mostrar la página seleccionada
     const targetPage = document.getElementById(pageName);
-    console.log('🎯 Página objetivo:', pageName, 'Encontrada:', !!targetPage);
-    
     if (targetPage) {
         targetPage.classList.add('active');
-        console.log('✅ Página activada:', pageName);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-        console.error('❌ No se encontró la página con ID:', pageName);
-        // Listar todos los IDs disponibles para debugging
-        const allIds = Array.from(document.querySelectorAll('[id]')).map(el => el.id);
-        console.log('📋 IDs disponibles:', allIds.filter(id => id.includes('inicio') || id.includes('servicio') || id.includes('evento') || id.includes('cumple') || id.includes('contacto') || id.includes('admin')));
+        // Usar setProperty con important flag
+        targetPage.style.setProperty('display', 'block', 'important');
+        
+        // Scroll al inicio
+        setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 50);
     }
     
-    // Update nav links
+    // Actualizar enlaces de navegación
     document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.remove('active');
         if (link.dataset.page === pageName) {
             link.classList.add('active');
-            console.log('✅ Link activado:', link.textContent);
         }
     });
     
-    // Close mobile menu if open
+    // Cerrar menú móvil si está abierto
     if (navMenu) {
         navMenu.classList.remove('active');
     }
@@ -1515,11 +1509,12 @@ function inicializarTodo() {
         const allPages = document.querySelectorAll('.page-content');
         allPages.forEach(page => {
             page.classList.remove('active');
+            page.style.setProperty('display', 'none', 'important');
         });
         const inicioPage = document.getElementById('inicio');
         if (inicioPage) {
             inicioPage.classList.add('active');
-            console.log('✅ Página de inicio activada');
+            inicioPage.style.setProperty('display', 'block', 'important');
         }
         
         // Inicializar navegación PRIMERO (esto es crítico para que los botones funcionen)
