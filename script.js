@@ -32,6 +32,9 @@ if (document.readyState === 'loading') {
     setTimeout(inicializarSupabase, 100);
 }
 
+// Variables globales para navegación
+let navMenu = null;
+
 // Page Navigation System
 function navigateToPage(pageName) {
     // Hide all pages
@@ -55,14 +58,16 @@ function navigateToPage(pageName) {
     });
     
     // Close mobile menu if open
-    navMenu.classList.remove('active');
+    if (navMenu) {
+        navMenu.classList.remove('active');
+    }
 }
 
 // Inicializar navegación cuando el DOM esté listo
 function inicializarNavegacion() {
     // Mobile Navigation
     const hamburger = document.getElementById('hamburger');
-    const navMenu = document.getElementById('navMenu');
+    navMenu = document.getElementById('navMenu'); // Asignar a variable global
     
     if (hamburger && navMenu) {
         hamburger.addEventListener('click', () => {
@@ -79,11 +84,30 @@ function inicializarNavegacion() {
         });
     });
 
-    // Button navigation handlers
+    // Button navigation handlers - Mejorado para capturar clicks en botones
     document.addEventListener('click', (e) => {
-        if (e.target.matches('[data-page]') && e.target.tagName === 'BUTTON') {
-            const page = e.target.dataset.page;
-            navigateToPage(page);
+        // Buscar el botón o elemento con data-page en el target o sus padres
+        let target = e.target;
+        let element = null;
+        
+        // Verificar si el target tiene data-page
+        if (target.hasAttribute && target.hasAttribute('data-page')) {
+            element = target;
+        } else {
+            // Buscar en los padres
+            target = target.closest('[data-page]');
+            if (target) {
+                element = target;
+            }
+        }
+        
+        // Si encontramos un elemento con data-page y es un botón o tiene la clase btn
+        if (element && (element.tagName === 'BUTTON' || element.classList.contains('btn'))) {
+            e.preventDefault();
+            const page = element.dataset.page;
+            if (page) {
+                navigateToPage(page);
+            }
         }
     });
 
@@ -1431,23 +1455,47 @@ function filtrarSolicitudes(filtro) {
 // ==================== INICIALIZACIÓN ====================
 
 // Cargar eventos al cargar la página
-document.addEventListener('DOMContentLoaded', () => {
-    // Cargar eventos
-    cargarEventos();
-    
-    // Inicializar calculadora de cumpleaños (ya se inicializa automáticamente)
-    inicializarCalculadoraCumpleanos();
-    
-    // Configurar fecha mínima para el input de fecha
-    const fechaInput = document.getElementById('cumpleFecha');
-    if (fechaInput) {
-        const hoy = new Date();
-        const tresDias = new Date(hoy.getTime() + (3 * 24 * 60 * 60 * 1000));
-        fechaInput.min = tresDias.toISOString().split('T')[0];
+function inicializarTodo() {
+    try {
+        // Inicializar navegación PRIMERO (esto es crítico para que los botones funcionen)
+        inicializarNavegacion();
+        
+        // Inicializar modales
+        inicializarModales();
+        inicializarModalServicios();
+        
+        // Inicializar formularios
+        inicializarFormularios();
+        
+        // Inicializar calculadora de cumpleaños
+        inicializarCalculadoraCumpleanos();
+        
+        // Cargar eventos
+        cargarEventos();
+        
+        // Configurar fecha mínima para el input de fecha
+        const fechaInput = document.getElementById('cumpleFecha');
+        if (fechaInput) {
+            const hoy = new Date();
+            const tresDias = new Date(hoy.getTime() + (3 * 24 * 60 * 60 * 1000));
+            fechaInput.min = tresDias.toISOString().split('T')[0];
+        }
+        
+        // Asegurar que Supabase esté inicializado
+        inicializarSupabase();
+        
+        console.log('✅ Todos los componentes inicializados correctamente');
+    } catch (error) {
+        console.error('❌ Error durante la inicialización:', error);
     }
-    
-    // Asegurar que Supabase esté inicializado
-    inicializarSupabase();
-});
+}
+
+// Ejecutar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarTodo);
+} else {
+    // DOM ya está listo
+    inicializarTodo();
+}
 
 
