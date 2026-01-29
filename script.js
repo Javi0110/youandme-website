@@ -713,21 +713,12 @@ function inicializarCalculadoraCumpleanos() {
         cumpleForm.horas.addEventListener('input', calcularTotalCumpleanos);
         cumpleForm.decoracion.addEventListener('change', calcularTotalCumpleanos);
         cumpleForm.equipo.addEventListener('change', function() {
-            const pretendPlayGroup = document.getElementById('pretendPlayGroup');
-            if (pretendPlayGroup) {
-                pretendPlayGroup.style.display = this.checked ? 'block' : 'none';
-                if (!this.checked && cumpleForm.pretendPlay) cumpleForm.pretendPlay.checked = false;
-            }
+            if (!this.checked && cumpleForm.pretendPlay) cumpleForm.pretendPlay.checked = false;
             calcularTotalCumpleanos();
         });
         if (cumpleForm.pretendPlay) {
             cumpleForm.pretendPlay.addEventListener('change', calcularTotalCumpleanos);
         }
-        // Ocultar add-on Pretend play si Equipo no está seleccionado al cargar
-        (function() {
-            const pretendPlayGroup = document.getElementById('pretendPlayGroup');
-            if (pretendPlayGroup && !cumpleForm.equipo.checked) pretendPlayGroup.style.display = 'none';
-        })();
         cumpleForm.actividad.addEventListener('change', function() {
             const numNinosGroup = document.getElementById('numNinosGroup');
             if (numNinosGroup) {
