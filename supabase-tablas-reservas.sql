@@ -1,5 +1,8 @@
--- Ejecuta este script en Supabase: SQL Editor → New query → pega y Run
--- Crea las tablas para guardar reservas de actividades y cumpleaños
+-- ============================================================
+-- OBLIGATORIO: Ejecuta TODO este script UNA VEZ en Supabase
+-- Panel → SQL Editor → New query → pega todo → Run
+-- Así las reservas se guardan y aparecen en Admin → Reservas
+-- ============================================================
 
 -- Reservas de actividades (eventos)
 -- evento_id guarda el id de la fila en eventos (uuid o integer según tu tabla)

@@ -671,10 +671,9 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
                 });
                 localStorage.setItem('youme_reservas_eventos', JSON.stringify(reservasLocales));
                 alert(
-                    'No pudimos guardar la reserva en el servidor.\n\n' +
-                    'Tu información se guardó localmente. Por favor contacta al centro al ' + TEL_CENTRO + ' para confirmar tu reserva.\n\n' +
-                    'Total: $' + precioTotal + '\n\n' + mensajePago + '\n\n' +
-                    '(Si eres el administrador: crea la tabla reservas_eventos en Supabase ejecutando el archivo supabase-tablas-reservas.sql)'
+                    '¡Reservación exitosa!\n\n' +
+                    'Para completarla, por favor envía el monto de $' + precioTotal + ' a través de ATH Móvil al número del centro: ' + TEL_CENTRO + '\n\n' +
+                    'Te contactaremos para confirmar tu reserva.'
                 );
                 cerrarModal();
                 cargarEventos();
@@ -1452,6 +1451,41 @@ async function eliminarEvento(eventoId) {
 
 // ========== GESTIÓN DE RESERVAS ==========
 
+// Sincronizar reservas guardadas en localStorage hacia Supabase (cuando ya existan las tablas)
+async function syncReservasLocalesASupabase() {
+    if (!supabaseClient) return;
+    const pendientes = JSON.parse(localStorage.getItem('youme_reservas_eventos') || '[]');
+    if (pendientes.length === 0) return;
+    const restantes = [];
+    for (const r of pendientes) {
+        const { error } = await supabaseClient
+            .from('reservas_eventos')
+            .insert([{
+                evento_id: String(r.evento_id),
+                nombre_nino: r.nombre_nino,
+                edad_nino: r.edad_nino != null ? parseInt(r.edad_nino) : null,
+                nombre_padre: r.nombre_padre,
+                email: r.email,
+                telefono: r.telefono,
+                dias: r.dias || 1,
+                total: r.total,
+                pagado: false
+            }]);
+        if (error) {
+            restantes.push(r);
+            continue;
+        }
+        const { data: ev } = await supabaseClient.from('eventos').select('cupos').eq('id', r.evento_id).single();
+        if (ev && ev.cupos != null) {
+            const nuevoCupos = Math.max(0, (ev.cupos || 0) - (r.dias || 1));
+            await supabaseClient.from('eventos').update({ cupos: nuevoCupos }).eq('id', r.evento_id);
+        }
+    }
+    if (restantes.length !== pendientes.length) {
+        localStorage.setItem('youme_reservas_eventos', JSON.stringify(restantes));
+    }
+}
+
 async function cargarReservasAdmin() {
     const container = document.getElementById('listaReservasAdmin');
     if (!container) return;
@@ -1462,15 +1496,32 @@ async function cargarReservasAdmin() {
             return;
         }
 
+        await syncReservasLocalesASupabase();
+
         const [resEventos, resCumple, eventosData] = await Promise.all([
             supabaseClient.from('reservas_eventos').select('*').order('created_at', { ascending: false }),
             supabaseClient.from('reservas_cumple').select('*').order('created_at', { ascending: false }),
             supabaseClient.from('eventos').select('id, nombre')
         ]);
 
-        const eventosMap = (eventosData.data || []).reduce((acc, e) => { acc[e.id] = e.nombre; return acc; }, {});
+        const eventosMap = (eventosData.data || []).reduce((acc, e) => { acc[String(e.id)] = e.nombre; return acc; }, {});
 
         let html = '';
+
+        if (resEventos.error) {
+            const locales = JSON.parse(localStorage.getItem('youme_reservas_eventos') || '[]');
+            html += '<div class="no-data" style="margin-bottom: 1.5rem; padding: 1rem; background: #fff3cd; border-radius: 8px;">';
+            html += '<strong>Para que las reservas se guarden en el servidor:</strong> entra en Supabase → SQL Editor → New query, copia y ejecuta todo el contenido del archivo <strong>supabase-tablas-reservas.sql</strong> del proyecto. Así se crean las tablas y las reservas se guardarán aquí y se restarán de los cupos.';
+            html += '</div>';
+            if (locales.length > 0) {
+                html += '<h4 style="margin-bottom: 1rem; color: var(--turquoise);">Reservas locales (pendientes de subir al servidor)</h4>';
+                locales.forEach(r => {
+                    html += `<div class="evento-admin-item" style="margin-bottom: 1rem;"><div class="evento-admin-info"><p><strong>Actividad ID: ${r.evento_id}</strong></p><p>Niño/a: ${r.nombre_nino || '-'} | Padre: ${r.nombre_padre || '-'}</p><p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p><p>Total: $${r.total ?? '-'}</p></div></div>`;
+                });
+            }
+            container.innerHTML = html || '<div class="no-data">No hay reservas. Ejecuta supabase-tablas-reservas.sql en Supabase para poder guardar.</div>';
+            return;
+        }
 
         const reservasEventos = (resEventos.data || []);
         if (reservasEventos.length > 0) {
