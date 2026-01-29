@@ -737,6 +737,49 @@ function inicializarCalculadoraCumpleanos() {
     }
 }
 
+// Carrusel / Galería - Celebra en You&Me
+function inicializarGaleriaCelebra() {
+    const track = document.getElementById('galeriaTrack');
+    const prevBtn = document.getElementById('galeriaPrev');
+    const nextBtn = document.getElementById('galeriaNext');
+    const dotsContainer = document.getElementById('galeriaDots');
+    if (!track || !prevBtn || !nextBtn) return;
+
+    const slides = track.querySelectorAll('.galeria-slide');
+    const total = slides.length;
+    if (total === 0) return;
+
+    let index = 0;
+
+    function goTo(i) {
+        index = ((i % total) + total) % total;
+        track.style.transform = `translateX(-${index * 100}%)`;
+        dotsContainer.querySelectorAll('.galeria-dot').forEach((dot, j) => {
+            dot.classList.toggle('active', j === index);
+        });
+    }
+
+    // Dots
+    for (let i = 0; i < total; i++) {
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'galeria-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', 'Ir a imagen ' + (i + 1));
+        dot.addEventListener('click', () => goTo(i));
+        dotsContainer.appendChild(dot);
+    }
+
+    prevBtn.addEventListener('click', () => goTo(index - 1));
+    nextBtn.addEventListener('click', () => goTo(index + 1));
+
+    // Autoplay opcional (cada 5 segundos)
+    let autoplay = setInterval(() => goTo(index + 1), 5000);
+    track.closest('.celebra-galeria').addEventListener('mouseenter', () => clearInterval(autoplay));
+    track.closest('.celebra-galeria').addEventListener('mouseleave', () => {
+        autoplay = setInterval(() => goTo(index + 1), 5000);
+    });
+}
+
 // Ejecutar cuando el DOM esté listo
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inicializarCalculadoraCumpleanos);
@@ -1572,6 +1615,9 @@ function inicializarTodo() {
         
         // Inicializar calculadora de cumpleaños
         inicializarCalculadoraCumpleanos();
+        
+        // Inicializar carrusel de galería (Celebra)
+        inicializarGaleriaCelebra();
         
         // Asegurar que Supabase esté inicializado ANTES de cargar eventos
         inicializarSupabase();
