@@ -16,6 +16,7 @@
     --gray-dark: #2d2d2d;
     --font-body: 'DM Sans', sans-serif;
     --font-heading: 'Plus Jakarta Sans', sans-serif;
+    --font-title: 'Fredoka', sans-serif;
 }
 
 body {
@@ -238,16 +239,13 @@ h1, h2, h3, h4 {
 }
 
 .hero-title {
-    font-family: var(--font-heading);
+    font-family: var(--font-title);
     font-size: 3rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     line-height: 1.2;
     margin-bottom: 1rem;
     color: var(--turquoise);
-    background: linear-gradient(135deg, var(--turquoise) 0%, #00a89d 40%, var(--orange) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
     animation: fadeInUp 0.8s;
 }
 
@@ -381,27 +379,17 @@ h1, h2, h3, h4 {
 
 /* Sections */
 .section-title {
-    font-family: var(--font-heading);
+    font-family: var(--font-title);
     font-size: 2.5rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     text-align: center;
     margin-bottom: 1rem;
     color: var(--turquoise);
-    background: linear-gradient(135deg, var(--turquoise) 0%, #00a89d 50%, var(--orange) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
     position: relative;
     display: inline-block;
     left: 50%;
     transform: translateX(-50%);
-}
-
-@supports (background-clip: text) or (-webkit-background-clip: text) {
-    .hero-title,
-    .section-title {
-        color: transparent;
-    }
 }
 
 .section-title::after {
@@ -711,7 +699,7 @@ h1, h2, h3, h4 {
     display: flex;
     align-items: center;
     gap: 1rem;
-    max-width: 900px;
+    max-width: 450px;
     margin: 0 auto;
 }
 
@@ -730,13 +718,14 @@ h1, h2, h3, h4 {
 .galeria-slide {
     flex: 0 0 100%;
     min-width: 0;
+    line-height: 0;
+    font-size: 0;
 }
 
 .galeria-slide img {
     width: 100%;
     height: auto;
     display: block;
-    vertical-align: middle;
 }
 
 .galeria-btn {
