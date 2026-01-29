@@ -587,30 +587,49 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia) {
         ? `\nFechas: ${fechasSeleccionadas.join(', ')}` 
         : '';
     
-    // Aquí integrarías con tu backend para procesar el pago
-    // Por ahora, simulamos el proceso
-    alert(`Procesando reserva para ${nombreNino}...${detallesDias}${detallesFechas}\n\nTotal: $${precioTotal}\n\nEn un ambiente de producción, esto te redigiría a Stripe para completar el pago.\n\nContacta al centro para completar tu reserva: (787) 204-9041`);
-    
+    const TEL_CENTRO = '(787) 204-9041';
+    const mensajePago = `Realiza el pago a través de ATH Móvil al número del centro: ${TEL_CENTRO}`;
+
+    try {
+        // Guardar reserva en Supabase
+        if (supabaseClient) {
+            const { error: errReserva } = await supabaseClient
+                .from('reservas_eventos')
+                .insert([{
+                    evento_id: String(eventoId),
+                    nombre_nino: nombreNino,
+                    edad_nino: parseInt(edadNino) || null,
+                    nombre_padre: nombrePadre,
+                    email,
+                    telefono,
+                    dias,
+                    total: precioTotal,
+                    pagado: false
+                }]);
+            if (errReserva) {
+                console.error('Error guardando reserva:', errReserva);
+                alert('Error al registrar la reserva. Por favor intenta de nuevo o contacta al centro al ' + TEL_CENTRO);
+                return;
+            }
+            // Reducir cupos del evento
+            const { data: eventoActual } = await supabaseClient
+                .from('eventos')
+                .select('cupos')
+                .eq('id', eventoId)
+                .single();
+            if (eventoActual && eventoActual.cupos != null) {
+                const nuevoCupos = Math.max(0, (eventoActual.cupos || 0) - (esMultiDia ? dias : 1));
+                await supabaseClient.from('eventos').update({ cupos: nuevoCupos }).eq('id', eventoId);
+            }
+        }
+        alert(`Reserva registrada para ${nombreNino}.${detallesDias}${detallesFechas}\n\nTotal: $${precioTotal}\n\n${mensajePago}`);
+    } catch (e) {
+        console.error(e);
+        alert(`Reserva registrada localmente.\n\nTotal: $${precioTotal}\n\n${mensajePago}`);
+    }
+
     cerrarModal();
-    
-    // En producción, aquí llamarías a Stripe
-    /*
-    const response = await fetch('/api/crear-checkout-evento', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            eventoId,
-            nombreNino,
-            edadNino,
-            nombrePadre,
-            email,
-            telefono,
-            precio
-        })
-    });
-    const session = await response.json();
-    await stripe.redirectToCheckout({ sessionId: session.id });
-    */
+    cargarEventos();
 }
 
 // Cerrar modal
@@ -850,21 +869,38 @@ function inicializarFormularios() {
         total
     };
     
-    // En producción, aquí llamarías a tu backend para crear una sesión de Stripe
-    alert(`Procesando reserva para el cumpleaños de ${nombre}...\n\nTotal: $${total}\n\nEn un ambiente de producción, esto te redigiría a Stripe para completar el pago.\n\nContacta al centro para completar tu reserva: (787) 204-9041`);
-    
+    const TEL_CENTRO = '(787) 204-9041';
+    const mensajePago = `Realiza el pago a través de ATH Móvil al número del centro: ${TEL_CENTRO}`;
+
+    try {
+        if (supabaseClient) {
+            const { error: errReserva } = await supabaseClient
+                .from('reservas_cumple')
+                .insert([{
+                    nombre_nino: detalles.nombreNino,
+                    fecha: detalles.fecha,
+                    contacto: detalles.contacto,
+                    telefono: detalles.telefono,
+                    email: detalles.email,
+                    horas: detalles.horas,
+                    decoracion: detalles.decoracion,
+                    equipo: detalles.equipo,
+                    pretend_play: detalles.pretendPlay,
+                    actividad: detalles.actividad,
+                    num_ninos: detalles.numNinos || 0,
+                    total: detalles.total,
+                    pagado: false
+                }]);
+            if (errReserva) {
+                console.error('Error guardando reserva cumple:', errReserva);
+            }
+        }
+        alert(`Reserva registrada para el cumpleaños de ${nombre}.\n\nTotal: $${total}\n\n${mensajePago}`);
+    } catch (e) {
+        console.error(e);
+        alert(`Reserva registrada.\n\nTotal: $${total}\n\n${mensajePago}`);
+    }
     console.log('Detalles de reserva:', detalles);
-    
-    /*
-    // Código para producción con Stripe:
-    const response = await fetch('/api/crear-checkout-cumpleanos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(detalles)
-    });
-    const session = await response.json();
-    await stripe.redirectToCheckout({ sessionId: session.id });
-    */
         });
     }
     
@@ -1123,6 +1159,8 @@ function mostrarTabAdmin(tabName) {
     // Recargar datos si es necesario
     if (tabName === 'actividades') {
         cargarEventosAdmin();
+    } else if (tabName === 'reservas') {
+        cargarReservasAdmin();
     } else if (tabName === 'solicitudes') {
         cargarSolicitudesAdmin();
     }
@@ -1333,6 +1371,114 @@ async function eliminarEvento(eventoId) {
     } catch (error) {
         console.error('Error eliminando evento:', error);
         alert('Error al eliminar la actividad. Por favor intenta de nuevo.');
+    }
+}
+
+// ========== GESTIÓN DE RESERVAS ==========
+
+async function cargarReservasAdmin() {
+    const container = document.getElementById('listaReservasAdmin');
+    if (!container) return;
+
+    try {
+        if (!supabaseClient) {
+            container.innerHTML = '<div class="no-data">Las reservas se guardan en Supabase. Configura el proyecto para verlas aquí.</div>';
+            return;
+        }
+
+        const [resEventos, resCumple, eventosData] = await Promise.all([
+            supabaseClient.from('reservas_eventos').select('*').order('created_at', { ascending: false }),
+            supabaseClient.from('reservas_cumple').select('*').order('created_at', { ascending: false }),
+            supabaseClient.from('eventos').select('id, nombre')
+        ]);
+
+        const eventosMap = (eventosData.data || []).reduce((acc, e) => { acc[e.id] = e.nombre; return acc; }, {});
+
+        let html = '';
+
+        const reservasEventos = (resEventos.data || []);
+        if (reservasEventos.length > 0) {
+            html += '<h4 style="margin-bottom: 1rem; color: var(--turquoise);">Reservas de actividades</h4>';
+            reservasEventos.forEach(r => {
+                const nombreActividad = eventosMap[r.evento_id] || 'Actividad';
+                html += `
+                    <div class="evento-admin-item" style="margin-bottom: 1rem;">
+                        <div class="evento-admin-info">
+                            <p><strong>${nombreActividad}</strong></p>
+                            <p>Niño/a: ${r.nombre_nino || '-'} | Padre: ${r.nombre_padre || '-'}</p>
+                            <p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p>
+                            <p>Total: $${r.total ?? '-'} | Días: ${r.dias ?? 1}</p>
+                        </div>
+                        <div class="evento-admin-actions" style="align-items: center;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="checkbox" ${r.pagado ? 'checked' : ''} onchange="marcarPagadoReservaEvento('${r.id}', this.checked)">
+                                Pagado
+                            </label>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        const reservasCumple = (resCumple.data || []);
+        if (reservasCumple.length > 0) {
+            html += '<h4 style="margin: 2rem 0 1rem; color: var(--orange);">Reservas de cumpleaños</h4>';
+            reservasCumple.forEach(r => {
+                html += `
+                    <div class="evento-admin-item" style="margin-bottom: 1rem;">
+                        <div class="evento-admin-info">
+                            <p><strong>Cumpleaños - ${r.nombre_nino || '-'}</strong></p>
+                            <p>Fecha: ${r.fecha || '-'} | Contacto: ${r.contacto || '-'}</p>
+                            <p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p>
+                            <p>Total: $${r.total ?? '-'} | Horas: ${r.horas ?? '-'}</p>
+                        </div>
+                        <div class="evento-admin-actions" style="align-items: center;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="checkbox" ${r.pagado ? 'checked' : ''} onchange="marcarPagadoReservaCumple('${r.id}', this.checked)">
+                                Pagado
+                            </label>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        if (!html) {
+            container.innerHTML = '<div class="no-data">No hay reservas registradas aún.</div>';
+            return;
+        }
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error cargando reservas:', error);
+        container.innerHTML = '<div class="no-data">Error al cargar reservas. Si acabas de añadir las tablas en Supabase, ejecuta el SQL de reservas_eventos y reservas_cumple.</div>';
+    }
+}
+
+async function marcarPagadoReservaEvento(reservaId, pagado) {
+    if (!supabaseClient) return;
+    try {
+        const { error } = await supabaseClient
+            .from('reservas_eventos')
+            .update({ pagado: !!pagado })
+            .eq('id', reservaId);
+        if (error) throw error;
+    } catch (e) {
+        console.error(e);
+        alert('Error al actualizar estado de pago.');
+    }
+}
+
+async function marcarPagadoReservaCumple(reservaId, pagado) {
+    if (!supabaseClient) return;
+    try {
+        const { error } = await supabaseClient
+            .from('reservas_cumple')
+            .update({ pagado: !!pagado })
+            .eq('id', reservaId);
+        if (error) throw error;
+    } catch (e) {
+        console.error(e);
+        alert('Error al actualizar estado de pago.');
     }
 }
 

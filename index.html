@@ -672,6 +672,9 @@
                         <button class="admin-tab-btn active" onclick="mostrarTabAdmin('actividades')">
                             Administrar Actividades
                         </button>
+                        <button class="admin-tab-btn" onclick="mostrarTabAdmin('reservas')">
+                            Reservas
+                        </button>
                         <button class="admin-tab-btn" onclick="mostrarTabAdmin('solicitudes')">
                             Solicitudes de Servicio
                         </button>
@@ -744,6 +747,15 @@
 
                             <!-- Lista de eventos existentes -->
                             <div id="listaEventosAdmin"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Reservas (actividades y cumpleaños) -->
+                    <div id="tabReservas" class="admin-tab-content">
+                        <div class="admin-section">
+                            <h3>Reservas por actividad y cumpleaños</h3>
+                            <p style="color: #666; margin-bottom: 1rem;">Marca el checkbox cuando la persona haya pagado (vía ATH Móvil al (787) 204-9041).</p>
+                            <div id="listaReservasAdmin"></div>
                         </div>
                     </div>
 
