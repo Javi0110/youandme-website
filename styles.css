@@ -150,8 +150,8 @@ body {
 .logo {
     display: flex;
     align-items: center;
-    height: 80px;
-    min-width: 260px;
+    height: 110px;
+    min-width: 380px;
 }
 
 .logo img {
