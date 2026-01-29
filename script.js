@@ -280,21 +280,49 @@ function crearEventoCard(evento) {
 // Abrir modal de evento
 async function abrirModalEvento(eventoId) {
     try {
-        // Cargar desde localStorage
-        const eventosGuardados = localStorage.getItem('youme_eventos');
-        let eventos = [];
-        
-        if (eventosGuardados) {
-            eventos = JSON.parse(eventosGuardados);
-        } else {
-            // Fallback: cargar desde JSON
-            const response = await fetch('eventos.json');
-            const data = await response.json();
-            eventos = data.eventos;
+        let evento = null;
+
+        // Prefer Supabase when available (same source as the activity list)
+        if (supabaseClient) {
+            const { data, error } = await supabaseClient
+                .from('eventos')
+                .select('*')
+                .eq('id', eventoId)
+                .maybeSingle();
+
+            if (!error && data) {
+                evento = {
+                    id: data.id,
+                    nombre: data.nombre,
+                    descripcion: data.descripcion,
+                    fecha: data.fecha,
+                    horario: data.horario || '',
+                    edad: data.edad || '',
+                    precio: parseFloat(data.precio),
+                    cupos: parseInt(data.cupos),
+                    imagen: data.imagen || ''
+                };
+            }
         }
-        
-        const evento = eventos.find(e => e.id === eventoId);
-        
+
+        // Fallback: localStorage or eventos.json
+        if (!evento) {
+            const eventosGuardados = localStorage.getItem('youme_eventos');
+            let eventos = [];
+            if (eventosGuardados) {
+                eventos = JSON.parse(eventosGuardados);
+            } else {
+                try {
+                    const response = await fetch('eventos.json');
+                    const data = await response.json();
+                    eventos = data.eventos || [];
+                } catch (_) {
+                    eventos = [];
+                }
+            }
+            evento = eventos.find(e => String(e.id) === String(eventoId));
+        }
+
         if (!evento) {
             alert('Evento no encontrado');
             return;
