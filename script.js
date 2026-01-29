@@ -47,16 +47,34 @@ let navMenu = null;
 
 // Page Navigation System
 function navigateToPage(pageName) {
+    console.log('🔵 Navegando a:', pageName);
+    
+    if (!pageName) {
+        console.error('❌ No se proporcionó nombre de página');
+        return;
+    }
+    
     // Hide all pages
-    document.querySelectorAll('.page-content').forEach(page => {
+    const allPages = document.querySelectorAll('.page-content');
+    console.log('📄 Páginas encontradas:', allPages.length);
+    
+    allPages.forEach(page => {
         page.classList.remove('active');
     });
     
     // Show selected page
     const targetPage = document.getElementById(pageName);
+    console.log('🎯 Página objetivo:', pageName, 'Encontrada:', !!targetPage);
+    
     if (targetPage) {
         targetPage.classList.add('active');
+        console.log('✅ Página activada:', pageName);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        console.error('❌ No se encontró la página con ID:', pageName);
+        // Listar todos los IDs disponibles para debugging
+        const allIds = Array.from(document.querySelectorAll('[id]')).map(el => el.id);
+        console.log('📋 IDs disponibles:', allIds.filter(id => id.includes('inicio') || id.includes('servicio') || id.includes('evento') || id.includes('cumple') || id.includes('contacto') || id.includes('admin')));
     }
     
     // Update nav links
@@ -64,6 +82,7 @@ function navigateToPage(pageName) {
         link.classList.remove('active');
         if (link.dataset.page === pageName) {
             link.classList.add('active');
+            console.log('✅ Link activado:', link.textContent);
         }
     });
     
@@ -93,12 +112,19 @@ function inicializarNavegacion() {
     }
 
     // Nav link click handlers
-    document.querySelectorAll('.nav-link').forEach(link => {
+    const navLinks = document.querySelectorAll('.nav-link');
+    console.log('🔗 Enlaces de navegación encontrados:', navLinks.length);
+    
+    navLinks.forEach((link, index) => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             const page = link.dataset.page;
+            console.log('🖱️ Click en enlace:', link.textContent, 'Página:', page);
             if (page) {
                 navigateToPage(page);
+            } else {
+                console.error('❌ Enlace sin data-page:', link);
             }
         });
     });
@@ -123,12 +149,18 @@ function inicializarNavegacion() {
         // Si encontramos un elemento con data-page y es un botón o tiene la clase btn
         if (element && (element.tagName === 'BUTTON' || element.classList.contains('btn'))) {
             e.preventDefault();
+            e.stopPropagation();
             const page = element.dataset.page;
+            console.log('🖱️ Click en botón:', element.textContent?.trim() || element.className, 'Página:', page);
             if (page) {
                 navigateToPage(page);
+            } else {
+                console.error('❌ Botón sin data-page:', element);
             }
         }
     });
+    
+    console.log('✅ Event listeners de navegación configurados');
     
     // Footer links
     document.querySelectorAll('.footer-links a').forEach(link => {
@@ -1479,6 +1511,17 @@ function filtrarSolicitudes(filtro) {
 // Cargar eventos al cargar la página
 function inicializarTodo() {
     try {
+        // Asegurar que solo la página de inicio esté activa al inicio
+        const allPages = document.querySelectorAll('.page-content');
+        allPages.forEach(page => {
+            page.classList.remove('active');
+        });
+        const inicioPage = document.getElementById('inicio');
+        if (inicioPage) {
+            inicioPage.classList.add('active');
+            console.log('✅ Página de inicio activada');
+        }
+        
         // Inicializar navegación PRIMERO (esto es crítico para que los botones funcionen)
         inicializarNavegacion();
         
