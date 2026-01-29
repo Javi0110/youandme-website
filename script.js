@@ -654,21 +654,24 @@ function calcularTotalCumpleanos() {
     
     let total = 0;
     
-    // Espacio base
+    // Espacio base: 3hrs $250, hora adicional $50
     const horas = parseInt(cumpleForm.horas?.value) || 3;
     if (horas <= 3) {
-        total += 350; // Precio base 3 horas
+        total += 250;
     } else {
-        total += 350 + ((horas - 3) * 100); // 3 horas base + adicionales a $100/hora
+        total += 250 + ((horas - 3) * 50);
     }
     
-    // Decoración
+    // Decoración: básica $175, elaborada $350
     const decoracion = parseInt(cumpleForm.decoracion?.value) || 0;
     total += decoracion;
     
-    // Equipo para toddlers
+    // Equipo para toddlers $125; add-on Pretend play area +$25
     if (cumpleForm.equipo?.checked) {
-        total += 150;
+        total += 125;
+        if (cumpleForm.pretendPlay?.checked) {
+            total += 25;
+        }
     }
     
     // Actividad extra
@@ -689,6 +692,7 @@ function inicializarCalculadoraCumpleanos() {
     const horas = document.getElementById('cumpleHoras');
     const decoracion = document.getElementById('cumpleDecoracion');
     const equipo = document.getElementById('cumpleEquipo');
+    const pretendPlay = document.getElementById('cumplePretendPlay');
     const actividad = document.getElementById('cumpleActividad');
     const numNinos = document.getElementById('cumpleNumNinos');
     const totalAmount = document.getElementById('totalAmount');
@@ -699,6 +703,7 @@ function inicializarCalculadoraCumpleanos() {
             horas: horas,
             decoracion: decoracion,
             equipo: equipo,
+            pretendPlay: pretendPlay || null,
             actividad: actividad,
             numNinos: numNinos,
             totalAmount: totalAmount
@@ -707,7 +712,22 @@ function inicializarCalculadoraCumpleanos() {
         // Event listeners para calculadora
         cumpleForm.horas.addEventListener('input', calcularTotalCumpleanos);
         cumpleForm.decoracion.addEventListener('change', calcularTotalCumpleanos);
-        cumpleForm.equipo.addEventListener('change', calcularTotalCumpleanos);
+        cumpleForm.equipo.addEventListener('change', function() {
+            const pretendPlayGroup = document.getElementById('pretendPlayGroup');
+            if (pretendPlayGroup) {
+                pretendPlayGroup.style.display = this.checked ? 'block' : 'none';
+                if (!this.checked && cumpleForm.pretendPlay) cumpleForm.pretendPlay.checked = false;
+            }
+            calcularTotalCumpleanos();
+        });
+        if (cumpleForm.pretendPlay) {
+            cumpleForm.pretendPlay.addEventListener('change', calcularTotalCumpleanos);
+        }
+        // Ocultar add-on Pretend play si Equipo no está seleccionado al cargar
+        (function() {
+            const pretendPlayGroup = document.getElementById('pretendPlayGroup');
+            if (pretendPlayGroup && !cumpleForm.equipo.checked) pretendPlayGroup.style.display = 'none';
+        })();
         cumpleForm.actividad.addEventListener('change', function() {
             const numNinosGroup = document.getElementById('numNinosGroup');
             if (numNinosGroup) {
@@ -771,6 +791,7 @@ function inicializarFormularios() {
         horas: cumpleForm.horas.value,
         decoracion: cumpleForm.decoracion.options[cumpleForm.decoracion.selectedIndex].text,
         equipo: cumpleForm.equipo.checked,
+        pretendPlay: cumpleForm.pretendPlay?.checked || false,
         actividad: cumpleForm.actividad.value !== 'none' ? cumpleForm.actividad.options[cumpleForm.actividad.selectedIndex].text : 'Ninguna',
         numNinos: cumpleForm.actividad.value !== 'none' ? cumpleForm.numNinos.value : 0,
         total

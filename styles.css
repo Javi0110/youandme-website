@@ -28,6 +28,10 @@ body {
     letter-spacing: 0.01em;
 }
 
+h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
