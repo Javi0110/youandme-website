@@ -174,6 +174,11 @@ h1, h2, h3, h4 {
     list-style: none;
     gap: 2rem;
     align-items: center;
+    flex-wrap: nowrap;
+}
+
+.nav-menu li {
+    flex-shrink: 0;
 }
 
 .nav-link {
@@ -186,6 +191,7 @@ h1, h2, h3, h4 {
     transition: color 0.3s;
     position: relative;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .nav-link.active {
