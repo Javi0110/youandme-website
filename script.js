@@ -183,11 +183,10 @@ if (document.readyState === 'loading') {
 
 // ==================== EVENTOS ====================
 
-// Cargar eventos desde Supabase (y solo usar JSON si NO hay Supabase configurado)
+// Cargar eventos solo desde Supabase (sin mock / eventos.json)
 async function cargarEventos() {
     try {
         if (supabaseClient) {
-            // ✅ Supabase es la fuente oficial de verdad
             const { data, error } = await supabaseClient
                 .from('eventos')
                 .select('*')
@@ -215,18 +214,11 @@ async function cargarEventos() {
             return;
         }
 
-        // ⚠️ Solo si NO hay Supabase configurado, usar el JSON local (modo demo)
-        try {
-            const response = await fetch('eventos.json');
-            const data = await response.json();
-            mostrarEventos(data.eventos || []);
-        } catch (jsonError) {
-            console.error('Error cargando eventos desde JSON:', jsonError);
-            mostrarEventos([]);
-        }
+        // Sin Supabase: no mostrar datos mock, solo vacío
+        mostrarEventos([]);
     } catch (error) {
         console.error('Error cargando eventos:', error);
-        document.getElementById('noEventos').style.display = 'block';
+        mostrarEventos([]);
     }
 }
 
