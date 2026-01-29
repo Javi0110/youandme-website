@@ -1,18 +1,35 @@
 // Stripe Configuration (Reemplaza con tu clave pública)
-const stripe = Stripe('pk_test_51QKxexGxaxrh1Ws0ZmVF9K3YPz9nK1Oi7FvSdwQJb3IxBgFbDlqKsR0NTIKDkJrN0kVYZL9WzH0yqDe8C1qW0qW000000000'); // REEMPLAZAR CON TU CLAVE
+// Inicializar Stripe solo si está disponible
+let stripe;
+if (typeof Stripe !== 'undefined') {
+    stripe = Stripe('pk_test_51QKxexGxaxrh1Ws0ZmVF9K3YPz9nK1Oi7FvSdwQJb3IxBgFbDlqKsR0NTIKDkJrN0kVYZL9WzH0yqDe8C1qW0qW000000000'); // REEMPLAZAR CON TU CLAVE
+}
 
 // ==================== SUPABASE CONFIGURATION ====================
 // Configuración de Supabase desde window.SUPABASE_CONFIG (definido en index.html)
-const SUPABASE_URL = window.SUPABASE_CONFIG?.url || '';
-const SUPABASE_ANON_KEY = window.SUPABASE_CONFIG?.anonKey || '';
-
-// Inicializar Supabase solo si las credenciales están configuradas
 let supabase;
-if (SUPABASE_URL && SUPABASE_ANON_KEY && 
-    SUPABASE_URL !== 'TU_SUPABASE_URL_AQUI' && 
-    SUPABASE_ANON_KEY !== 'TU_SUPABASE_ANON_KEY_AQUI' &&
-    window.supabase) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+function inicializarSupabase() {
+    if (typeof window.supabase === 'undefined' || !window.SUPABASE_CONFIG) {
+        return; // Supabase aún no está cargado o no hay configuración
+    }
+    
+    const SUPABASE_URL = window.SUPABASE_CONFIG?.url || '';
+    const SUPABASE_ANON_KEY = window.SUPABASE_CONFIG?.anonKey || '';
+    
+    // Inicializar Supabase solo si las credenciales están configuradas
+    if (SUPABASE_URL && SUPABASE_ANON_KEY && 
+        SUPABASE_URL !== 'TU_SUPABASE_URL_AQUI' && 
+        SUPABASE_ANON_KEY !== 'TU_SUPABASE_ANON_KEY_AQUI') {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+}
+
+// Intentar inicializar Supabase cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarSupabase);
+} else {
+    // DOM ya está listo, intentar inicializar después de un pequeño delay
+    setTimeout(inicializarSupabase, 100);
 }
 
 // Page Navigation System
@@ -41,42 +58,54 @@ function navigateToPage(pageName) {
     navMenu.classList.remove('active');
 }
 
-// Mobile Navigation
-const hamburger = document.getElementById('hamburger');
-const navMenu = document.getElementById('navMenu');
-
-hamburger.addEventListener('click', () => {
-    navMenu.classList.toggle('active');
-});
-
-// Nav link click handlers
-document.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const page = link.dataset.page;
-        navigateToPage(page);
-    });
-});
-
-// Button navigation handlers
-document.addEventListener('click', (e) => {
-    if (e.target.matches('[data-page]') && e.target.tagName === 'BUTTON') {
-        const page = e.target.dataset.page;
-        navigateToPage(page);
+// Inicializar navegación cuando el DOM esté listo
+function inicializarNavegacion() {
+    // Mobile Navigation
+    const hamburger = document.getElementById('hamburger');
+    const navMenu = document.getElementById('navMenu');
+    
+    if (hamburger && navMenu) {
+        hamburger.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+        });
     }
-});
 
-// Footer links
-document.querySelectorAll('.footer-links a').forEach(link => {
-    link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const href = link.getAttribute('href');
-        if (href && href.startsWith('#')) {
-            const page = href.substring(1);
+    // Nav link click handlers
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const page = link.dataset.page;
+            navigateToPage(page);
+        });
+    });
+
+    // Button navigation handlers
+    document.addEventListener('click', (e) => {
+        if (e.target.matches('[data-page]') && e.target.tagName === 'BUTTON') {
+            const page = e.target.dataset.page;
             navigateToPage(page);
         }
     });
-});
+
+    // Footer links
+    document.querySelectorAll('.footer-links a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const href = link.getAttribute('href');
+            if (href && href.startsWith('#')) {
+                const page = href.substring(1);
+                navigateToPage(page);
+            }
+        });
+    });
+}
+
+// Ejecutar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarNavegacion);
+} else {
+    inicializarNavegacion();
+}
 
 // ==================== EVENTOS ====================
 
@@ -483,36 +512,47 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia) {
 
 // Cerrar modal
 function cerrarModal() {
-    document.getElementById('eventoModal').style.display = 'none';
+    const modal = document.getElementById('eventoModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
-document.querySelector('.close').addEventListener('click', cerrarModal);
-
-window.addEventListener('click', (e) => {
-    const modal = document.getElementById('eventoModal');
-    if (e.target === modal) {
-        cerrarModal();
+// Inicializar event listeners del modal cuando el DOM esté listo
+function inicializarModales() {
+    const closeBtn = document.querySelector('.close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', cerrarModal);
     }
-});
+
+    window.addEventListener('click', (e) => {
+        const modal = document.getElementById('eventoModal');
+        if (modal && e.target === modal) {
+            cerrarModal();
+        }
+    });
+}
+
+// Ejecutar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarModales);
+} else {
+    inicializarModales();
+}
 
 // ==================== CUMPLEAÑOS ====================
 
-// Calculadora de cumpleaños
-const cumpleForm = {
-    horas: document.getElementById('cumpleHoras'),
-    decoracion: document.getElementById('cumpleDecoracion'),
-    equipo: document.getElementById('cumpleEquipo'),
-    actividad: document.getElementById('cumpleActividad'),
-    numNinos: document.getElementById('cumpleNumNinos'),
-    totalAmount: document.getElementById('totalAmount')
-};
+// Calculadora de cumpleaños - Referencia global
+let cumpleForm = null;
 
 // Calcular total
 function calcularTotalCumpleanos() {
+    if (!cumpleForm || !cumpleForm.totalAmount) return 0;
+    
     let total = 0;
     
     // Espacio base
-    const horas = parseInt(cumpleForm.horas.value) || 3;
+    const horas = parseInt(cumpleForm.horas?.value) || 3;
     if (horas <= 3) {
         total += 350; // Precio base 3 horas
     } else {
@@ -520,42 +560,82 @@ function calcularTotalCumpleanos() {
     }
     
     // Decoración
-    const decoracion = parseInt(cumpleForm.decoracion.value) || 0;
+    const decoracion = parseInt(cumpleForm.decoracion?.value) || 0;
     total += decoracion;
     
     // Equipo para toddlers
-    if (cumpleForm.equipo.checked) {
+    if (cumpleForm.equipo?.checked) {
         total += 150;
     }
     
     // Actividad extra
-    const actividad = cumpleForm.actividad.value;
-    if (actividad !== 'none') {
-        const numNinos = parseInt(cumpleForm.numNinos.value) || 1;
+    const actividad = cumpleForm.actividad?.value;
+    if (actividad && actividad !== 'none') {
+        const numNinos = parseInt(cumpleForm.numNinos?.value) || 1;
         total += numNinos * 15; // $15 por cada niño
     }
     
-    cumpleForm.totalAmount.textContent = `$${total}`;
+    if (cumpleForm.totalAmount) {
+        cumpleForm.totalAmount.textContent = `$${total}`;
+    }
     return total;
 }
 
-// Event listeners para calculadora
-cumpleForm.horas.addEventListener('input', calcularTotalCumpleanos);
-cumpleForm.decoracion.addEventListener('change', calcularTotalCumpleanos);
-cumpleForm.equipo.addEventListener('change', calcularTotalCumpleanos);
-cumpleForm.actividad.addEventListener('change', function() {
-    const numNinosGroup = document.getElementById('numNinosGroup');
-    if (this.value !== 'none') {
-        numNinosGroup.style.display = 'block';
-    } else {
-        numNinosGroup.style.display = 'none';
+// Inicializar calculadora de cumpleaños cuando el DOM esté listo
+function inicializarCalculadoraCumpleanos() {
+    const horas = document.getElementById('cumpleHoras');
+    const decoracion = document.getElementById('cumpleDecoracion');
+    const equipo = document.getElementById('cumpleEquipo');
+    const actividad = document.getElementById('cumpleActividad');
+    const numNinos = document.getElementById('cumpleNumNinos');
+    const totalAmount = document.getElementById('totalAmount');
+    
+    // Solo inicializar si todos los elementos existen
+    if (horas && decoracion && equipo && actividad && numNinos && totalAmount) {
+        cumpleForm = {
+            horas: horas,
+            decoracion: decoracion,
+            equipo: equipo,
+            actividad: actividad,
+            numNinos: numNinos,
+            totalAmount: totalAmount
+        };
+        
+        // Event listeners para calculadora
+        cumpleForm.horas.addEventListener('input', calcularTotalCumpleanos);
+        cumpleForm.decoracion.addEventListener('change', calcularTotalCumpleanos);
+        cumpleForm.equipo.addEventListener('change', calcularTotalCumpleanos);
+        cumpleForm.actividad.addEventListener('change', function() {
+            const numNinosGroup = document.getElementById('numNinosGroup');
+            if (numNinosGroup) {
+                if (this.value !== 'none') {
+                    numNinosGroup.style.display = 'block';
+                } else {
+                    numNinosGroup.style.display = 'none';
+                }
+            }
+            calcularTotalCumpleanos();
+        });
+        cumpleForm.numNinos.addEventListener('input', calcularTotalCumpleanos);
+        
+        // Calcular total inicial
+        calcularTotalCumpleanos();
     }
-    calcularTotalCumpleanos();
-});
-cumpleForm.numNinos.addEventListener('input', calcularTotalCumpleanos);
+}
 
-// Procesar reserva de cumpleaños
-document.getElementById('reservarBtn').addEventListener('click', async function() {
+// Ejecutar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarCalculadoraCumpleanos);
+} else {
+    inicializarCalculadoraCumpleanos();
+}
+
+// Inicializar formularios cuando el DOM esté listo
+function inicializarFormularios() {
+    // Procesar reserva de cumpleaños
+    const reservarBtn = document.getElementById('reservarBtn');
+    if (reservarBtn) {
+        reservarBtn.addEventListener('click', async function() {
     const nombre = document.getElementById('cumpleNombre').value;
     const fecha = document.getElementById('cumpleFecha').value;
     const contacto = document.getElementById('cumpleContacto').value;
@@ -608,18 +688,29 @@ document.getElementById('reservarBtn').addEventListener('click', async function(
     const session = await response.json();
     await stripe.redirectToCheckout({ sessionId: session.id });
     */
-});
-
-// ==================== FORMULARIO DE CONTACTO ====================
-
-document.getElementById('contactoForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+        });
+    }
     
-    // Aquí integrarías con tu servicio de email (EmailJS, etc.)
-    alert('¡Gracias por contactarnos! Te responderemos pronto.\n\nPara consultas inmediatas, llámanos al (787) 204-9041');
-    
-    this.reset();
-});
+    // ==================== FORMULARIO DE CONTACTO ====================
+    const contactoForm = document.getElementById('contactoForm');
+    if (contactoForm) {
+        contactoForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Aquí integrarías con tu servicio de email (EmailJS, etc.)
+            alert('¡Gracias por contactarnos! Te responderemos pronto.\n\nPara consultas inmediatas, llámanos al (787) 204-9041');
+            
+            this.reset();
+        });
+    }
+}
+
+// Ejecutar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarFormularios);
+} else {
+    inicializarFormularios();
+}
 
 // ==================== SOLICITUD DE SERVICIOS ====================
 
@@ -642,18 +733,25 @@ function cerrarModalServicio() {
     document.getElementById('servicioForm').reset();
 }
 
-// Event listener para cerrar modal
-document.querySelector('.close-servicio').addEventListener('click', cerrarModalServicio);
-
-window.addEventListener('click', (e) => {
-    const modal = document.getElementById('servicioModal');
-    if (e.target === modal) {
-        cerrarModalServicio();
+// Inicializar modal de servicios cuando el DOM esté listo
+function inicializarModalServicios() {
+    // Event listener para cerrar modal
+    const closeServicioBtn = document.querySelector('.close-servicio');
+    if (closeServicioBtn) {
+        closeServicioBtn.addEventListener('click', cerrarModalServicio);
     }
-});
 
-// Procesar formulario de servicio con Web3Forms
-document.getElementById('servicioForm').addEventListener('submit', async function(e) {
+    window.addEventListener('click', (e) => {
+        const modal = document.getElementById('servicioModal');
+        if (modal && e.target === modal) {
+            cerrarModalServicio();
+        }
+    });
+
+    // Procesar formulario de servicio con Web3Forms
+    const servicioForm = document.getElementById('servicioForm');
+    if (servicioForm) {
+        servicioForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     
     // Mostrar indicador de carga
@@ -720,7 +818,16 @@ document.getElementById('servicioForm').addEventListener('submit', async functio
         submitBtn.textContent = textoOriginal;
         submitBtn.disabled = false;
     }
-});
+        });
+    }
+}
+
+// Ejecutar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarModalServicios);
+} else {
+    inicializarModalServicios();
+}
 
 // ==================== PANEL DE ADMINISTRACIÓN ====================
 
@@ -1325,14 +1432,22 @@ function filtrarSolicitudes(filtro) {
 
 // Cargar eventos al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
+    // Cargar eventos
     cargarEventos();
-    calcularTotalCumpleanos();
+    
+    // Inicializar calculadora de cumpleaños (ya se inicializa automáticamente)
+    inicializarCalculadoraCumpleanos();
     
     // Configurar fecha mínima para el input de fecha
     const fechaInput = document.getElementById('cumpleFecha');
-    const hoy = new Date();
-    const tresDias = new Date(hoy.getTime() + (3 * 24 * 60 * 60 * 1000));
-    fechaInput.min = tresDias.toISOString().split('T')[0];
+    if (fechaInput) {
+        const hoy = new Date();
+        const tresDias = new Date(hoy.getTime() + (3 * 24 * 60 * 60 * 1000));
+        fechaInput.min = tresDias.toISOString().split('T')[0];
+    }
+    
+    // Asegurar que Supabase esté inicializado
+    inicializarSupabase();
 });
 
 
