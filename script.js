@@ -40,8 +40,55 @@ function inicializarSupabase() {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inicializarSupabase);
 } else {
-    // DOM ya está listo, intentar inicializar después de un pequeño delay
     setTimeout(inicializarSupabase, 100);
+}
+
+// ==================== EMAIL DE CONFIRMACIÓN (EmailJS) ====================
+function initEmailJS() {
+    try {
+        if (window.EMAILJS_CONFIG && window.EMAILJS_CONFIG.publicKey && typeof emailjs !== 'undefined') {
+            emailjs.init({ publicKey: window.EMAILJS_CONFIG.publicKey });
+            return true;
+        }
+    } catch (e) {
+        console.log('EmailJS no configurado o no disponible:', e);
+    }
+    return false;
+}
+
+async function enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio, tutor) {
+    const cfg = window.EMAILJS_CONFIG;
+    if (!cfg || !cfg.publicKey || !cfg.serviceId || !cfg.templateIdSolicitud || !email) return;
+    try {
+        if (typeof emailjs === 'undefined') return;
+        await emailjs.send(cfg.serviceId, cfg.templateIdSolicitud, {
+            to_email: email,
+            nombre_paciente: nombrePaciente || '',
+            servicio: servicio || '',
+            tutor: tutor || '',
+            telefono_centro: '(787) 204-9041'
+        });
+    } catch (e) {
+        console.error('Error enviando email de confirmación (solicitud):', e);
+    }
+}
+
+async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActividad, total) {
+    const cfg = window.EMAILJS_CONFIG;
+    if (!cfg || !cfg.publicKey || !cfg.serviceId || !cfg.templateIdActividad || !email) return;
+    try {
+        if (typeof emailjs === 'undefined') return;
+        await emailjs.send(cfg.serviceId, cfg.templateIdActividad, {
+            to_email: email,
+            nombre_nino: nombreNino || '',
+            nombre_actividad: nombreActividad || '',
+            total: total != null ? '$' + total : '',
+            telefono_centro: '(787) 204-9041',
+            mensaje_pago: 'Realiza el pago a través de ATH Móvil al (787) 204-9041'
+        });
+    } catch (e) {
+        console.error('Error enviando email de confirmación (actividad):', e);
+    }
 }
 
 // Variables globales para navegación
@@ -392,7 +439,7 @@ async function abrirModalEvento(eventoId) {
                         <h4 style="margin-bottom: 0.5rem;">Total a Pagar:</h4>
                         <div style="font-size: 2.5rem; font-weight: bold;" id="totalEventoMonto">$${esMultiDia ? evento.precio * 2 : evento.precio}</div>
                     </div>
-                    <button type="button" class="btn btn-primary btn-large" onclick="procesarRsvpEvento('${evento.id}', ${evento.precio}, ${esMultiDia})">
+                    <button type="button" class="btn btn-primary btn-large" onclick="procesarRsvpEvento('${String(evento.id).replace(/'/g, "\\'")}', ${evento.precio}, ${esMultiDia}, '${String(evento.nombre || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">
                         Confirmar y Pagar
                     </button>
                 </form>
@@ -549,7 +596,7 @@ function validarSeleccionFechas(diasRequeridos) {
 }
 
 // Procesar RSVP de evento
-async function procesarRsvpEvento(eventoId, precioBase, esMultiDia) {
+async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActividad) {
     const nombreNino = document.getElementById('eventoNombreNino').value;
     const edadNino = document.getElementById('eventoEdadNino').value;
     const nombrePadre = document.getElementById('eventoNombrePadre').value;
@@ -622,6 +669,7 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia) {
                 await supabaseClient.from('eventos').update({ cupos: nuevoCupos }).eq('id', eventoId);
             }
         }
+        await enviarEmailConfirmacionActividad(email, nombreNino, nombreActividad || 'Actividad', precioTotal);
         alert(`Reserva registrada para ${nombreNino}.${detallesDias}${detallesFechas}\n\nTotal: $${precioTotal}\n\n${mensajePago}`);
     } catch (e) {
         console.error(e);
@@ -1019,7 +1067,12 @@ function inicializarModalServicios() {
         const data = await response.json();
         
         if (data.success) {
-            alert('¡Solicitud enviada exitosamente!\n\nNos pondremos en contacto contigo pronto.\n\nPara consultas inmediatas, llámanos al (787) 204-9041');
+            const email = formData.get('email');
+            const nombrePaciente = formData.get('nombre_paciente');
+            const servicio = formData.get('servicio');
+            const tutor = formData.get('nombre_tutor');
+            await enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio, tutor);
+            alert('¡Solicitud enviada exitosamente!\n\nTe hemos enviado un email de confirmación.\n\nNos pondremos en contacto contigo pronto.\n\nPara consultas inmediatas, llámanos al (787) 204-9041');
             cerrarModalServicio();
         } else {
             throw new Error('Error en el envío');
@@ -1786,6 +1839,9 @@ function inicializarTodo() {
         
         // Asegurar que Supabase esté inicializado ANTES de cargar eventos
         inicializarSupabase();
+        
+        // Inicializar EmailJS si está configurado (emails de confirmación)
+        initEmailJS();
         
         // Cargar eventos (usa Supabase si está configurado, si no eventos.json)
         cargarEventos();
