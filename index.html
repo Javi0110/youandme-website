@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You&Me Development Center - Terapia Ocupacional</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        // Configuración de Supabase
+        // Reemplaza estos valores con los de tu proyecto Supabase
+        window.SUPABASE_CONFIG = {
+            url: 'TU_SUPABASE_URL_AQUI', // Ejemplo: 'https://xxxxx.supabase.co'
+            anonKey: 'TU_SUPABASE_ANON_KEY_AQUI' // Tu anon public key
+        };
+    </script>
+    <style>
+        /* Admin Panel Styles */
+        .admin-login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 60vh;
+        }
+        .admin-login-box {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        .admin-login-form {
+            margin-top: 2rem;
+        }
+        .admin-header {
+            background: linear-gradient(135deg, #00d4aa 0%, #9775fa 100%);
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .admin-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .admin-tab-btn {
+            padding: 1rem 2rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .admin-tab-btn.active {
+            color: #00d4aa;
+            border-bottom-color: #00d4aa;
+        }
+        .admin-tab-btn:hover {
+            color: #00d4aa;
+        }
+        .admin-tab-content {
+            display: none;
+        }
+        .admin-tab-content.active {
+            display: block;
+        }
+        .admin-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .admin-section h3 {
+            color: #00d4aa;
+            margin-bottom: 1.5rem;
+        }
+        .admin-form-container {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .evento-admin-item {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .evento-admin-info h4 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        .evento-admin-info p {
+            color: #666;
+            font-size: 0.9rem;
+            margin: 0.25rem 0;
+        }
+        .evento-admin-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-edit {
+            background: #ffc107;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .solicitud-item {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #00d4aa;
+        }
+        .solicitud-item h4 {
+            color: #00d4aa;
+            margin-bottom: 1rem;
+        }
+        .solicitud-item .info-row {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            margin: 0.5rem 0;
+            font-size: 0.95rem;
+        }
+        .solicitud-item .info-row strong {
+            color: #555;
+        }
+        .no-data {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+        .filtro-btn {
+            padding: 0.5rem 1.25rem;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        .filtro-btn:hover {
+            border-color: #00d4aa;
+            color: #00d4aa;
+        }
+        .filtro-btn.active {
+            background: #00d4aa;
+            color: white;
+            border-color: #00d4aa;
+        }
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .admin-tabs {
+                flex-direction: column;
+            }
+            .evento-admin-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-wrapper">
+                <div class="logo">
+                    <img src="logo.png" alt="You&Me Development Center">
+                </div>
+                <ul class="nav-menu" id="navMenu">
+                    <li><a href="#" class="nav-link active" data-page="inicio">Inicio</a></li>
+                    <li><a href="#" class="nav-link" data-page="servicios">Servicios de Terapia</a></li>
+                    <li><a href="#" class="nav-link" data-page="eventos">Actividades</a></li>
+                    <li><a href="#" class="nav-link" data-page="cumpleanos">Celebra en You&Me</a></li>
+                    <li><a href="#" class="nav-link" data-page="contacto">Contáctanos</a></li>
+                    <li><a href="#" class="nav-link" data-page="admin">Login</a></li>
+                </ul>
+                <div class="hamburger" id="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Abstract Background Shapes -->
+    <div class="abstract-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+        <div class="shape shape-4"></div>
+        <div class="shape shape-5"></div>
+    </div>
+
+    <!-- Main Content Container -->
+    <div class="page-container">
+        <!-- Inicio Page -->
+        <section id="inicio" class="page-content active">
+            <div class="container">
+                <div class="hero-content">
+                    <h1 class="hero-title">Bienvenido a You&Me Development Center</h1>
+                    <p class="hero-subtitle">Apoyamos el desarrollo integral de tu niño/a con servicios de terapia especializados</p>
+                    <div class="hero-buttons">
+                        <button class="btn btn-primary" data-page="servicios">Ver Servicios de Terapia</button>
+                        <button class="btn btn-secondary" data-page="eventos">Ver Actividades</button>
+                    </div>
+                </div>
+                
+                <div class="info-cards">
+                    <div class="info-card">
+                        <h3>Ubicación</h3>
+                        <p><a href="https://www.google.com/maps/search/?api=1&query=Vista+Verde+Shopping+Center+5RPX%2BG85+Cll+Zafiro+Mayagüez+00682+Puerto+Rico" target="_blank" style="color: inherit; text-decoration: underline; cursor: pointer;">510 Ave Hostos Vista Verde Shopping Center<br>Suite 112, Mayaguez, Puerto Rico 00682</a></p>
+                    </div>
+                    <div class="info-card">
+                        <h3>Horario</h3>
+                        <p>Lunes a Viernes<br>8:00 AM - 5:30 PM</p>
+                    </div>
+                    <div class="info-card">
+                        <h3>Contacto</h3>
+                        <p><a href="tel:+17872049041" style="color: inherit; text-decoration: underline; cursor: pointer;">(787) 204-9041</a><br><a href="mailto:centroyouandme@gmail.com" style="color: inherit; text-decoration: underline; cursor: pointer;">centroyouandme@gmail.com</a></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Servicios Page -->
+        <section id="servicios" class="page-content">
+            <div class="container">
+                <h2 class="section-title">Nuestros Servicios de Terapia</h2>
+                <p class="section-subtitle">Ofrecemos servicios especializados para apoyar el desarrollo de tu niño/a</p>
+                
+                <div class="servicios-grid">
+                    <div class="servicio-card">
+                        <div class="servicio-icon"></div>
+                        <h3>Terapia Ocupacional</h3>
+                        <p>Ayudamos a desarrollar las habilidades necesarias para las actividades diarias, el juego y el aprendizaje.</p>
+                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia Ocupacional')">Solicitar Servicio</button>
+                    </div>
+
+                    <div class="servicio-card">
+                        <div class="servicio-icon"></div>
+                        <h3>Terapia de Habla y Lenguaje</h3>
+                        <p>Trabajamos en la comunicación, articulación y desarrollo del lenguaje expresivo y receptivo.</p>
+                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia de Habla y Lenguaje')">Solicitar Servicio</button>
+                    </div>
+
+                    <div class="servicio-card">
+                        <div class="servicio-icon"></div>
+                        <h3>Terapia Oromotora</h3>
+                        <p>Mejoramos las funciones de los músculos de la boca para alimentación y habla.</p>
+                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia Oromotora')">Solicitar Servicio</button>
+                    </div>
+
+                    <div class="servicio-card">
+                        <div class="servicio-icon"></div>
+                        <h3>Terapia de Disfagia</h3>
+                        <p>Tratamiento especializado para dificultades en la deglución y alimentación.</p>
+                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia de Disfagia')">Solicitar Servicio</button>
+                    </div>
+
+                    <div class="servicio-card">
+                        <div class="servicio-icon"></div>
+                        <h3>Terapia Psicológica</h3>
+                        <p>Apoyo emocional y conductual para el bienestar integral de tu niño/a.</p>
+                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia Psicológica')">Solicitar Servicio</button>
+                    </div>
+
+                    <div class="servicio-card">
+                        <div class="servicio-icon"></div>
+                        <h3>Terapia Ocupacional con Enfoque en Integración Sensorial</h3>
+                        <p>Trabajamos el procesamiento sensorial para mejorar la regulación y respuesta a estímulos.</p>
+                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia Ocupacional con Enfoque en Integración Sensorial')">Solicitar Servicio</button>
+                    </div>
+                </div>
+
+                <div class="cta-box">
+                    <h3>¿Listo para comenzar?</h3>
+                    <p>Contáctanos para agendar una evaluación inicial</p>
+                    <button class="btn btn-primary" data-page="contacto">Contáctanos Ahora</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Eventos Page -->
+        <section id="eventos" class="page-content">
+            <div class="container">
+                <h2 class="section-title">Calendario de Actividades</h2>
+                <p class="section-subtitle">Únete a nuestros campamentos y actividades especiales</p>
+                
+                <div id="eventosContainer" class="eventos-grid">
+                    <!-- Los eventos se cargarán dinámicamente aquí -->
+                </div>
+
+                <div id="noEventos" class="no-eventos" style="display: none;">
+                    <p>No hay eventos programados en este momento. ¡Vuelve pronto para ver nuestras próximas actividades!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Cumpleaños Page -->
+        <section id="cumpleanos" class="page-content">
+            <div class="container">
+                <h2 class="section-title">Celebra en You&Me</h2>
+                <p class="section-subtitle">Renta nuestro espacio para cumpleaños, eventos especiales y celebraciones de todas las edades</p>
+
+                <div class="cumpleanos-content">
+                    <!-- Espacio Base -->
+                    <div class="cumple-section">
+                        <h3 class="cumple-section-title">Espacio Exclusivo</h3>
+                    <div class="cumple-card highlight">
+                        <div class="cumple-features">
+                            <h4>Incluye:</h4>
+                            <ul>
+                                <li>Espacio exclusivo (se puede extender)</li>
+                                <li>2 anfitriones durante toda la actividad</li>
+                                <li>3 mesas para adultos (4 sillas cada una)</li>
+                                <li>2 mesas para niños (10 sillas cada una)</li>
+                                <li>2 mesas rectangulares para comida</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Imagen del espacio -->
+                        <div style="text-align: center; margin: 1rem 0;">
+                            <img src="espacio-exclusivo.jpg" alt="Espacio Exclusivo You&Me" style="max-width: 180px; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        </div>
+                        
+                        <div class="cumple-pricing">
+                            <div class="price-main">$350 <span>(3hrs)</span></div>
+                            <p class="price-additional">Hora adicional: $100</p>
+                        </div>
+                    </div>
+                </div>
+
+                    <!-- Decoración -->
+                    <div class="cumple-section">
+                        <h3 class="cumple-section-title">Paquetes de Decoración</h3>
+                    <div class="cumple-packages">
+                        <div class="package-card">
+                            <div class="package-badge">Básica</div>
+                            <h4>Decoración Básica</h4>
+                            <ul>
+                                <li>2-3 arcos</li>
+                                <li>3 cilindros</li>
+                                <li>Montaje de globos sencillo</li>
+                            </ul>
+                            <div class="package-price">$200</div>
+                        </div>
+
+                        <div class="package-card featured">
+                            <div class="package-badge special">Especial</div>
+                            <h4>Decoración Especial</h4>
+                            <ul>
+                                <li>Todo lo de la básica, más:</li>
+                                <li>Arco de globos personalizados</li>
+                                <li>Fondo temático o con nombre</li>
+                                <li>Decoración de mesa temática</li>
+                                <li>Detalles adicionales según el tema</li>
+                            </ul>
+                            
+                            <!-- Imagen de decoración especial -->
+                            <div style="text-align: center; margin: 1rem 0;">
+                                <img src="decoracion-especial.jpg" alt="Decoración Especial" style="max-width: 180px; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            </div>
+                            
+                            <div class="package-price">$400</div>
+                        </div>
+                    </div>
+                </div>
+
+                    <!-- Equipo para Toddlers -->
+                    <div class="cumple-section">
+                        <h3 class="cumple-section-title">Renta de Equipo para Toddlers</h3>
+                    <div class="cumple-card">
+                        <div class="cumple-features">
+                            <h4>Incluye:</h4>
+                            <ul>
+                                <li>Casa de brinco</li>
+                                <li>Piscina de bolas con chorrera</li>
+                                <li>Piso de foam</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Imagen del equipo para toddlers -->
+                        <div style="text-align: center; margin: 1rem 0;">
+                            <img src="equipo-toddlers.jpg" alt="Equipo para Toddlers" style="max-width: 180px; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        </div>
+                        
+                        <div class="cumple-pricing">
+                            <div class="price-main">$150 <span>fijo</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                    <!-- Actividades Extras -->
+                    <div class="cumple-section">
+                        <h3 class="cumple-section-title">Actividades Extras</h3>
+                    <div class="cumple-card">
+                        <div class="cumple-features">
+                            <h4>Escoge una actividad (materiales incluidos):</h4>
+                            <ul>
+                                <li>Hacer slime</li>
+                                <li>Pintar en canvas</li>
+                                <li>Hacer pulseras</li>
+                                <li>Decorar gafas</li>
+                                <li>Decorar carteras</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Imagen de actividades extras -->
+                        <div style="text-align: center; margin: 1rem 0;">
+                            <img src="actividades-extra.jpg" alt="Actividades Extras" style="max-width: 180px; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        </div>
+                        
+                        <div class="cumple-pricing">
+                            <div class="price-main">$15 <span>por niño</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                    <!-- Calculadora y Reserva -->
+                    <div class="cumple-calculator">
+                        <h3>Calcula y Reserva tu Evento</h3>
+                    <form id="cumpleForm" class="calculator-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nombre del festejado/a:</label>
+                                <input type="text" id="cumpleNombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha deseada:</label>
+                                <input type="date" id="cumpleFecha" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tu nombre:</label>
+                                <input type="text" id="cumpleContacto" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Teléfono:</label>
+                                <input type="tel" id="cumpleTelefono" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Email:</label>
+                            <input type="email" id="cumpleEmail" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Horas de espacio:</label>
+                            <input type="number" id="cumpleHoras" min="3" value="3" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Decoración:</label>
+                            <select id="cumpleDecoracion">
+                                <option value="0">Sin decoración</option>
+                                <option value="200">Decoración Básica - $200</option>
+                                <option value="400">Decoración Especial - $400</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="cumpleEquipo">
+                                Equipo para Toddlers - $150
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Actividad extra:</label>
+                            <select id="cumpleActividad">
+                                <option value="none">Sin actividad</option>
+                                <option value="slime">Hacer slime</option>
+                                <option value="canvas">Pintar en canvas</option>
+                                <option value="pulseras">Hacer pulseras</option>
+                                <option value="gafas">Decorar gafas</option>
+                                <option value="carteras">Decorar carteras</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="numNinosGroup" style="display: none;">
+                            <label>Número de niños para la actividad:</label>
+                            <input type="number" id="cumpleNumNinos" min="1" value="1">
+                        </div>
+
+                        <div class="total-display">
+                            <h4>Total Estimado:</h4>
+                            <div class="total-amount" id="totalAmount">$350</div>
+                        </div>
+
+                            <button type="button" class="btn btn-primary btn-large" id="reservarBtn">
+                                Reservar y Pagar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contacto Page -->
+        <section id="contacto" class="page-content">
+            <div class="container">
+                <h2 class="section-title">Contáctanos</h2>
+                <div class="contacto-content">
+                    <div class="contacto-info">
+                        <div class="info-item">
+                            <div class="info-icon-shape shape-turquoise"></div>
+                            <div>
+                                <h4>Dirección</h4>
+                                <p>510 Ave Hostos, Vista Verde<br>Mayagüez, Puerto Rico</p>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon-shape shape-orange"></div>
+                            <div>
+                                <h4>Email</h4>
+                                <p>centroyouandme@gmail.com</p>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon-shape shape-yellow"></div>
+                            <div>
+                                <h4>Teléfono</h4>
+                                <p>+1 (787) 204-9041</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form class="contacto-form" id="contactoForm">
+                        <div class="form-group">
+                            <input type="text" placeholder="Nombre" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="email" placeholder="Email" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="tel" placeholder="Teléfono" required>
+                        </div>
+                        <div class="form-group">
+                            <textarea placeholder="Mensaje" rows="5" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Enviar Mensaje</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Admin Page -->
+        <section id="admin" class="page-content">
+            <div class="container">
+                <!-- Login Form -->
+                <div id="adminLogin" class="admin-login-container">
+                    <div class="admin-login-box">
+                        <h2 class="section-title">Panel de Administración</h2>
+                        <p class="section-subtitle">Ingresa tus credenciales para acceder</p>
+                        
+                        <form id="adminLoginForm" class="admin-login-form">
+                            <div class="form-group">
+                                <label>Email:</label>
+                                <input type="email" id="adminEmail" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Contraseña:</label>
+                                <input type="password" id="adminPassword" required>
+                            </div>
+                            <div id="loginError" style="color: var(--orange); display: none; margin: 1rem 0;">
+                                Credenciales incorrectas. Intenta de nuevo.
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-large">Iniciar Sesión</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Admin Dashboard (Hidden until login) -->
+                <div id="adminDashboard" style="display: none;">
+                    <div class="admin-header">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                            <h2 style="color: white; margin: 0;">Panel de Administración</h2>
+                            <button onclick="cerrarSesionAdmin()" class="btn btn-secondary">Cerrar Sesión</button>
+                        </div>
+                    </div>
+
+                    <!-- Admin Tabs -->
+                    <div class="admin-tabs">
+                        <button class="admin-tab-btn active" onclick="mostrarTabAdmin('actividades')">
+                            Administrar Actividades
+                        </button>
+                        <button class="admin-tab-btn" onclick="mostrarTabAdmin('solicitudes')">
+                            Solicitudes de Servicio
+                        </button>
+                    </div>
+
+                    <!-- Tab: Administrar Actividades -->
+                    <div id="tabActividades" class="admin-tab-content active">
+                        <div class="admin-section">
+                            <h3>Gestionar Actividades del Calendario</h3>
+                            
+                            <button onclick="mostrarFormularioEvento()" class="btn btn-primary" style="margin-bottom: 2rem;">
+                                + Agregar Nueva Actividad
+                            </button>
+
+                            <!-- Formulario para agregar/editar evento -->
+                            <div id="formularioEvento" class="admin-form-container" style="display: none;">
+                                <h4 id="tituloFormularioEvento">Agregar Nueva Actividad</h4>
+                                <form id="eventoAdminForm">
+                                    <input type="hidden" id="eventoEditId">
+                                    
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Nombre de la actividad:</label>
+                                            <input type="text" id="eventoNombreAdmin" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Fecha:</label>
+                                            <input type="text" id="eventoFechaAdmin" placeholder="ej: 15-20 de julio, 2025" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Descripción:</label>
+                                        <textarea id="eventoDescripcionAdmin" rows="3" required></textarea>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Horario:</label>
+                                            <input type="text" id="eventoHorarioAdmin" placeholder="ej: 9:00 AM - 3:00 PM">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Edad:</label>
+                                            <input type="text" id="eventoEdadAdmin" placeholder="ej: 5-12 años">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Precio:</label>
+                                            <input type="number" id="eventoPrecioAdmin" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Cupos disponibles:</label>
+                                            <input type="number" id="eventoCuposAdmin" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>URL de imagen (opcional):</label>
+                                        <input type="text" id="eventoImagenAdmin" placeholder="https://...">
+                                    </div>
+
+                                    <div style="display: flex; gap: 1rem;">
+                                        <button type="submit" class="btn btn-primary">Guardar Actividad</button>
+                                        <button type="button" onclick="cancelarFormularioEvento()" class="btn btn-secondary">Cancelar</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Lista de eventos existentes -->
+                            <div id="listaEventosAdmin"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Solicitudes de Servicio -->
+                    <div id="tabSolicitudes" class="admin-tab-content">
+                        <div class="admin-section">
+                            <h3>Solicitudes de Servicio Recibidas</h3>
+                            <p style="color: #666; margin-bottom: 1rem;">
+                                Las solicitudes también se envían a tu email: centroyouandme@gmail.com
+                            </p>
+                            
+                            <!-- Filtros -->
+                            <div style="margin-bottom: 2rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button onclick="filtrarSolicitudes('todas')" class="filtro-btn active" id="filtroTodas">
+                                    Todas
+                                </button>
+                                <button onclick="filtrarSolicitudes('pendientes')" class="filtro-btn" id="filtroPendientes">
+                                    Pendientes
+                                </button>
+                                <button onclick="filtrarSolicitudes('contactadas')" class="filtro-btn" id="filtroContactadas">
+                                    Contactadas
+                                </button>
+                                <button onclick="filtrarSolicitudes('agendadas')" class="filtro-btn" id="filtroAgendadas">
+                                    Agendadas
+                                </button>
+                            </div>
+                            
+                            <div id="listaSolicitudesAdmin"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <img src="logo.png" alt="You&Me Development Center">
+                    <p>Apoyando el desarrollo integral de tu niño/a</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Enlaces Rápidos</h4>
+                    <ul>
+                        <li><a href="#inicio">Inicio</a></li>
+                        <li><a href="#servicios">Servicios de Terapia</a></li>
+                        <li><a href="#eventos">Actividades</a></li>
+                        <li><a href="#cumpleanos">Celebra en You&Me</a></li>
+                        <li><a href="#contacto">Contáctanos</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 You&Me Development Center. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal para Eventos -->
+    <div id="eventoModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="eventoModalContent"></div>
+        </div>
+    </div>
+
+    <!-- Modal para Solicitud de Servicio -->
+    <div id="servicioModal" class="modal">
+        <div class="modal-content">
+            <span class="close-servicio">&times;</span>
+            <div id="servicioModalContent">
+                <h2 id="servicioTitulo">Solicitar Servicio</h2>
+                <form id="servicioForm">
+                    <input type="hidden" name="access_key" value="5fe6398d-6246-4626-b12c-162e2f9f20f3">
+                    <input type="hidden" name="subject" id="emailSubject" value="Nueva Solicitud de Servicio">
+                    <input type="hidden" name="redirect" value="false">
+                    
+                    <div class="form-group">
+                        <label>Servicio seleccionado:</label>
+                        <input type="text" name="servicio" id="servicioNombre" readonly style="background-color: #f0f0f0;">
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre del paciente:</label>
+                        <input type="text" name="nombre_paciente" id="servicioPaciente" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Edad del paciente:</label>
+                        <input type="number" name="edad_paciente" id="servicioEdad" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre del padre/madre/tutor:</label>
+                        <input type="text" name="nombre_tutor" id="servicioTutor" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" name="email" id="servicioEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono:</label>
+                        <input type="tel" name="telefono" id="servicioTelefono" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Motivo de consulta / Información adicional:</label>
+                        <textarea name="motivo_consulta" id="servicioMotivo" rows="4" placeholder="Describe brevemente el motivo por el cual solicitas este servicio..." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>¿Cómo prefieres que te contactemos?</label>
+                        <select name="contacto_preferido" id="servicioContactoPreferido" required>
+                            <option value="">Selecciona una opción</option>
+                            <option value="Email">Email</option>
+                            <option value="Teléfono">Teléfono</option>
+                            <option value="WhatsApp">WhatsApp</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-large">Enviar Solicitud</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+
