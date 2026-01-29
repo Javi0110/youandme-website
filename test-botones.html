@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Botones - You&Me</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #f0f0f0;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Test de Funcionalidad de Botones</h1>
+    
+    <div class="test-section">
+        <h2>1. Verificar que script.js se carga</h2>
+        <div id="test1" class="test-result">Probando...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Verificar funciones principales</h2>
+        <div id="test2" class="test-result">Probando...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Verificar elementos del DOM</h2>
+        <div id="test3" class="test-result">Probando...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Probar navegación manual</h2>
+        <button onclick="probarNavegacion()">Probar Navegación</button>
+        <div id="test4" class="test-result">Haz clic en el botón de arriba</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. Verificar event listeners</h2>
+        <div id="test5" class="test-result">Probando...</div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Test 1: Verificar que script.js se carga
+        setTimeout(() => {
+            const test1 = document.getElementById('test1');
+            if (typeof navigateToPage !== 'undefined') {
+                test1.className = 'test-result success';
+                test1.textContent = '✅ script.js se cargó correctamente';
+            } else {
+                test1.className = 'test-result error';
+                test1.textContent = '❌ script.js NO se cargó. Verifica que el archivo exista.';
+            }
+        }, 500);
+
+        // Test 2: Verificar funciones principales
+        setTimeout(() => {
+            const test2 = document.getElementById('test2');
+            const funciones = ['navigateToPage', 'cargarEventos', 'inicializarNavegacion'];
+            const faltantes = funciones.filter(f => typeof window[f] === 'undefined');
+            
+            if (faltantes.length === 0) {
+                test2.className = 'test-result success';
+                test2.textContent = '✅ Todas las funciones principales están disponibles';
+            } else {
+                test2.className = 'test-result error';
+                test2.textContent = '❌ Faltan funciones: ' + faltantes.join(', ');
+            }
+        }, 500);
+
+        // Test 3: Verificar elementos del DOM (si index.html está abierto)
+        setTimeout(() => {
+            const test3 = document.getElementById('test3');
+            const elementos = [
+                { id: 'hamburger', nombre: 'Menú hamburguesa' },
+                { id: 'navMenu', nombre: 'Menú de navegación' },
+                { id: 'inicio', nombre: 'Página de inicio' }
+            ];
+            
+            let resultados = [];
+            elementos.forEach(elem => {
+                const existe = document.getElementById(elem.id) !== null;
+                resultados.push(`${elem.nombre}: ${existe ? '✅' : '❌'}`);
+            });
+            
+            test3.innerHTML = resultados.join('<br>');
+            if (resultados.every(r => r.includes('✅'))) {
+                test3.className = 'test-result success';
+            } else {
+                test3.className = 'test-result error';
+            }
+        }, 500);
+
+        // Test 4: Probar navegación
+        function probarNavegacion() {
+            const test4 = document.getElementById('test4');
+            try {
+                if (typeof navigateToPage !== 'undefined') {
+                    navigateToPage('servicios');
+                    test4.className = 'test-result success';
+                    test4.textContent = '✅ Función navigateToPage ejecutada. Si estás en index.html, deberías ver la página de Servicios.';
+                } else {
+                    test4.className = 'test-result error';
+                    test4.textContent = '❌ La función navigateToPage no existe';
+                }
+            } catch (error) {
+                test4.className = 'test-result error';
+                test4.textContent = '❌ Error: ' + error.message;
+            }
+        }
+
+        // Test 5: Verificar event listeners
+        setTimeout(() => {
+            const test5 = document.getElementById('test5');
+            const navLinks = document.querySelectorAll('.nav-link');
+            const buttons = document.querySelectorAll('[data-page]');
+            
+            if (navLinks.length > 0 || buttons.length > 0) {
+                test5.className = 'test-result success';
+                test5.innerHTML = `✅ Encontrados elementos con event listeners:<br>
+                    - Enlaces de navegación: ${navLinks.length}<br>
+                    - Botones con data-page: ${buttons.length}`;
+            } else {
+                test5.className = 'test-result error';
+                test5.textContent = '⚠️ No se encontraron elementos de navegación. Asegúrate de abrir index.html, no este archivo de prueba.';
+            }
+        }, 500);
+    </script>
+</body>
+</html>

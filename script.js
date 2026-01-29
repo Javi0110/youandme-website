@@ -1,26 +1,36 @@
 // Stripe Configuration (Reemplaza con tu clave pública)
-// Inicializar Stripe solo si está disponible
+// Inicializar Stripe solo si está disponible - NO bloquea si no está
 let stripe;
-if (typeof Stripe !== 'undefined') {
-    stripe = Stripe('pk_test_51QKxexGxaxrh1Ws0ZmVF9K3YPz9nK1Oi7FvSdwQJb3IxBgFbDlqKsR0NTIKDkJrN0kVYZL9WzH0yqDe8C1qW0qW000000000'); // REEMPLAZAR CON TU CLAVE
+try {
+    if (typeof Stripe !== 'undefined') {
+        stripe = Stripe('pk_test_51QKxexGxaxrh1Ws0ZmVF9K3YPz9nK1Oi7FvSdwQJb3IxBgFbDlqKsR0NTIKDkJrN0kVYZL9WzH0yqDe8C1qW0qW000000000'); // REEMPLAZAR CON TU CLAVE
+    }
+} catch (e) {
+    console.log('Stripe no disponible:', e);
 }
 
 // ==================== SUPABASE CONFIGURATION ====================
 // Configuración de Supabase desde window.SUPABASE_CONFIG (definido en index.html)
 let supabase;
 function inicializarSupabase() {
-    if (typeof window.supabase === 'undefined' || !window.SUPABASE_CONFIG) {
-        return; // Supabase aún no está cargado o no hay configuración
-    }
-    
-    const SUPABASE_URL = window.SUPABASE_CONFIG?.url || '';
-    const SUPABASE_ANON_KEY = window.SUPABASE_CONFIG?.anonKey || '';
-    
-    // Inicializar Supabase solo si las credenciales están configuradas
-    if (SUPABASE_URL && SUPABASE_ANON_KEY && 
-        SUPABASE_URL !== 'TU_SUPABASE_URL_AQUI' && 
-        SUPABASE_ANON_KEY !== 'TU_SUPABASE_ANON_KEY_AQUI') {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    try {
+        if (typeof window.supabase === 'undefined' || !window.SUPABASE_CONFIG) {
+            return; // Supabase aún no está cargado o no hay configuración
+        }
+        
+        const SUPABASE_URL = window.SUPABASE_CONFIG?.url || '';
+        const SUPABASE_ANON_KEY = window.SUPABASE_CONFIG?.anonKey || '';
+        
+        // Inicializar Supabase solo si las credenciales están configuradas
+        if (SUPABASE_URL && SUPABASE_ANON_KEY && 
+            SUPABASE_URL !== 'TU_SUPABASE_URL_AQUI' && 
+            SUPABASE_ANON_KEY !== 'TU_SUPABASE_ANON_KEY_AQUI') {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('✅ Supabase inicializado correctamente');
+        }
+    } catch (error) {
+        console.log('⚠️ Supabase no disponible (continuando sin él):', error);
+        // No bloquear la ejecución si Supabase falla
     }
 }
 
@@ -63,8 +73,15 @@ function navigateToPage(pageName) {
     }
 }
 
+// Flag para evitar agregar listeners múltiples veces
+let navegacionInicializada = false;
+
 // Inicializar navegación cuando el DOM esté listo
 function inicializarNavegacion() {
+    if (navegacionInicializada) {
+        return; // Ya se inicializó
+    }
+    
     // Mobile Navigation
     const hamburger = document.getElementById('hamburger');
     navMenu = document.getElementById('navMenu'); // Asignar a variable global
@@ -80,12 +97,14 @@ function inicializarNavegacion() {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const page = link.dataset.page;
-            navigateToPage(page);
+            if (page) {
+                navigateToPage(page);
+            }
         });
     });
 
-    // Button navigation handlers - Mejorado para capturar clicks en botones
-    document.addEventListener('click', (e) => {
+    // Button navigation handlers - Solo se agrega UNA VEZ
+    document.addEventListener('click', function botonClickHandler(e) {
         // Buscar el botón o elemento con data-page en el target o sus padres
         let target = e.target;
         let element = null;
@@ -110,6 +129,10 @@ function inicializarNavegacion() {
             }
         }
     });
+    
+    navegacionInicializada = true;
+    console.log('✅ Navegación inicializada');
+}
 
     // Footer links
     document.querySelectorAll('.footer-links a').forEach(link => {
