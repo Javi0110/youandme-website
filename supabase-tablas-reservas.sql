@@ -36,9 +36,12 @@ CREATE TABLE IF NOT EXISTS public.reservas_cumple (
     created_at timestamptz DEFAULT now()
 );
 
--- Habilitar RLS (Row Level Security) si lo usas; políticas para permitir insert/select/update con anon key
+-- Habilitar RLS y políticas para que la web (anon key) pueda insertar y leer
 ALTER TABLE public.reservas_eventos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reservas_cumple ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow all for reservas_eventos" ON public.reservas_eventos;
 CREATE POLICY "Allow all for reservas_eventos" ON public.reservas_eventos FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all for reservas_cumple" ON public.reservas_cumple;
 CREATE POLICY "Allow all for reservas_cumple" ON public.reservas_cumple FOR ALL USING (true) WITH CHECK (true);

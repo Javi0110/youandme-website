@@ -638,7 +638,7 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
     const mensajePago = `Realiza el pago a través de ATH Móvil al número del centro: ${TEL_CENTRO}`;
 
     try {
-        // Guardar reserva en Supabase
+        let guardadoEnSupabase = false;
         if (supabaseClient) {
             const { error: errReserva } = await supabaseClient
                 .from('reservas_eventos')
@@ -654,10 +654,33 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
                     pagado: false
                 }]);
             if (errReserva) {
-                console.error('Error guardando reserva:', errReserva);
-                alert('Error al registrar la reserva. Por favor intenta de nuevo o contacta al centro al ' + TEL_CENTRO);
+                console.error('Error Supabase reservas_eventos:', errReserva.message, errReserva.details, errReserva);
+                // Fallback: guardar en localStorage para no perder la reserva
+                const reservasLocales = JSON.parse(localStorage.getItem('youme_reservas_eventos') || '[]');
+                reservasLocales.push({
+                    id: Date.now().toString(),
+                    evento_id: String(eventoId),
+                    nombre_nino: nombreNino,
+                    edad_nino: edadNino,
+                    nombre_padre: nombrePadre,
+                    email,
+                    telefono,
+                    dias,
+                    total: precioTotal,
+                    fecha_registro: new Date().toISOString()
+                });
+                localStorage.setItem('youme_reservas_eventos', JSON.stringify(reservasLocales));
+                alert(
+                    'No pudimos guardar la reserva en el servidor.\n\n' +
+                    'Tu información se guardó localmente. Por favor contacta al centro al ' + TEL_CENTRO + ' para confirmar tu reserva.\n\n' +
+                    'Total: $' + precioTotal + '\n\n' + mensajePago + '\n\n' +
+                    '(Si eres el administrador: crea la tabla reservas_eventos en Supabase ejecutando el archivo supabase-tablas-reservas.sql)'
+                );
+                cerrarModal();
+                cargarEventos();
                 return;
             }
+            guardadoEnSupabase = true;
             // Reducir cupos del evento
             const { data: eventoActual } = await supabaseClient
                 .from('eventos')
