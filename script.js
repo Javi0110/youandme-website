@@ -1541,7 +1541,10 @@ function inicializarTodo() {
         // Inicializar calculadora de cumpleaños
         inicializarCalculadoraCumpleanos();
         
-        // Cargar eventos
+        // Asegurar que Supabase esté inicializado ANTES de cargar eventos
+        inicializarSupabase();
+        
+        // Cargar eventos (usa Supabase si está configurado, si no eventos.json)
         cargarEventos();
         
         // Configurar fecha mínima para el input de fecha
@@ -1551,9 +1554,6 @@ function inicializarTodo() {
             const tresDias = new Date(hoy.getTime() + (3 * 24 * 60 * 60 * 1000));
             fechaInput.min = tresDias.toISOString().split('T')[0];
         }
-        
-        // Asegurar que Supabase esté inicializado
-        inicializarSupabase();
         
         console.log('✅ Todos los componentes inicializados correctamente');
     } catch (error) {
