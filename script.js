@@ -183,38 +183,47 @@ if (document.readyState === 'loading') {
 
 // ==================== EVENTOS ====================
 
-// Cargar eventos desde Supabase o JSON (fallback)
+// Cargar eventos desde Supabase (y solo usar JSON si NO hay Supabase configurado)
 async function cargarEventos() {
     try {
-        // Intentar cargar desde Supabase si está configurado
         if (supabaseClient) {
+            // ✅ Supabase es la fuente oficial de verdad
             const { data, error } = await supabaseClient
                 .from('eventos')
                 .select('*')
                 .order('created_at', { ascending: false });
-            
-            if (!error && data && data.length > 0) {
-                // Convertir formato de Supabase al formato esperado
-                const eventos = data.map(e => ({
-                    id: e.id,
-                    nombre: e.nombre,
-                    descripcion: e.descripcion,
-                    fecha: e.fecha,
-                    horario: e.horario || '',
-                    edad: e.edad || '',
-                    precio: parseFloat(e.precio),
-                    cupos: parseInt(e.cupos),
-                    imagen: e.imagen || ''
-                }));
-                mostrarEventos(eventos);
+
+            if (error) {
+                console.error('Error cargando eventos desde Supabase:', error);
+                mostrarEventos([]);
                 return;
             }
+
+            const eventos = (data || []).map(e => ({
+                id: e.id,
+                nombre: e.nombre,
+                descripcion: e.descripcion,
+                fecha: e.fecha,
+                horario: e.horario || '',
+                edad: e.edad || '',
+                precio: parseFloat(e.precio),
+                cupos: parseInt(e.cupos),
+                imagen: e.imagen || ''
+            }));
+
+            mostrarEventos(eventos);
+            return;
         }
-        
-        // Fallback: cargar desde JSON si Supabase no está configurado o no hay datos
-        const response = await fetch('eventos.json');
-        const data = await response.json();
-        mostrarEventos(data.eventos);
+
+        // ⚠️ Solo si NO hay Supabase configurado, usar el JSON local (modo demo)
+        try {
+            const response = await fetch('eventos.json');
+            const data = await response.json();
+            mostrarEventos(data.eventos || []);
+        } catch (jsonError) {
+            console.error('Error cargando eventos desde JSON:', jsonError);
+            mostrarEventos([]);
+        }
     } catch (error) {
         console.error('Error cargando eventos:', error);
         document.getElementById('noEventos').style.display = 'block';
