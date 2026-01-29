@@ -11,7 +11,9 @@ try {
 
 // ==================== SUPABASE CONFIGURATION ====================
 // Configuración de Supabase desde window.SUPABASE_CONFIG (definido en index.html)
-let supabase;
+// Nota: la librería de Supabase expone un objeto global llamado `supabase`.
+// Para evitar conflicto, nuestro cliente se llama `supabaseClient`.
+let supabaseClient;
 function inicializarSupabase() {
     try {
         if (typeof window.supabase === 'undefined' || !window.SUPABASE_CONFIG) {
@@ -25,7 +27,7 @@ function inicializarSupabase() {
         if (SUPABASE_URL && SUPABASE_ANON_KEY && 
             SUPABASE_URL !== 'TU_SUPABASE_URL_AQUI' && 
             SUPABASE_ANON_KEY !== 'TU_SUPABASE_ANON_KEY_AQUI') {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             console.log('✅ Supabase inicializado correctamente');
         }
     } catch (error) {
@@ -185,8 +187,8 @@ if (document.readyState === 'loading') {
 async function cargarEventos() {
     try {
         // Intentar cargar desde Supabase si está configurado
-        if (supabase) {
-            const { data, error } = await supabase
+        if (supabaseClient) {
+            const { data, error } = await supabaseClient
                 .from('eventos')
                 .select('*')
                 .order('created_at', { ascending: false });
@@ -850,8 +852,8 @@ function inicializarModalServicios() {
         };
         
         // Guardar en Supabase si está configurado
-        if (supabase) {
-            const { error } = await supabase
+        if (supabaseClient) {
+            const { error } = await supabaseClient
                 .from('solicitudes')
                 .insert([solicitudData]);
             
@@ -911,9 +913,9 @@ const ADMIN_CREDENTIALS = {
 
 // Verificar si hay sesión activa
 async function verificarSesionAdmin() {
-    if (supabase) {
+    if (supabaseClient) {
         // Verificar sesión de Supabase
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         return !!session;
     } else {
         // Fallback a localStorage
@@ -934,9 +936,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const errorDiv = document.getElementById('loginError');
             
             try {
-                if (supabase) {
+                if (supabaseClient) {
                     // Login con Supabase
-                    const { data, error } = await supabase.auth.signInWithPassword({
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({
                         email: email,
                         password: password
                     });
@@ -945,7 +947,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // Verificar que el email sea el correcto
                     if (data.user.email !== ADMIN_CREDENTIALS.email) {
-                        await supabase.auth.signOut();
+                        await supabaseClient.auth.signOut();
                         throw new Error('Acceso no autorizado');
                     }
                 } else {
@@ -971,8 +973,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Cerrar sesión
 async function cerrarSesionAdmin() {
-    if (supabase) {
-        await supabase.auth.signOut();
+    if (supabaseClient) {
+        await supabaseClient.auth.signOut();
     } else {
         localStorage.removeItem('youme_admin_sesion');
     }
@@ -1059,17 +1061,17 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             
             try {
-                if (supabase && editId) {
+                if (supabaseClient && editId) {
                     // Editar evento existente en Supabase
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('eventos')
                         .update(eventoData)
                         .eq('id', editId);
                     
                     if (error) throw error;
-                } else if (supabase) {
+                } else if (supabaseClient) {
                     // Agregar nuevo evento en Supabase
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('eventos')
                         .insert([eventoData]);
                     
@@ -1115,9 +1117,9 @@ async function cargarEventosAdmin() {
     try {
         let eventos = [];
         
-        if (supabase) {
+        if (supabaseClient) {
             // Cargar desde Supabase
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('eventos')
                 .select('*')
                 .order('created_at', { ascending: false });
@@ -1159,9 +1161,9 @@ async function editarEvento(eventoId) {
     try {
         let evento;
         
-        if (supabase) {
+        if (supabaseClient) {
             // Cargar desde Supabase
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('eventos')
                 .select('*')
                 .eq('id', eventoId)
@@ -1206,9 +1208,9 @@ async function eliminarEvento(eventoId) {
     if (!confirm('¿Estás seguro de que deseas eliminar esta actividad?')) return;
     
     try {
-        if (supabase) {
+        if (supabaseClient) {
             // Eliminar de Supabase
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('eventos')
                 .delete()
                 .eq('id', eventoId);
@@ -1246,9 +1248,9 @@ async function cargarSolicitudesAdmin(filtro = null) {
     try {
         let solicitudes = [];
         
-        if (supabase) {
+        if (supabaseClient) {
             // Cargar desde Supabase
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('solicitudes')
                 .select('*')
                 .order('created_at', { ascending: false });
@@ -1370,8 +1372,8 @@ async function cargarSolicitudesAdmin(filtro = null) {
 // Marcar solicitud como contactada
 async function marcarContactado(solicitudId) {
     try {
-        if (supabase) {
-            const { error } = await supabase
+        if (supabaseClient) {
+            const { error } = await supabaseClient
                 .from('solicitudes')
                 .update({ contactado: true })
                 .eq('id', solicitudId);
@@ -1396,8 +1398,8 @@ async function marcarContactado(solicitudId) {
 // Marcar solicitud como agendada
 async function marcarAgendado(solicitudId) {
     try {
-        if (supabase) {
-            const { error } = await supabase
+        if (supabaseClient) {
+            const { error } = await supabaseClient
                 .from('solicitudes')
                 .update({ agendado: true, contactado: true })
                 .eq('id', solicitudId);
@@ -1425,8 +1427,8 @@ async function desmarcarContactado(solicitudId) {
     if (!confirm('¿Desmarcar como contactado?')) return;
     
     try {
-        if (supabase) {
-            const { error } = await supabase
+        if (supabaseClient) {
+            const { error } = await supabaseClient
                 .from('solicitudes')
                 .update({ contactado: false })
                 .eq('id', solicitudId);
@@ -1453,8 +1455,8 @@ async function desmarcarAgendado(solicitudId) {
     if (!confirm('¿Desmarcar como agendado?')) return;
     
     try {
-        if (supabase) {
-            const { error } = await supabase
+        if (supabaseClient) {
+            const { error } = await supabaseClient
                 .from('solicitudes')
                 .update({ agendado: false })
                 .eq('id', solicitudId);
