@@ -58,7 +58,12 @@ function initEmailJS() {
 
 async function enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio, tutor) {
     const cfg = window.EMAILJS_CONFIG;
-    if (!cfg || !cfg.publicKey || !cfg.serviceId || !cfg.templateIdSolicitud || !email) return;
+    if (!cfg || !cfg.publicKey || !cfg.serviceId || !cfg.templateIdSolicitud || !email) {
+        if (!cfg?.publicKey || !cfg?.serviceId || !cfg?.templateIdSolicitud) {
+            console.log('EmailJS no configurado: rellena publicKey, serviceId y templateIdSolicitud en index.html. Ver EMAILJS_SETUP.md');
+        }
+        return;
+    }
     try {
         if (typeof emailjs === 'undefined') return;
         await emailjs.send(cfg.serviceId, cfg.templateIdSolicitud, {
@@ -75,7 +80,12 @@ async function enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio,
 
 async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActividad, total) {
     const cfg = window.EMAILJS_CONFIG;
-    if (!cfg || !cfg.publicKey || !cfg.serviceId || !cfg.templateIdActividad || !email) return;
+    if (!cfg || !cfg.publicKey || !cfg.serviceId || !cfg.templateIdActividad || !email) {
+        if (!cfg?.publicKey || !cfg?.serviceId || !cfg?.templateIdActividad) {
+            console.log('EmailJS no configurado: rellena publicKey, serviceId y templateIdActividad en index.html. Ver EMAILJS_SETUP.md');
+        }
+        return;
+    }
     try {
         if (typeof emailjs === 'undefined') return;
         await emailjs.send(cfg.serviceId, cfg.templateIdActividad, {
@@ -1528,19 +1538,22 @@ async function cargarReservasAdmin() {
             html += '<h4 style="margin-bottom: 1rem; color: var(--turquoise);">Reservas de actividades</h4>';
             reservasEventos.forEach(r => {
                 const nombreActividad = eventosMap[r.evento_id] || 'Actividad';
+                const eventoIdEsc = String(r.evento_id || '').replace(/'/g, "\\'");
+                const diasVal = r.dias ?? 1;
                 html += `
                     <div class="evento-admin-item" style="margin-bottom: 1rem;">
                         <div class="evento-admin-info">
                             <p><strong>${nombreActividad}</strong></p>
                             <p>Niño/a: ${r.nombre_nino || '-'} | Padre: ${r.nombre_padre || '-'}</p>
                             <p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p>
-                            <p>Total: $${r.total ?? '-'} | Días: ${r.dias ?? 1}</p>
+                            <p>Total: $${r.total ?? '-'} | Días: ${diasVal}</p>
                         </div>
-                        <div class="evento-admin-actions" style="align-items: center;">
+                        <div class="evento-admin-actions" style="align-items: center; gap: 0.5rem;">
                             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                                 <input type="checkbox" ${r.pagado ? 'checked' : ''} onchange="marcarPagadoReservaEvento('${r.id}', this.checked)">
                                 Pagado
                             </label>
+                            <button type="button" class="btn-delete" onclick="eliminarReservaEvento('${r.id}', '${eventoIdEsc}', ${diasVal})">Eliminar</button>
                         </div>
                     </div>
                 `;
@@ -1578,6 +1591,29 @@ async function cargarReservasAdmin() {
     } catch (error) {
         console.error('Error cargando reservas:', error);
         container.innerHTML = '<div class="no-data">Error al cargar reservas. Si acabas de añadir las tablas en Supabase, ejecuta el SQL de reservas_eventos y reservas_cumple.</div>';
+    }
+}
+
+async function eliminarReservaEvento(reservaId, eventoId, dias) {
+    if (!confirm('¿Eliminar esta reservación? Se devolverá el cupo a la actividad.')) return;
+    if (!supabaseClient) return;
+    try {
+        const { error } = await supabaseClient
+            .from('reservas_eventos')
+            .delete()
+            .eq('id', reservaId);
+        if (error) throw error;
+        const { data: ev } = await supabaseClient.from('eventos').select('cupos').eq('id', eventoId).single();
+        if (ev && ev.cupos != null) {
+            const nuevoCupos = (ev.cupos || 0) + (dias || 1);
+            await supabaseClient.from('eventos').update({ cupos: nuevoCupos }).eq('id', eventoId);
+        }
+        cargarReservasAdmin();
+        cargarEventos();
+        alert('Reservación eliminada. Se devolvió el cupo a la actividad.');
+    } catch (e) {
+        console.error(e);
+        alert('Error al eliminar la reservación.');
     }
 }
 

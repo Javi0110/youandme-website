@@ -16,10 +16,8 @@
             url: 'https://lvzmbghugqnetkosbbpr.supabase.co',
             anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2em1iZ2h1Z3FuZXRrb3NiYnByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1NDEzMDEsImV4cCI6MjA1OTExNzMwMX0.-cP3D48_qI-u6FJoavGB6DuFB_gqzC7gdm4S_o31pQw'
         };
-        // EmailJS: emails de confirmación al usuario (opcional)
-        // 1) Cuenta en https://www.emailjs.com/ → Email Services (Gmail, etc.) → 2) Email Templates
-        // Plantilla solicitud: To = {{to_email}} | variables: nombre_paciente, servicio, tutor, telefono_centro
-        // Plantilla actividad: To = {{to_email}} | variables: nombre_nino, nombre_actividad, total, mensaje_pago, telefono_centro
+        // EmailJS: para que el CLIENTE reciba email de confirmación (ver EMAILJS_SETUP.md)
+        // En cada plantilla en EmailJS el campo "To" debe ser exactamente: {{to_email}}
         window.EMAILJS_CONFIG = {
             publicKey: '',
             serviceId: '',
