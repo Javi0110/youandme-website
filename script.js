@@ -130,10 +130,6 @@ function inicializarNavegacion() {
         }
     });
     
-    navegacionInicializada = true;
-    console.log('✅ Navegación inicializada');
-}
-
     // Footer links
     document.querySelectorAll('.footer-links a').forEach(link => {
         link.addEventListener('click', (e) => {
@@ -145,6 +141,9 @@ function inicializarNavegacion() {
             }
         });
     });
+    
+    navegacionInicializada = true;
+    console.log('✅ Navegación inicializada');
 }
 
 // Ejecutar cuando el DOM esté listo
