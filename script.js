@@ -740,6 +740,7 @@ function inicializarCalculadoraCumpleanos() {
 // Carrusel / Galería - Celebra en You&Me
 function inicializarGaleriaCelebra() {
     const track = document.getElementById('galeriaTrack');
+    const viewport = track ? track.closest('.galeria-viewport') : null;
     const prevBtn = document.getElementById('galeriaPrev');
     const nextBtn = document.getElementById('galeriaNext');
     const dotsContainer = document.getElementById('galeriaDots');
@@ -751,13 +752,31 @@ function inicializarGaleriaCelebra() {
 
     let index = 0;
 
+    function setViewportHeight() {
+        if (!viewport || !slides[index]) return;
+        const slideEl = slides[index];
+        const h = slideEl.offsetHeight;
+        viewport.style.height = h ? h + 'px' : '';
+    }
+
     function goTo(i) {
         index = ((i % total) + total) % total;
         track.style.transform = `translateX(-${index * 100}%)`;
         dotsContainer.querySelectorAll('.galeria-dot').forEach((dot, j) => {
             dot.classList.toggle('active', j === index);
         });
+        setViewportHeight();
     }
+
+    // Ajustar altura cuando carguen las imágenes
+    slides.forEach((slide, i) => {
+        const img = slide.querySelector('img');
+        if (img) {
+            img.addEventListener('load', () => { if (i === index) setViewportHeight(); });
+        }
+    });
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
 
     // Dots
     for (let i = 0; i < total; i++) {
