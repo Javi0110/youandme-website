@@ -1,0 +1,7 @@
+.DS_Store
+*.md
+admin.html
+admin.js
+package.json
+youme-eventos-*.json
+deploy/
