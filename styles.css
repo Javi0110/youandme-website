@@ -295,8 +295,8 @@ h1, h2, h3, h4 {
 }
 
 .btn-celebra {
-    background: #22c55e !important;
-    color: white !important;
+    background: var(--yellow-green) !important;
+    color: var(--gray-dark) !important;
     padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 8px;
@@ -306,7 +306,7 @@ h1, h2, h3, h4 {
     font-family: var(--font-heading);
 }
 .btn-celebra:hover {
-    background: #16a34a !important;
+    background: #b3d020 !important;
     transform: translateY(-2px);
 }
 
