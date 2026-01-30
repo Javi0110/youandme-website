@@ -284,11 +284,15 @@ function mostrarEventos(eventos) {
     const container = document.getElementById('eventosContainer');
     const noEventos = document.getElementById('noEventos');
     
+    if (!container || !noEventos) return;
+    
     if (!eventos || eventos.length === 0) {
+        container.innerHTML = '';
         noEventos.style.display = 'block';
         return;
     }
     
+    noEventos.style.display = 'none';
     container.innerHTML = '';
     
     eventos.forEach(evento => {
