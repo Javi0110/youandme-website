@@ -232,6 +232,30 @@ h1, h2, h3, h4 {
     transition: 0.3s;
 }
 
+/* Inicio - Background con foto del pasillo */
+#inicio {
+    position: relative;
+    background-image: url('inicio-background.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    min-height: 100vh;
+}
+#inicio::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.75);
+    z-index: 0;
+}
+#inicio .container {
+    position: relative;
+    z-index: 1;
+}
+
 /* Hero/Inicio Content */
 .hero-content {
     text-align: center;
@@ -268,6 +292,22 @@ h1, h2, h3, h4 {
     justify-content: center;
     animation: fadeInUp 1.2s;
     flex-wrap: wrap;
+}
+
+.btn-celebra {
+    background: #22c55e !important;
+    color: white !important;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: var(--font-heading);
+}
+.btn-celebra:hover {
+    background: #16a34a !important;
+    transform: translateY(-2px);
 }
 
 /* Info Cards */
