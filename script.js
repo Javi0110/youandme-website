@@ -1540,7 +1540,7 @@ async function cargarReservasAdmin() {
                     const diasVal = r.dias ?? 1;
                     html += `<div class="evento-admin-item" style="margin-bottom: 1rem;">
                         <div class="evento-admin-info"><p><strong>Actividad ID: ${r.evento_id}</strong></p><p>Niño/a: ${r.nombre_nino || '-'} | Padre: ${r.nombre_padre || '-'}</p><p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p><p>Total: $${r.total ?? '-'} | Días: ${diasVal}</p></div>
-                        <div class="evento-admin-actions"><button type="button" class="btn-delete" onclick="eliminarReservaEventoLocal('${r.id}', '${eventoIdEsc}', ${diasVal})">Eliminar</button></div>
+                        <div class="evento-admin-actions" style="display: flex;"><button type="button" class="btn-delete" onclick="window.eliminarReservaEventoLocal('${r.id}', '${eventoIdEsc}', ${diasVal})" style="background: #dc3545; color: white; padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer;">Eliminar</button></div>
                     </div>`;
                 });
             }
@@ -1563,12 +1563,12 @@ async function cargarReservasAdmin() {
                             <p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p>
                             <p>Total: $${r.total ?? '-'} | Días: ${diasVal}</p>
                         </div>
-                        <div class="evento-admin-actions" style="align-items: center; gap: 0.5rem;">
+                        <div class="evento-admin-actions" style="align-items: center; gap: 0.5rem; display: flex; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                                 <input type="checkbox" ${r.pagado ? 'checked' : ''} onchange="marcarPagadoReservaEvento('${r.id}', this.checked)">
                                 Pagado
                             </label>
-                            <button type="button" class="btn-delete" onclick="eliminarReservaEvento('${r.id}', '${eventoIdEsc}', ${diasVal})">Eliminar</button>
+                            <button type="button" class="btn-delete" onclick="window.eliminarReservaEvento('${r.id}', '${eventoIdEsc}', ${diasVal})" style="background: #dc3545; color: white; padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer;">Eliminar</button>
                         </div>
                     </div>
                 `;
@@ -1587,11 +1587,12 @@ async function cargarReservasAdmin() {
                             <p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p>
                             <p>Total: $${r.total ?? '-'} | Horas: ${r.horas ?? '-'}</p>
                         </div>
-                        <div class="evento-admin-actions" style="align-items: center;">
+                        <div class="evento-admin-actions" style="align-items: center; gap: 0.5rem; display: flex; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                                 <input type="checkbox" ${r.pagado ? 'checked' : ''} onchange="marcarPagadoReservaCumple('${r.id}', this.checked)">
                                 Pagado
                             </label>
+                            <button type="button" class="btn-delete" onclick="eliminarReservaCumple('${r.id}')" style="background: #dc3545; color: white; padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer;">Eliminar</button>
                         </div>
                     </div>
                 `;
@@ -1699,6 +1700,28 @@ async function marcarPagadoReservaCumple(reservaId, pagado) {
     } catch (e) {
         console.error(e);
         alert('Error al actualizar estado de pago.');
+    }
+}
+
+async function eliminarReservaCumple(reservaId) {
+    if (!confirm('¿Eliminar esta reserva de cumpleaños?')) return;
+    try {
+        if (supabaseClient) {
+            const { error } = await supabaseClient
+                .from('reservas_cumple')
+                .delete()
+                .eq('id', reservaId);
+            if (error) throw error;
+        } else {
+            let reservas = JSON.parse(localStorage.getItem('youme_reservas_cumple') || '[]');
+            reservas = reservas.filter(r => String(r.id) !== String(reservaId));
+            localStorage.setItem('youme_reservas_cumple', JSON.stringify(reservas));
+        }
+        cargarReservasAdmin();
+        alert('Reserva de cumpleaños eliminada.');
+    } catch (e) {
+        console.error(e);
+        alert('Error al eliminar la reserva.');
     }
 }
 
@@ -1858,7 +1881,7 @@ async function cargarSolicitudesAdmin(filtro = null) {
                             Desmarcar Agendado
                         </button>
                     `}
-                    <button type="button" class="btn-delete" onclick="eliminarSolicitud('${String(sol.id).replace(/'/g, "\\'")}')" style="margin-left: auto;">Eliminar</button>
+                    <button type="button" class="btn-delete" onclick="window.eliminarSolicitud('${String(sol.id).replace(/'/g, "\\'")}')" style="margin-left: auto; background: #dc3545; color: white; padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer;">Eliminar</button>
                 </div>
             </div>
         `;
@@ -2080,6 +2103,12 @@ function inicializarTodo() {
         console.error('❌ Error durante la inicialización:', error);
     }
 }
+
+// Exponer funciones de eliminar en window para que los onclick del admin las encuentren
+window.eliminarReservaEvento = eliminarReservaEvento;
+window.eliminarReservaEventoLocal = eliminarReservaEventoLocal;
+window.eliminarReservaCumple = eliminarReservaCumple;
+window.eliminarSolicitud = eliminarSolicitud;
 
 // Ejecutar cuando el DOM esté listo
 if (document.readyState === 'loading') {
