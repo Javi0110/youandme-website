@@ -1724,21 +1724,25 @@ async function cargarSolicitudesAdmin(filtro = null) {
                 .order('created_at', { ascending: false });
             
             if (!error && data && Array.isArray(data)) {
-                desdeSupabase = data.map(s => ({
-                    id: s.id,
-                    fecha: s.created_at ? new Date(s.created_at).toLocaleString('es-PR') : '',
-                    servicio: s.servicio,
-                    paciente: s.paciente,
-                    edad: s.edad,
-                    tutor: s.tutor,
-                    email: s.email,
-                    telefono: s.telefono,
-                    tipo_cobertura: s.tipo_cobertura,
-                    motivo: s.motivo,
-                    contactoPreferido: s.contacto_preferido,
-                    contactado: s.contactado || false,
-                    agendado: s.agendado || false
-                }));
+                desdeSupabase = data.map(s => {
+                    const tipoCob = (s.tipo_cobertura != null && s.tipo_cobertura !== '') ? String(s.tipo_cobertura) : null;
+                    return {
+                        id: s.id,
+                        fecha: s.created_at ? new Date(s.created_at).toLocaleString('es-PR') : '',
+                        servicio: s.servicio,
+                        paciente: s.paciente,
+                        edad: s.edad,
+                        tutor: s.tutor,
+                        email: s.email,
+                        telefono: s.telefono,
+                        tipo_cobertura: tipoCob,
+                        tipoCobertura: tipoCob,
+                        motivo: s.motivo,
+                        contactoPreferido: s.contacto_preferido,
+                        contactado: s.contactado || false,
+                        agendado: s.agendado || false
+                    };
+                });
             }
         } catch (err) {
             console.warn('Cargar solicitudes desde Supabase:', err);
@@ -1753,7 +1757,12 @@ async function cargarSolicitudesAdmin(filtro = null) {
     }
     // Mostrar primero las de Supabase, luego las de localStorage
     solicitudes = [...desdeSupabase, ...desdeLocal];
-    
+    // Normalizar tipo_cobertura para que siempre se muestre en el admin
+    solicitudes = solicitudes.map(sol => {
+        const tipoCob = (sol.tipo_cobertura != null && sol.tipo_cobertura !== '') ? String(sol.tipo_cobertura).trim() : ((sol.tipoCobertura != null && sol.tipoCobertura !== '') ? String(sol.tipoCobertura).trim() : null);
+        return { ...sol, tipo_cobertura: tipoCob || sol.tipo_cobertura, tipoCobertura: tipoCob || sol.tipoCobertura };
+    });
+
     try {
         
         // Aplicar filtro
@@ -1823,7 +1832,7 @@ async function cargarSolicitudesAdmin(filtro = null) {
                 </div>
                 <div class="info-row">
                     <strong>Tipo de cobertura / pago:</strong>
-                    <span>${sol.tipo_cobertura || sol.tipoCobertura || '—'}</span>
+                    <span>${(sol.tipo_cobertura || sol.tipoCobertura || '').trim() || 'No indicado'}</span>
                 </div>
                 <div class="info-row">
                     <strong>Motivo:</strong>
