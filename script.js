@@ -400,6 +400,7 @@ async function abrirModalEvento(eventoId) {
         };
         
         modalContent.innerHTML = `
+            ${evento.imagen ? `<img src="${evento.imagen}" alt="${evento.nombre}" class="modal-evento-flyer">` : ''}
             <h2>${evento.nombre}</h2>
             <div class="modal-evento-details">
                 <p><strong>Descripción:</strong> ${evento.descripcion}</p>
