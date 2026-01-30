@@ -690,7 +690,7 @@ h1, h2, h3, h4 {
     padding: 2rem;
     border-radius: 15px;
     width: 90%;
-    max-width: 600px;
+    max-width: 800px;
     position: relative;
     animation: slideIn 0.3s;
 }
@@ -708,17 +708,38 @@ h1, h2, h3, h4 {
     color: var(--turquoise);
 }
 
+.modal-evento-layout {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1.5rem;
+    align-items: flex-start;
+}
+
+.modal-evento-flyer-col {
+    flex-shrink: 0;
+}
+
 .modal-evento-flyer {
     width: 100%;
-    max-width: 400px;
+    max-width: 280px;
     height: auto;
     border-radius: 12px;
-    margin-bottom: 1.5rem;
     display: block;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
 .modal-evento-details {
-    margin-top: 2rem;
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 640px) {
+    .modal-evento-layout {
+        flex-direction: column;
+    }
+    .modal-evento-flyer {
+        max-width: 100%;
+    }
 }
 
 .modal-evento-details h3 {

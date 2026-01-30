@@ -306,7 +306,6 @@ function crearEventoCard(evento) {
     const cuposTexto = evento.cupos === 0 ? 'Agotado' : `${evento.cupos} cupos disponibles`;
     
     card.innerHTML = `
-        ${evento.imagen ? `<img src="${evento.imagen}" alt="${evento.nombre}" class="evento-image">` : ''}
         <div class="evento-content">
             <h3 class="evento-title">${evento.nombre}</h3>
             <p class="evento-description">${evento.descripcion}</p>
@@ -400,17 +399,22 @@ async function abrirModalEvento(eventoId) {
         };
         
         modalContent.innerHTML = `
-            ${evento.imagen ? `<img src="${evento.imagen}" alt="${evento.nombre}" class="modal-evento-flyer">` : ''}
             <h2>${evento.nombre}</h2>
-            <div class="modal-evento-details">
-                <p><strong>Descripción:</strong> ${evento.descripcion}</p>
-                <p><strong>Fecha:</strong> ${evento.fecha}</p>
-                ${evento.horario ? `<p><strong>Horario:</strong> ${evento.horario}</p>` : ''}
-                ${evento.edad ? `<p><strong>Edad:</strong> ${evento.edad}</p>` : ''}
-                <p><strong>Precio base:</strong> $${evento.precio}${esMultiDia ? ' por día' : ''}</p>
-                <p><strong>Cupos disponibles:</strong> ${evento.cupos}</p>
-                
-                <form id="eventoRsvpForm" style="margin-top: 2rem;">
+            <div class="modal-evento-layout">
+                ${evento.imagen ? `
+                <div class="modal-evento-flyer-col">
+                    <img src="${evento.imagen}" alt="Flyer ${evento.nombre}" class="modal-evento-flyer">
+                </div>
+                ` : ''}
+                <div class="modal-evento-details">
+                    <p><strong>Descripción:</strong> ${evento.descripcion}</p>
+                    <p><strong>Fecha:</strong> ${evento.fecha}</p>
+                    ${evento.horario ? `<p><strong>Horario:</strong> ${evento.horario}</p>` : ''}
+                    ${evento.edad ? `<p><strong>Edad:</strong> ${evento.edad}</p>` : ''}
+                    <p><strong>Precio base:</strong> $${evento.precio}${esMultiDia ? ' por día' : ''}</p>
+                    <p><strong>Cupos disponibles:</strong> ${evento.cupos}</p>
+                    
+                    <form id="eventoRsvpForm" style="margin-top: 2rem;">
                     <div class="form-group">
                         <label>Nombre del niño/a:</label>
                         <input type="text" id="eventoNombreNino" required>
@@ -454,6 +458,7 @@ async function abrirModalEvento(eventoId) {
                         Confirmar y Pagar
                     </button>
                 </form>
+                </div>
             </div>
         `;
         
