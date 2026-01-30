@@ -1244,9 +1244,11 @@ function mostrarTabAdmin(tabName) {
         btn.classList.remove('active');
     });
     
-    // Mostrar tab seleccionado
-    document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
-    event.target.classList.add('active');
+    const tabId = 'tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1);
+    const tabEl = document.getElementById(tabId);
+    if (tabEl) tabEl.classList.add('active');
+    const btn = document.querySelector('.admin-tab-btn[data-tab="' + tabName + '"]');
+    if (btn) btn.classList.add('active');
     
     // Recargar datos si es necesario
     if (tabName === 'actividades') {
@@ -1711,17 +1713,17 @@ async function cargarSolicitudesAdmin(filtro = null) {
     const container = document.getElementById('listaSolicitudesAdmin');
     if (!container) return;
     
-    try {
-        let solicitudes = [];
-        let desdeSupabase = [];
-        
-        if (supabaseClient) {
+    let solicitudes = [];
+    let desdeSupabase = [];
+    
+    if (supabaseClient) {
+        try {
             const { data, error } = await supabaseClient
                 .from('solicitudes')
                 .select('*')
                 .order('created_at', { ascending: false });
             
-            if (!error && data && data.length > 0) {
+            if (!error && data && Array.isArray(data)) {
                 desdeSupabase = data.map(s => ({
                     id: s.id,
                     fecha: s.created_at ? new Date(s.created_at).toLocaleString('es-PR') : '',
@@ -1738,10 +1740,21 @@ async function cargarSolicitudesAdmin(filtro = null) {
                     agendado: s.agendado || false
                 }));
             }
+        } catch (err) {
+            console.warn('Cargar solicitudes desde Supabase:', err);
         }
-        const desdeLocal = JSON.parse(localStorage.getItem('youme_solicitudes') || '[]');
-        // Mostrar primero las de Supabase, luego las de localStorage (p. ej. cuando Supabase falló)
-        solicitudes = [...desdeSupabase, ...desdeLocal];
+    }
+    
+    let desdeLocal = [];
+    try {
+        desdeLocal = JSON.parse(localStorage.getItem('youme_solicitudes') || '[]');
+    } catch (e) {
+        desdeLocal = [];
+    }
+    // Mostrar primero las de Supabase, luego las de localStorage
+    solicitudes = [...desdeSupabase, ...desdeLocal];
+    
+    try {
         
         // Aplicar filtro
         if (filtroActualSolicitudes === 'pendientes') {
@@ -1759,7 +1772,11 @@ async function cargarSolicitudesAdmin(filtro = null) {
                 'contactadas': 'No hay solicitudes contactadas.',
                 'agendadas': 'No hay solicitudes agendadas.'
             };
-            container.innerHTML = `<div class="no-data">${mensajes[filtroActualSolicitudes]}</div>`;
+            let htmlMsg = `<div class="no-data">${mensajes[filtroActualSolicitudes]}</div>`;
+            if (filtroActualSolicitudes === 'todas') {
+                htmlMsg += '<p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">Si enviaste una solicitud y no aparece aquí, ejecuta en Supabase (SQL Editor) el archivo <strong>supabase-tabla-solicitudes.sql</strong> del proyecto y vuelve a intentar. Las solicitudes se guardan también en este navegador hasta que el servidor esté listo.</p>';
+            }
+            container.innerHTML = htmlMsg;
             return;
         }
         
