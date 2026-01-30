@@ -300,7 +300,7 @@ function mostrarEventos(eventos) {
 // Crear tarjeta de evento
 function crearEventoCard(evento) {
     const card = document.createElement('div');
-    card.className = 'evento-card';
+    card.className = 'evento-card' + (evento.imagen ? ' evento-card-con-flyer' : '');
     
     const cuposClase = evento.cupos <= 5 ? 'pocos' : evento.cupos === 0 ? 'agotado' : '';
     const cuposTexto = evento.cupos === 0 ? 'Agotado' : `${evento.cupos} cupos disponibles`;
@@ -328,6 +328,11 @@ function crearEventoCard(evento) {
             <div class="evento-cupos ${cuposClase}">${cuposTexto}</div>
             ${evento.cupos > 0 ? '<button class="btn btn-primary" onclick="abrirModalEvento(\'' + evento.id + '\')">Reservar Ahora</button>' : ''}
         </div>
+        ${evento.imagen ? `
+        <div class="evento-flyer-col">
+            <img src="${evento.imagen}" alt="Flyer ${evento.nombre}" class="evento-flyer-img">
+        </div>
+        ` : ''}
     `;
     
     return card;
