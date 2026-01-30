@@ -1071,15 +1071,21 @@ function inicializarModalServicios() {
             agendado: false
         };
         
-        // Guardar en Supabase si está configurado
+        // Guardar en Supabase si está configurado; si falla, guardar en localStorage
+        let guardadoEnServidor = false;
         if (supabaseClient) {
             const { error } = await supabaseClient
                 .from('solicitudes')
                 .insert([solicitudData]);
             
-            if (error) console.error('Error guardando en Supabase:', error);
-        } else {
-            // Fallback a localStorage
+            if (error) {
+                console.error('Error guardando solicitud en Supabase (se guarda localmente):', error);
+            } else {
+                guardadoEnServidor = true;
+            }
+        }
+        // Siempre guardar copia en localStorage si no se guardó en Supabase (fallback o respaldo)
+        if (!guardadoEnServidor) {
             const solicitudLocal = {
                 id: Date.now().toString(),
                 fecha: new Date().toLocaleString('es-PR'),
@@ -1660,35 +1666,35 @@ async function cargarSolicitudesAdmin(filtro = null) {
     
     try {
         let solicitudes = [];
+        let desdeSupabase = [];
         
         if (supabaseClient) {
-            // Cargar desde Supabase
             const { data, error } = await supabaseClient
                 .from('solicitudes')
                 .select('*')
                 .order('created_at', { ascending: false });
             
-            if (error) throw error;
-            
-            // Convertir formato de Supabase
-            solicitudes = (data || []).map(s => ({
-                id: s.id,
-                fecha: new Date(s.created_at).toLocaleString('es-PR'),
-                servicio: s.servicio,
-                paciente: s.paciente,
-                edad: s.edad,
-                tutor: s.tutor,
-                email: s.email,
-                telefono: s.telefono,
-                motivo: s.motivo,
-                contactoPreferido: s.contacto_preferido,
-                contactado: s.contactado || false,
-                agendado: s.agendado || false
-            }));
-        } else {
-            // Fallback a localStorage
-            solicitudes = JSON.parse(localStorage.getItem('youme_solicitudes') || '[]');
+            if (!error && data && data.length > 0) {
+                desdeSupabase = data.map(s => ({
+                    id: s.id,
+                    fecha: s.created_at ? new Date(s.created_at).toLocaleString('es-PR') : '',
+                    servicio: s.servicio,
+                    paciente: s.paciente,
+                    edad: s.edad,
+                    tutor: s.tutor,
+                    email: s.email,
+                    telefono: s.telefono,
+                    tipo_cobertura: s.tipo_cobertura,
+                    motivo: s.motivo,
+                    contactoPreferido: s.contacto_preferido,
+                    contactado: s.contactado || false,
+                    agendado: s.agendado || false
+                }));
+            }
         }
+        const desdeLocal = JSON.parse(localStorage.getItem('youme_solicitudes') || '[]');
+        // Mostrar primero las de Supabase, luego las de localStorage (p. ej. cuando Supabase falló)
+        solicitudes = [...desdeSupabase, ...desdeLocal];
         
         // Aplicar filtro
         if (filtroActualSolicitudes === 'pendientes') {
