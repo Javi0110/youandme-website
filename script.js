@@ -1064,6 +1064,7 @@ function inicializarModalServicios() {
             tutor: formData.get('nombre_tutor'),
             email: formData.get('email'),
             telefono: formData.get('telefono'),
+            tipo_cobertura: formData.get('tipo_cobertura'),
             motivo: formData.get('motivo_consulta'),
             contacto_preferido: formData.get('contacto_preferido'),
             contactado: false,
@@ -1749,6 +1750,10 @@ async function cargarSolicitudesAdmin(filtro = null) {
                 <div class="info-row">
                     <strong>Contacto preferido:</strong>
                     <span>${sol.contactoPreferido}</span>
+                </div>
+                <div class="info-row">
+                    <strong>Tipo de cobertura / pago:</strong>
+                    <span>${sol.tipo_cobertura || sol.tipoCobertura || '—'}</span>
                 </div>
                 <div class="info-row">
                     <strong>Motivo:</strong>

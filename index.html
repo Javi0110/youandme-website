@@ -868,6 +868,15 @@
                         <input type="tel" name="telefono" id="servicioTelefono" required>
                     </div>
                     <div class="form-group">
+                        <label>Tipo de cobertura / pago:</label>
+                        <select name="tipo_cobertura" id="servicioTipoCobertura" required>
+                            <option value="">Selecciona una opción</option>
+                            <option value="Remedio provisional">Remedio provisional</option>
+                            <option value="Plan médico">Plan médico</option>
+                            <option value="Servicio privado">Servicio privado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>Motivo de consulta / Información adicional:</label>
                         <textarea name="motivo_consulta" id="servicioMotivo" rows="4" placeholder="Describe brevemente el motivo por el cual solicitas este servicio..." required></textarea>
                     </div>
