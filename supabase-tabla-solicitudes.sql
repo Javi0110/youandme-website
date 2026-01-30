@@ -48,3 +48,8 @@ CREATE POLICY "solicitudes_select_auth" ON public.solicitudes
 DROP POLICY IF EXISTS "solicitudes_update_auth" ON public.solicitudes;
 CREATE POLICY "solicitudes_update_auth" ON public.solicitudes
     FOR UPDATE TO authenticated USING (true);
+
+-- Permitir que usuarios autenticados eliminen: panel admin
+DROP POLICY IF EXISTS "solicitudes_delete_auth" ON public.solicitudes;
+CREATE POLICY "solicitudes_delete_auth" ON public.solicitudes
+    FOR DELETE TO authenticated USING (true);

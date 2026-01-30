@@ -1041,9 +1041,10 @@ function inicializarModalServicios() {
         }
     });
 
-    // Procesar formulario de servicio con Web3Forms
+    // Procesar formulario de servicio con Web3Forms (solo una vez para no duplicar el mensaje)
     const servicioForm = document.getElementById('servicioForm');
-    if (servicioForm) {
+    if (servicioForm && !servicioForm.dataset.servicioHandler) {
+        servicioForm.dataset.servicioHandler = 'true';
         servicioForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -1725,7 +1726,8 @@ async function cargarSolicitudesAdmin(filtro = null) {
             
             if (!error && data && Array.isArray(data)) {
                 desdeSupabase = data.map(s => {
-                    const tipoCob = (s.tipo_cobertura != null && s.tipo_cobertura !== '') ? String(s.tipo_cobertura) : null;
+                    const tipoCobRaw = s.tipo_cobertura ?? s['tipo_cobertura'] ?? s.tipoCobertura;
+                    const tipoCob = (tipoCobRaw != null && String(tipoCobRaw).trim() !== '') ? String(tipoCobRaw).trim() : null;
                     return {
                         id: s.id,
                         fecha: s.created_at ? new Date(s.created_at).toLocaleString('es-PR') : '',
@@ -1757,10 +1759,11 @@ async function cargarSolicitudesAdmin(filtro = null) {
     }
     // Mostrar primero las de Supabase, luego las de localStorage
     solicitudes = [...desdeSupabase, ...desdeLocal];
-    // Normalizar tipo_cobertura para que siempre se muestre en el admin
+    // Normalizar tipo_cobertura para que siempre se muestre en el admin (cualquier clave posible)
     solicitudes = solicitudes.map(sol => {
-        const tipoCob = (sol.tipo_cobertura != null && sol.tipo_cobertura !== '') ? String(sol.tipo_cobertura).trim() : ((sol.tipoCobertura != null && sol.tipoCobertura !== '') ? String(sol.tipoCobertura).trim() : null);
-        return { ...sol, tipo_cobertura: tipoCob || sol.tipo_cobertura, tipoCobertura: tipoCob || sol.tipoCobertura };
+        const raw = sol.tipo_cobertura ?? sol.tipoCobertura ?? sol['tipo_cobertura'];
+        const tipoCob = (raw != null && String(raw).trim() !== '') ? String(raw).trim() : null;
+        return { ...sol, tipo_cobertura: tipoCob ?? sol.tipo_cobertura, tipoCobertura: tipoCob ?? sol.tipoCobertura };
     });
 
     try {
@@ -1832,7 +1835,7 @@ async function cargarSolicitudesAdmin(filtro = null) {
                 </div>
                 <div class="info-row">
                     <strong>Tipo de cobertura / pago:</strong>
-                    <span>${(sol.tipo_cobertura || sol.tipoCobertura || '').trim() || 'No indicado'}</span>
+                    <span>${(() => { const v = sol.tipo_cobertura || sol.tipoCobertura; return (v != null && String(v).trim()) ? String(v).trim() : 'No indicado'; })()}</span>
                 </div>
                 <div class="info-row">
                     <strong>Motivo:</strong>
@@ -1855,6 +1858,7 @@ async function cargarSolicitudesAdmin(filtro = null) {
                             Desmarcar Agendado
                         </button>
                     `}
+                    <button type="button" class="btn-delete" onclick="eliminarSolicitud('${String(sol.id).replace(/'/g, "\\'")}')" style="margin-left: auto;">Eliminar</button>
                 </div>
             </div>
         `;
@@ -1862,6 +1866,29 @@ async function cargarSolicitudesAdmin(filtro = null) {
     } catch (error) {
         console.error('Error cargando solicitudes:', error);
         container.innerHTML = '<div class="no-data">Error al cargar solicitudes. Por favor recarga la página.</div>';
+    }
+}
+
+// Eliminar solicitud de servicio
+async function eliminarSolicitud(solicitudId) {
+    if (!confirm('¿Eliminar esta solicitud de servicio? Esta acción no se puede deshacer.')) return;
+    try {
+        if (supabaseClient) {
+            const { error } = await supabaseClient
+                .from('solicitudes')
+                .delete()
+                .eq('id', solicitudId);
+            if (error) throw error;
+        } else {
+            let solicitudes = JSON.parse(localStorage.getItem('youme_solicitudes') || '[]');
+            solicitudes = solicitudes.filter(s => String(s.id) !== String(solicitudId));
+            localStorage.setItem('youme_solicitudes', JSON.stringify(solicitudes));
+        }
+        cargarSolicitudesAdmin();
+        alert('Solicitud eliminada.');
+    } catch (error) {
+        console.error('Error eliminando solicitud:', error);
+        alert('Error al eliminar. Si usas Supabase, asegúrate de tener política DELETE en la tabla solicitudes.');
     }
 }
 
