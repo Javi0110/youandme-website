@@ -1533,7 +1533,12 @@ async function cargarReservasAdmin() {
             if (locales.length > 0) {
                 html += '<h4 style="margin-bottom: 1rem; color: var(--turquoise);">Reservas locales (pendientes de subir al servidor)</h4>';
                 locales.forEach(r => {
-                    html += `<div class="evento-admin-item" style="margin-bottom: 1rem;"><div class="evento-admin-info"><p><strong>Actividad ID: ${r.evento_id}</strong></p><p>Niño/a: ${r.nombre_nino || '-'} | Padre: ${r.nombre_padre || '-'}</p><p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p><p>Total: $${r.total ?? '-'}</p></div></div>`;
+                    const eventoIdEsc = String(r.evento_id || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const diasVal = r.dias ?? 1;
+                    html += `<div class="evento-admin-item" style="margin-bottom: 1rem;">
+                        <div class="evento-admin-info"><p><strong>Actividad ID: ${r.evento_id}</strong></p><p>Niño/a: ${r.nombre_nino || '-'} | Padre: ${r.nombre_padre || '-'}</p><p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p><p>Total: $${r.total ?? '-'} | Días: ${diasVal}</p></div>
+                        <div class="evento-admin-actions"><button type="button" class="btn-delete" onclick="eliminarReservaEventoLocal('${r.id}', '${eventoIdEsc}', ${diasVal})">Eliminar</button></div>
+                    </div>`;
                 });
             }
             container.innerHTML = html || '<div class="no-data">No hay reservas. Ejecuta supabase-tablas-reservas.sql en Supabase para poder guardar.</div>';
@@ -1603,21 +1608,63 @@ async function cargarReservasAdmin() {
 
 async function eliminarReservaEvento(reservaId, eventoId, dias) {
     if (!confirm('¿Eliminar esta reservación? Se devolverá el cupo a la actividad.')) return;
-    if (!supabaseClient) return;
     try {
-        const { error } = await supabaseClient
-            .from('reservas_eventos')
-            .delete()
-            .eq('id', reservaId);
-        if (error) throw error;
-        const { data: ev } = await supabaseClient.from('eventos').select('cupos').eq('id', eventoId).single();
-        if (ev && ev.cupos != null) {
-            const nuevoCupos = (ev.cupos || 0) + (dias || 1);
-            await supabaseClient.from('eventos').update({ cupos: nuevoCupos }).eq('id', eventoId);
+        if (supabaseClient) {
+            const { error } = await supabaseClient
+                .from('reservas_eventos')
+                .delete()
+                .eq('id', reservaId);
+            if (error) throw error;
+            const { data: ev } = await supabaseClient.from('eventos').select('cupos').eq('id', eventoId).single();
+            if (ev && ev.cupos != null) {
+                const nuevoCupos = (ev.cupos || 0) + (dias || 1);
+                await supabaseClient.from('eventos').update({ cupos: nuevoCupos }).eq('id', eventoId);
+            }
+        } else {
+            eliminarReservaEventoLocal(reservaId, eventoId, dias);
+            return;
         }
         cargarReservasAdmin();
         cargarEventos();
         alert('Reservación eliminada. Se devolvió el cupo a la actividad.');
+    } catch (e) {
+        console.error(e);
+        alert('Error al eliminar la reservación.');
+    }
+}
+
+function eliminarReservaEventoLocal(reservaId, eventoId, dias) {
+    if (!confirm('¿Eliminar esta reservación? Se devolverá el cupo a la actividad.')) return;
+    try {
+        let reservas = JSON.parse(localStorage.getItem('youme_reservas_eventos') || '[]');
+        reservas = reservas.filter(r => String(r.id) !== String(reservaId));
+        localStorage.setItem('youme_reservas_eventos', JSON.stringify(reservas));
+        if (supabaseClient) {
+            supabaseClient.from('eventos').select('cupos').eq('id', eventoId).single().then(({ data: ev }) => {
+                if (ev && ev.cupos != null) {
+                    const nuevoCupos = (ev.cupos || 0) + (dias || 1);
+                    supabaseClient.from('eventos').update({ cupos: nuevoCupos }).eq('id', eventoId).then(() => {
+                        cargarReservasAdmin();
+                        cargarEventos();
+                        alert('Reservación eliminada. Se devolvió el cupo a la actividad.');
+                    });
+                } else {
+                    cargarReservasAdmin();
+                    cargarEventos();
+                    alert('Reservación eliminada.');
+                }
+            });
+        } else {
+            const eventos = JSON.parse(localStorage.getItem('youme_eventos') || '[]');
+            const idx = eventos.findIndex(e => String(e.id) === String(eventoId));
+            if (idx >= 0 && eventos[idx].cupos != null) {
+                eventos[idx].cupos = (eventos[idx].cupos || 0) + (dias || 1);
+                localStorage.setItem('youme_eventos', JSON.stringify(eventos));
+            }
+            cargarReservasAdmin();
+            cargarEventos();
+            alert('Reservación eliminada. Se devolvió el cupo a la actividad.');
+        }
     } catch (e) {
         console.error(e);
         alert('Error al eliminar la reservación.');
