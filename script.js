@@ -2104,7 +2104,7 @@ function inicializarTodo() {
     }
 }
 
-// Exponer funciones de eliminar en window para que los onclick del admin las encuentren
+// Exponer funciones de eliminar en window para que los onclick del admin las encuentren (deploy)
 window.eliminarReservaEvento = eliminarReservaEvento;
 window.eliminarReservaEventoLocal = eliminarReservaEventoLocal;
 window.eliminarReservaCumple = eliminarReservaCumple;
