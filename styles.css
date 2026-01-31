@@ -963,6 +963,36 @@ h1, h2, h3, h4 {
     border: 3px solid var(--turquoise);
 }
 
+.cumple-card.cumple-addon .cumple-addon-content {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    width: 100%;
+}
+
+.cumple-addon-image {
+    flex-shrink: 0;
+}
+
+.cumple-addon-info {
+    flex: 1;
+}
+
+.cumple-addon-info p {
+    color: var(--gray-medium);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .cumple-card.cumple-addon .cumple-addon-content {
+        flex-direction: column;
+    }
+    .cumple-addon-image img {
+        max-width: 100% !important;
+    }
+}
+
 .cumple-features ul {
     list-style: none;
     margin-top: 1rem;
