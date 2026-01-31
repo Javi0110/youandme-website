@@ -101,6 +101,35 @@ async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActivid
     }
 }
 
+async function enviarEmailConfirmacionCumple(detalles) {
+    const cfg = window.EMAILJS_CONFIG;
+    const email = detalles?.email;
+    if (!cfg || !cfg.publicKey || !cfg.serviceId || !email) return;
+    if (!cfg.templateIdCumple) {
+            console.log('EmailJS: añade templateIdCumple en index.html y crea la plantilla "Confirmación reserva cumpleaños" en EmailJS. Ver EMAILJS_SETUP.md');
+        return;
+    }
+    try {
+        if (typeof emailjs === 'undefined') return;
+        await emailjs.send(cfg.serviceId, cfg.templateIdCumple, {
+            to_email: email,
+            nombre_nino: detalles.nombreNino || '',
+            fecha: detalles.fecha || '',
+            contacto: detalles.contacto || '',
+            telefono: detalles.telefono || '',
+            horas: detalles.horas || '',
+            decoracion: detalles.decoracion || '',
+            equipo: detalles.equipo ? 'Sí' : 'No',
+            actividad: detalles.actividad || '',
+            num_ninos: detalles.numNinos || '0',
+            total: detalles.total != null ? '$' + detalles.total : '',
+            telefono_centro: '(787) 204-9041'
+        });
+    } catch (e) {
+        console.error('Error enviando email de confirmación (cumpleaños):', e);
+    }
+}
+
 // Variables globales para navegación
 let navMenu = null;
 
@@ -938,9 +967,10 @@ if (document.readyState === 'loading') {
 
 // Inicializar formularios cuando el DOM esté listo
 function inicializarFormularios() {
-    // Procesar reserva de cumpleaños
+    // Procesar reserva de cumpleaños (solo un listener para evitar reservas dobles)
     const reservarBtn = document.getElementById('reservarBtn');
-    if (reservarBtn) {
+    if (reservarBtn && !reservarBtn.dataset.reservaCumpleHandler) {
+        reservarBtn.dataset.reservaCumpleHandler = 'true';
         reservarBtn.addEventListener('click', async function() {
     const nombre = document.getElementById('cumpleNombre').value;
     const fecha = document.getElementById('cumpleFecha').value;
@@ -979,8 +1009,6 @@ function inicializarFormularios() {
         total
     };
     
-    const mensajePago = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
-
     try {
         if (supabaseClient) {
             const { error: errReserva } = await supabaseClient
@@ -1004,10 +1032,11 @@ function inicializarFormularios() {
                 console.error('Error guardando reserva cumple:', errReserva);
             }
         }
-        alert(`Reserva registrada para el cumpleaños de ${nombre}.\n\nTotal: $${total}\n\n${mensajePago}\n\nNos comunicaremos contigo para confirmar que la fecha esté disponible.`);
+        await enviarEmailConfirmacionCumple(detalles);
+        alert(`Reserva registrada para el cumpleaños de ${nombre}.\n\nTotal: $${total}\n\nNos comunicaremos contigo para confirmar que la fecha esté disponible.`);
     } catch (e) {
         console.error(e);
-        alert(`Reserva registrada.\n\nTotal: $${total}\n\n${mensajePago}\n\nNos comunicaremos contigo para confirmar que la fecha esté disponible.`);
+        alert(`Reserva registrada.\n\nTotal: $${total}\n\nNos comunicaremos contigo para confirmar que la fecha esté disponible.`);
     }
     console.log('Detalles de reserva:', detalles);
         });
