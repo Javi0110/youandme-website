@@ -403,6 +403,7 @@
                             <div class="cumple-carousel-viewport">
                                 <div class="cumple-carousel-track">
                                     <div class="cumple-carousel-slide"><img src="espacio-exclusivo.jpg" alt="Espacio Exclusivo You&Me"></div>
+                                    <div class="cumple-carousel-slide"><img src="espacio-exclusivo-salon.png" alt="Salón para eventos"></div>
                                 </div>
                             </div>
                             <button type="button" class="cumple-carousel-btn cumple-carousel-next" aria-label="Siguiente">›</button>
@@ -458,6 +459,7 @@
                                         <div class="cumple-carousel-slide">
                                             <video src="videos/decoracion%20elaborada.mp4" controls playsinline poster="decoracion-elaborada.png"></video>
                                         </div>
+                                        <div class="cumple-carousel-slide"><img src="decoracion-elaborada-cherry.png" alt="Decoración temática cherry on top"></div>
                                     </div>
                                 </div>
                                 <button type="button" class="cumple-carousel-btn cumple-carousel-next" aria-label="Siguiente">›</button>
@@ -532,16 +534,16 @@
                             <h4>Escoge una actividad (materiales incluidos):</h4>
                             <p style="margin-bottom: 1rem;">- Incluye 2 anfitriones durante toda la actividad</p>
                             <ul>
-                                <li><strong>Plasticina lista para usarse (Opción para toddlers)</strong> - $10</li>
-                                <li><strong>Hacer slime</strong> - $15</li>
-                                <li><strong>Hacer Friendship Bracelets</strong> - $15</li>
-                                <li><strong>Pintar en canvas</strong> - $20</li>
-                                <li><strong>Decorar gafas</strong> - $20</li>
-                                <li><strong>Decorar gorras</strong> - $20</li>
-                                <li><strong>Decorar carteras/tote bags</strong> - $20</li>
-                                <li><strong>Personalizar Jackets</strong> - $50</li>
+                                <li><strong>Plasticina lista para usarse (Opción para toddlers)</strong> - $50 (por 15 niños)</li>
+                                <li><strong>Hacer slime</strong> - $200 (por 15 niños)</li>
+                                <li><strong>Hacer Friendship Bracelets</strong> - $200 (por 15 niños)</li>
+                                <li><strong>Pintar en canvas</strong> - $200 (por 15 niños)</li>
+                                <li><strong>Decorar gafas</strong> - $200 (por 15 niños)</li>
+                                <li><strong>Decorar gorras</strong> - $200 (por 15 niños)</li>
+                                <li><strong>Decorar carteras/tote bags</strong> - $200 (por 15 niños)</li>
+                                <li><strong>Personalizar Jackets</strong> - $200 (por 15 niños)</li>
                             </ul>
-                            <p class="price-note" style="margin-top: 0.75rem;">* Precios por niño hasta 10 niños. Más de 10 niños: $5 de descuento por cada uno.</p>
+                            <p class="price-note" style="margin-top: 0.75rem;">* Precio por 15 niños. Niño adicional: $15</p>
                         </div>
                         
                         <!-- Carrusel de actividades extras (imágenes + videos: local o YouTube) -->
@@ -564,7 +566,7 @@
                         </div>
                         
                         <div class="cumple-pricing">
-                            <div class="price-main">$10–$50 <span>por niño</span></div>
+                            <div class="price-main">$50–$200 <span>(por 15 niños)</span></div>
                         </div>
                     </div>
                 </div>
@@ -631,20 +633,20 @@
                             <label>Actividad extra:</label>
                             <select id="cumpleActividad">
                                 <option value="none">Sin actividad</option>
-                                <option value="plasticina">Plasticina lista para usarse (Opción para toddlers) - $10</option>
-                                <option value="slime">Hacer slime - $15</option>
-                                <option value="friendship_bracelets">Hacer Friendship Bracelets - $15</option>
-                                <option value="canvas">Pintar en canvas - $20</option>
-                                <option value="gafas">Decorar gafas - $20</option>
-                                <option value="gorras">Decorar gorras - $20</option>
-                                <option value="carteras">Decorar carteras/tote bags - $20</option>
-                                <option value="jackets">Personalizar Jackets - $50</option>
+                                <option value="plasticina">Plasticina lista para usarse (Opción para toddlers) - $50 (por 15 niños)</option>
+                                <option value="slime">Hacer slime - $200 (por 15 niños)</option>
+                                <option value="friendship_bracelets">Hacer Friendship Bracelets - $200 (por 15 niños)</option>
+                                <option value="canvas">Pintar en canvas - $200 (por 15 niños)</option>
+                                <option value="gafas">Decorar gafas - $200 (por 15 niños)</option>
+                                <option value="gorras">Decorar gorras - $200 (por 15 niños)</option>
+                                <option value="carteras">Decorar carteras/tote bags - $200 (por 15 niños)</option>
+                                <option value="jackets">Personalizar Jackets - $200 (por 15 niños)</option>
                             </select>
                         </div>
 
                         <div class="form-group" id="numNinosGroup" style="display: none;">
-                            <label>Número de niños para la actividad:</label>
-                            <input type="number" id="cumpleNumNinos" min="1" value="1">
+                            <label>Número de niños (incluidos en precio base: 15; adicional: $15 c/u):</label>
+                            <input type="number" id="cumpleNumNinos" min="1" value="15">
                         </div>
 
                         <div class="total-display">

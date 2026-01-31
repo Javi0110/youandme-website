@@ -789,23 +789,28 @@ function calcularTotalCumpleanos() {
         total += 25;
     }
     
-    // Actividad extra: precios por niño (hasta 10); más de 10 = $5 descuento c/u
-    const PRECIOS_ACTIVIDAD = {
-        plasticina: 10,
-        slime: 15,
-        friendship_bracelets: 15,
-        canvas: 20,
-        gafas: 20,
-        gorras: 20,
-        carteras: 20,
-        jackets: 50
+    // Actividad extra: precio por 15 niños; plasticina $50, resto $200; niño adicional $15
+    const PRECIOS_ACTIVIDAD_BASE = {
+        plasticina: 50,
+        slime: 200,
+        friendship_bracelets: 200,
+        canvas: 200,
+        gafas: 200,
+        gorras: 200,
+        carteras: 200,
+        jackets: 200
     };
+    const NIÑOS_INCLUIDOS = 15;
+    const PRECIO_NIÑO_ADICIONAL = 15;
     const actividad = cumpleForm.actividad?.value;
     if (actividad && actividad !== 'none') {
-        const numNinos = parseInt(cumpleForm.numNinos?.value) || 1;
-        const precioBase = PRECIOS_ACTIVIDAD[actividad] || 15;
-        const precioPorNino = numNinos > 10 ? precioBase - 5 : precioBase;
-        total += numNinos * precioPorNino;
+        const numNinos = parseInt(cumpleForm.numNinos?.value) || NIÑOS_INCLUIDOS;
+        const precioBase = PRECIOS_ACTIVIDAD_BASE[actividad] || 200;
+        if (numNinos <= NIÑOS_INCLUIDOS) {
+            total += precioBase;
+        } else {
+            total += precioBase + (numNinos - NIÑOS_INCLUIDOS) * PRECIO_NIÑO_ADICIONAL;
+        }
     }
     
     if (cumpleForm.totalAmount) {
