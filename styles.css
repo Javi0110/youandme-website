@@ -833,7 +833,7 @@ h1, h2, h3, h4 {
     display: flex;
     align-items: center;
     gap: 1rem;
-    max-width: 450px;
+    max-width: 520px;
     margin: 0 auto;
 }
 
@@ -884,8 +884,8 @@ h1, h2, h3, h4 {
     height: 48px;
     border: none;
     border-radius: 50%;
-    background: var(--turquoise);
-    color: var(--white);
+    background: rgba(0,0,0,0.06);
+    color: var(--gray-medium);
     font-size: 2rem;
     line-height: 1;
     cursor: pointer;
@@ -897,7 +897,8 @@ h1, h2, h3, h4 {
 }
 
 .galeria-btn:hover {
-    background: #00b3a8;
+    background: rgba(0,0,0,0.12);
+    color: var(--gray-dark);
     transform: scale(1.05);
 }
 
@@ -1143,7 +1144,7 @@ h1, h2, h3, h4 {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    max-width: 320px;
+    max-width: 380px;
     margin: 0 auto;
 }
 
@@ -1194,8 +1195,8 @@ h1, h2, h3, h4 {
     height: 36px;
     border: none;
     border-radius: 50%;
-    background: var(--turquoise);
-    color: var(--white);
+    background: rgba(0,0,0,0.06);
+    color: var(--gray-medium);
     font-size: 1.5rem;
     line-height: 1;
     cursor: pointer;
@@ -1207,7 +1208,8 @@ h1, h2, h3, h4 {
 }
 
 .cumple-carousel-btn:hover {
-    background: #00b3a8;
+    background: rgba(0,0,0,0.12);
+    color: var(--gray-dark);
     transform: scale(1.08);
 }
 
@@ -1218,7 +1220,7 @@ h1, h2, h3, h4 {
 }
 
 .cumple-addon .cumple-mini-carousel {
-    max-width: 200px;
+    max-width: 240px;
 }
 
 @media (max-width: 768px) {
