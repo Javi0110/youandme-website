@@ -780,12 +780,14 @@ function calcularTotalCumpleanos() {
     const decoracion = parseInt(cumpleForm.decoracion?.value) || 0;
     total += decoracion;
     
-    // Equipo para toddlers $125; add-on Pretend play area +$25
+    // Equipo para toddlers $125
     if (cumpleForm.equipo?.checked) {
         total += 125;
-        if (cumpleForm.pretendPlay?.checked) {
-            total += 25;
-        }
+    }
+    
+    // Add-on Pretend play area +$25 (independiente del equipo)
+    if (cumpleForm.pretendPlay?.checked) {
+        total += 25;
     }
     
     // Actividad extra
@@ -826,10 +828,7 @@ function inicializarCalculadoraCumpleanos() {
         // Event listeners para calculadora
         cumpleForm.horas.addEventListener('input', calcularTotalCumpleanos);
         cumpleForm.decoracion.addEventListener('change', calcularTotalCumpleanos);
-        cumpleForm.equipo.addEventListener('change', function() {
-            if (!this.checked && cumpleForm.pretendPlay) cumpleForm.pretendPlay.checked = false;
-            calcularTotalCumpleanos();
-        });
+        cumpleForm.equipo.addEventListener('change', calcularTotalCumpleanos);
         if (cumpleForm.pretendPlay) {
             cumpleForm.pretendPlay.addEventListener('change', calcularTotalCumpleanos);
         }
