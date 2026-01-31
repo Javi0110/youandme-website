@@ -172,6 +172,26 @@ function navigateToPage(pageName) {
     if (navMenu) {
         navMenu.classList.remove('active');
     }
+    
+    // Actualizar URL para poder compartir enlaces (ej. sitio.com/#eventos)
+    if (pageName && pageName !== 'admin') {
+        history.replaceState(null, '', '#' + pageName);
+    }
+}
+
+// Aplicar URL al cargar: #eventos, ?reservar=san-valentin#eventos, etc.
+function aplicarUrlInicial() {
+    const hash = (window.location.hash || '').replace(/^#/, '');
+    const pageName = hash.split('?')[0];
+    const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
+    const reservar = params.get('reservar');
+    
+    if (pageName && document.getElementById(pageName) && pageName !== 'admin') {
+        navigateToPage(pageName);
+    }
+    if (pageName === 'eventos' && reservar) {
+        window.pendingReservarSlug = reservar;
+    }
 }
 
 // Flag para evitar agregar listeners múltiples veces
@@ -328,6 +348,18 @@ function mostrarEventos(eventos) {
         const card = crearEventoCard(evento);
         container.appendChild(card);
     });
+    
+    // Si se abrió el sitio con ?reservar=san-valentin#eventos, abrir el modal de ese evento
+    const slug = window.pendingReservarSlug;
+    if (slug && eventos.length > 0) {
+        window.pendingReservarSlug = null;
+        const slugToName = { 'san-valentin': 'San Valentín', 'san valentin': 'San Valentín' };
+        const nombreBuscar = slugToName[slug.toLowerCase()] || slug.replace(/-/g, ' ');
+        const evento = eventos.find(e => e.nombre && e.nombre.toLowerCase().includes(nombreBuscar.toLowerCase()));
+        if (evento) {
+            setTimeout(() => abrirModalEvento(evento.id), 300);
+        }
+    }
 }
 
 // Crear tarjeta de evento
@@ -2164,6 +2196,17 @@ function inicializarTodo() {
         
         // Cargar eventos (usa Supabase si está configurado, si no eventos.json)
         cargarEventos();
+        
+        // Aplicar URL inicial: si el usuario entró con #eventos o ?reservar=san-valentin#eventos, ir a esa página y abrir modal si aplica
+        aplicarUrlInicial();
+        
+        // Si el usuario cambia el hash manualmente (ej. escribe #eventos en la barra), navegar
+        window.addEventListener('hashchange', function() {
+            const pageName = (window.location.hash || '').replace(/^#/, '').split('?')[0];
+            if (pageName && pageName !== 'admin' && document.getElementById(pageName)) {
+                navigateToPage(pageName);
+            }
+        });
         
         // Configurar fecha mínima para el input de fecha
         const fechaInput = document.getElementById('cumpleFecha');
