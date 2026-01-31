@@ -686,8 +686,20 @@ function validarSeleccionFechas(diasRequeridos) {
     }
 }
 
+// Evitar doble envío en reservas de actividades
+let procesandoRsvpEvento = false;
+
 // Procesar RSVP de evento
 async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActividad) {
+    if (procesandoRsvpEvento) return;
+    procesandoRsvpEvento = true;
+
+    const btnConfirmar = document.querySelector('#eventoModal button[onclick*="procesarRsvpEvento"]');
+    if (btnConfirmar) {
+        btnConfirmar.disabled = true;
+        btnConfirmar.textContent = 'Enviando...';
+    }
+
     const nombreNino = document.getElementById('eventoNombreNino').value;
     const edadNino = document.getElementById('eventoEdadNino').value;
     const nombrePadre = document.getElementById('eventoNombrePadre').value;
@@ -696,6 +708,8 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
     
     if (!nombreNino || !edadNino || !nombrePadre || !email || !telefono) {
         alert('Por favor completa todos los campos.');
+        procesandoRsvpEvento = false;
+        if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = 'Confirmar y Pagar'; }
         return;
     }
     
@@ -714,6 +728,8 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
         
         if (checkboxes.length > 0 && checkboxes.length !== dias) {
             alert(`Por favor selecciona exactamente ${dias} ${dias === 1 ? 'día' : 'días'} de asistencia.`);
+            procesandoRsvpEvento = false;
+            if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = 'Confirmar y Pagar'; }
             return;
         }
         
@@ -767,6 +783,7 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
                 );
                 cerrarModal();
                 cargarEventos();
+                procesandoRsvpEvento = false;
                 return;
             }
             guardadoEnSupabase = true;
@@ -786,6 +803,12 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
     } catch (e) {
         console.error(e);
         alert(`Reserva registrada localmente.\n\nTotal: $${precioTotal}\n\n${mensajePago}`);
+    } finally {
+        procesandoRsvpEvento = false;
+        if (btnConfirmar) {
+            btnConfirmar.disabled = false;
+            btnConfirmar.textContent = 'Confirmar y Pagar';
+        }
     }
 
     cerrarModal();
