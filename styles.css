@@ -1440,6 +1440,14 @@ h1, h2, h3, h4 {
         flex-direction: column;
         text-align: center;
     }
+    .cumple-card .cumple-features,
+    .cumple-card .cumple-features ul,
+    .cumple-card .cumple-features li,
+    .package-card ul,
+    .package-card li,
+    .cumple-addon-info {
+        text-align: left;
+    }
 
     .form-row {
         grid-template-columns: 1fr;
