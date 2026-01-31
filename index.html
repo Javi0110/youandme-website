@@ -539,7 +539,7 @@
                             <p class="price-note" style="margin-top: 0.75rem;">* Precios por niño hasta 10 niños. Más de 10 niños: $5 de descuento por cada uno.</p>
                         </div>
                         
-                        <!-- Carrusel de actividades extras (para añadir video: use <div class="cumple-carousel-slide"><video src="tu-video.mp4" controls></video></div> o iframe de YouTube) -->
+                        <!-- Carrusel de actividades extras (imágenes + videos: local o YouTube) -->
                         <div class="cumple-mini-carousel" data-carousel="actividades-extras">
                             <button type="button" class="cumple-carousel-btn cumple-carousel-prev" aria-label="Anterior">‹</button>
                             <div class="cumple-carousel-viewport">
@@ -547,6 +547,16 @@
                                     <div class="cumple-carousel-slide"><img src="actividades-extra.jpg" alt="Actividades Extras"></div>
                                     <div class="cumple-carousel-slide"><img src="actividades-gafas-bracelets.png" alt="Decorar gafas y Friendship Bracelets"></div>
                                     <div class="cumple-carousel-slide"><img src="actividades-slime.png" alt="Hacer slime"></div>
+                                    <!-- Video local: coloca actividades-extras.mp4 en la carpeta videos/ -->
+                                    <div class="cumple-carousel-slide">
+                                        <video src="videos/actividades-extras.mp4" controls playsinline poster="actividades-extra.jpg"></video>
+                                    </div>
+                                    <!-- Video YouTube: reemplaza VIDEO_ID con el ID de tu video -->
+                                    <!--
+                                    <div class="cumple-carousel-slide">
+                                        <iframe src="https://www.youtube.com/embed/VIDEO_ID" title="Video actividades" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                    </div>
+                                    -->
                                 </div>
                             </div>
                             <button type="button" class="cumple-carousel-btn cumple-carousel-next" aria-label="Siguiente">›</button>
