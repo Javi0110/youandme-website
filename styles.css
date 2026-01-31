@@ -1013,6 +1013,20 @@ h1, h2, h3, h4 {
     }
 }
 
+.cumple-features .cumple-incluye,
+.cumple-features .cumple-opcion {
+    margin-bottom: 0.35rem;
+    color: #555;
+}
+.cumple-features .cumple-opciones-title {
+    font-weight: 600;
+    color: var(--gray-dark);
+    margin-bottom: 0.5rem;
+}
+.cumple-features .cumple-lista-actividades {
+    margin-top: 0.25rem;
+    margin-bottom: 0;
+}
 .cumple-features ul {
     list-style: none;
     margin-top: 1rem;
