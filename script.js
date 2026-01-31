@@ -94,7 +94,7 @@ async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActivid
             nombre_actividad: nombreActividad || '',
             total: total != null ? '$' + total : '',
             telefono_centro: '(787) 204-9041',
-            mensaje_pago: 'Realiza el pago a través de ATH Móvil al (787) 204-9041'
+            mensaje_pago: 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter'
         });
     } catch (e) {
         console.error('Error enviando email de confirmación (actividad):', e);
@@ -659,8 +659,7 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
         ? `\nFechas: ${fechasSeleccionadas.join(', ')}` 
         : '';
     
-    const TEL_CENTRO = '(787) 204-9041';
-    const mensajePago = `Realiza el pago a través de ATH Móvil al número del centro: ${TEL_CENTRO}`;
+    const mensajePago = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
 
     try {
         let guardadoEnSupabase = false;
@@ -697,7 +696,7 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
                 localStorage.setItem('youme_reservas_eventos', JSON.stringify(reservasLocales));
                 alert(
                     '¡Reservación exitosa!\n\n' +
-                    'Para completarla, por favor envía el monto de $' + precioTotal + ' a través de ATH Móvil al número del centro: ' + TEL_CENTRO + '\n\n' +
+                    'Para completarla, por favor envía el monto de $' + precioTotal + ' a través de ATH Móvil: Pay a business → YouandMeCenter\n\n' +
                     'Te contactaremos para confirmar tu reserva.'
                 );
                 cerrarModal();
@@ -906,6 +905,35 @@ function inicializarGaleriaCelebra() {
     });
 }
 
+// Mini carruseles en cada área de Celebra (Espacio, Decoración, Equipo, Actividades Extras)
+function inicializarMiniCarouseles() {
+    document.querySelectorAll('.cumple-mini-carousel').forEach(carousel => {
+        const track = carousel.querySelector('.cumple-carousel-track');
+        const prevBtn = carousel.querySelector('.cumple-carousel-prev');
+        const nextBtn = carousel.querySelector('.cumple-carousel-next');
+        if (!track || !prevBtn || !nextBtn) return;
+
+        const slides = track.querySelectorAll('.cumple-carousel-slide');
+        const total = slides.length;
+        if (total <= 1) return;
+
+        let index = 0;
+
+        function goTo(i) {
+            index = ((i % total) + total) % total;
+            track.style.transform = `translateX(-${index * 100}%)`;
+            // Pausar videos al cambiar de slide
+            slides.forEach((s, j) => {
+                const video = s.querySelector('video');
+                if (video && j !== index) video.pause();
+            });
+        }
+
+        prevBtn.addEventListener('click', () => goTo(index - 1));
+        nextBtn.addEventListener('click', () => goTo(index + 1));
+    });
+}
+
 // Ejecutar cuando el DOM esté listo
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inicializarCalculadoraCumpleanos);
@@ -957,8 +985,7 @@ function inicializarFormularios() {
         total
     };
     
-    const TEL_CENTRO = '(787) 204-9041';
-    const mensajePago = `Realiza el pago a través de ATH Móvil al número del centro: ${TEL_CENTRO}`;
+    const mensajePago = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
 
     try {
         if (supabaseClient) {
@@ -2088,6 +2115,8 @@ function inicializarTodo() {
         
         // Inicializar carrusel de galería (Celebra)
         inicializarGaleriaCelebra();
+        // Inicializar mini carruseles de cada área (Espacio, Decoración, Equipo, Actividades Extras)
+        inicializarMiniCarouseles();
         
         // Asegurar que Supabase esté inicializado ANTES de cargar eventos
         inicializarSupabase();
