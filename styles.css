@@ -1065,6 +1065,19 @@ h1, h2, h3, h4 {
     color: var(--gray-medium);
 }
 
+/* En móvil: "(por 15 niños)" debajo de "$50–$200" en una sola línea */
+@media (max-width: 768px) {
+    .price-main.price-actividad-extra {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+    .price-main.price-actividad-extra .price-actividad-extra-note {
+        display: block;
+        white-space: nowrap;
+    }
+}
+
 .price-note {
     color: var(--gray-medium);
     font-size: 0.9rem;

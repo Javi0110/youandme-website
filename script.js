@@ -1004,10 +1004,10 @@ function inicializarFormularios() {
                 console.error('Error guardando reserva cumple:', errReserva);
             }
         }
-        alert(`Reserva registrada para el cumpleaños de ${nombre}.\n\nTotal: $${total}\n\n${mensajePago}`);
+        alert(`Reserva registrada para el cumpleaños de ${nombre}.\n\nTotal: $${total}\n\n${mensajePago}\n\nNos comunicaremos contigo para confirmar que la fecha esté disponible.`);
     } catch (e) {
         console.error(e);
-        alert(`Reserva registrada.\n\nTotal: $${total}\n\n${mensajePago}`);
+        alert(`Reserva registrada.\n\nTotal: $${total}\n\n${mensajePago}\n\nNos comunicaremos contigo para confirmar que la fecha esté disponible.`);
     }
     console.log('Detalles de reserva:', detalles);
         });
