@@ -179,14 +179,19 @@ function navigateToPage(pageName) {
     }
 }
 
-// Aplicar URL al cargar: #eventos, ?reservar=san-valentin#eventos, etc.
-function aplicarUrlInicial() {
+// Leer página y parámetros desde la URL (#eventos, ?reservar=san-valentin#eventos)
+function leerUrlActual() {
     const hash = (window.location.hash || '').replace(/^#/, '');
-    const pageName = hash.split('?')[0];
-    const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
+    const pageName = hash.split('?')[0].trim();
+    const params = new URLSearchParams(window.location.search || (hash.indexOf('?') >= 0 ? hash.split('?')[1] || '' : ''));
     const reservar = params.get('reservar');
-    
-    if (pageName && document.getElementById(pageName) && pageName !== 'admin') {
+    return { pageName: pageName || null, reservar: reservar || null };
+}
+
+// Aplicar URL al cargar: ir a la página del hash y, si aplica, marcar reserva pendiente
+function aplicarUrlInicial() {
+    const { pageName, reservar } = leerUrlActual();
+    if (pageName && document.getElementById(pageName) && pageName !== 'admin' && typeof navigateToPage === 'function') {
         navigateToPage(pageName);
     }
     if (pageName === 'eventos' && reservar) {
@@ -2158,20 +2163,34 @@ function filtrarSolicitudes(filtro) {
 // Cargar eventos al cargar la página
 function inicializarTodo() {
     try {
-        // Asegurar que solo la página de inicio esté activa al inicio
+        // Leer URL antes de mostrar nada (en móvil el hash a veces llega con la URL)
+        const { pageName: urlPage, reservar: urlReservar } = leerUrlActual();
+        const paginasValidas = ['inicio', 'servicios', 'eventos', 'cumpleanos', 'contacto'];
+        const paginaInicial = (urlPage && paginasValidas.indexOf(urlPage) >= 0 && document.getElementById(urlPage)) ? urlPage : 'inicio';
+        if (urlPage === 'eventos' && urlReservar) {
+            window.pendingReservarSlug = urlReservar;
+        }
+
+        // Mostrar solo la página que corresponde a la URL (o inicio)
         const allPages = document.querySelectorAll('.page-content');
         allPages.forEach(page => {
             page.classList.remove('active');
             page.style.setProperty('display', 'none', 'important');
         });
-        const inicioPage = document.getElementById('inicio');
-        if (inicioPage) {
-            inicioPage.classList.add('active');
-            inicioPage.style.setProperty('display', 'block', 'important');
+        const paginaAMostrar = document.getElementById(paginaInicial);
+        if (paginaAMostrar) {
+            paginaAMostrar.classList.add('active');
+            paginaAMostrar.style.setProperty('display', 'block', 'important');
         }
-        
+
         // Inicializar navegación PRIMERO (esto es crítico para que los botones funcionen)
         inicializarNavegacion();
+
+        // Actualizar qué enlace del menú está activo según la página mostrada
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+            if (link.dataset.page === paginaInicial) link.classList.add('active');
+        });
         
         // Inicializar modales
         inicializarModales();
@@ -2197,12 +2216,18 @@ function inicializarTodo() {
         // Cargar eventos (usa Supabase si está configurado, si no eventos.json)
         cargarEventos();
         
-        // Aplicar URL inicial: si el usuario entró con #eventos o ?reservar=san-valentin#eventos, ir a esa página y abrir modal si aplica
+        // Aplicar URL por si el hash llegó después (común en móvil)
         aplicarUrlInicial();
-        
-        // Si el usuario cambia el hash manualmente (ej. escribe #eventos en la barra), navegar
+        setTimeout(aplicarUrlInicial, 0);
+        setTimeout(aplicarUrlInicial, 100);
+        window.addEventListener('load', function onLoad() {
+            aplicarUrlInicial();
+            window.removeEventListener('load', onLoad);
+        });
+
+        // Si el usuario cambia el hash (p. ej. al tocar un enlace o volver atrás), navegar
         window.addEventListener('hashchange', function() {
-            const pageName = (window.location.hash || '').replace(/^#/, '').split('?')[0];
+            const { pageName } = leerUrlActual();
             if (pageName && pageName !== 'admin' && document.getElementById(pageName)) {
                 navigateToPage(pageName);
             }
