@@ -784,11 +784,6 @@ function calcularTotalCumpleanos() {
         total += 125;
     }
     
-    // Add-on Pretend play area +$25 (independiente del equipo)
-    if (cumpleForm.pretendPlay?.checked) {
-        total += 25;
-    }
-    
     // Actividad extra: precio por 15 niños; plasticina $50, resto $200; niño adicional $15
     const PRECIOS_ACTIVIDAD_BASE = {
         plasticina: 50,
@@ -824,7 +819,6 @@ function inicializarCalculadoraCumpleanos() {
     const horas = document.getElementById('cumpleHoras');
     const decoracion = document.getElementById('cumpleDecoracion');
     const equipo = document.getElementById('cumpleEquipo');
-    const pretendPlay = document.getElementById('cumplePretendPlay');
     const actividad = document.getElementById('cumpleActividad');
     const numNinos = document.getElementById('cumpleNumNinos');
     const totalAmount = document.getElementById('totalAmount');
@@ -835,7 +829,6 @@ function inicializarCalculadoraCumpleanos() {
             horas: horas,
             decoracion: decoracion,
             equipo: equipo,
-            pretendPlay: pretendPlay || null,
             actividad: actividad,
             numNinos: numNinos,
             totalAmount: totalAmount
@@ -845,9 +838,6 @@ function inicializarCalculadoraCumpleanos() {
         cumpleForm.horas.addEventListener('input', calcularTotalCumpleanos);
         cumpleForm.decoracion.addEventListener('change', calcularTotalCumpleanos);
         cumpleForm.equipo.addEventListener('change', calcularTotalCumpleanos);
-        if (cumpleForm.pretendPlay) {
-            cumpleForm.pretendPlay.addEventListener('change', calcularTotalCumpleanos);
-        }
         cumpleForm.actividad.addEventListener('change', function() {
             const numNinosGroup = document.getElementById('numNinosGroup');
             if (numNinosGroup) {
@@ -984,7 +974,6 @@ function inicializarFormularios() {
         horas: cumpleForm.horas.value,
         decoracion: cumpleForm.decoracion.options[cumpleForm.decoracion.selectedIndex].text,
         equipo: cumpleForm.equipo.checked,
-        pretendPlay: cumpleForm.pretendPlay?.checked || false,
         actividad: cumpleForm.actividad.value !== 'none' ? cumpleForm.actividad.options[cumpleForm.actividad.selectedIndex].text : 'Ninguna',
         numNinos: cumpleForm.actividad.value !== 'none' ? cumpleForm.numNinos.value : 0,
         total
@@ -1005,7 +994,7 @@ function inicializarFormularios() {
                     horas: detalles.horas,
                     decoracion: detalles.decoracion,
                     equipo: detalles.equipo,
-                    pretend_play: detalles.pretendPlay,
+                    pretend_play: false,
                     actividad: detalles.actividad,
                     num_ninos: detalles.numNinos || 0,
                     total: detalles.total,
@@ -1053,10 +1042,25 @@ function abrirModalServicio(nombreServicio) {
     const servicioInput = document.getElementById('servicioNombre');
     const titulo = document.getElementById('servicioTitulo');
     const emailSubject = document.getElementById('emailSubject');
+    const tipoCoberturaSelect = document.getElementById('servicioTipoCobertura');
     
     servicioInput.value = nombreServicio;
     titulo.textContent = `Solicitar ${nombreServicio}`;
     emailSubject.value = `Nueva Solicitud: ${nombreServicio}`;
+    
+    // Opciones de tipo de cobertura: Terapia Ocupacional incluye Plan Medico (Triple S Vital); el resto no
+    const opts = [
+        { value: '', text: 'Selecciona una opción' },
+        { value: 'Remedio provisional', text: 'Remedio provisional' },
+        { value: 'Servicio privado', text: 'Servicio privado' }
+    ];
+    if (nombreServicio === 'Terapia Ocupacional') {
+        opts.splice(2, 0, { value: 'Plan Medico (Triple S Vital)', text: 'Plan Medico (Triple S Vital)' });
+    }
+    if (tipoCoberturaSelect) {
+        tipoCoberturaSelect.innerHTML = opts.map(o => `<option value="${o.value}">${o.text}</option>`).join('');
+    }
+    
     modal.style.display = 'block';
 }
 
