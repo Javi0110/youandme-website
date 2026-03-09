@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.reservas_eventos (
     telefono text,
     dias int DEFAULT 1,
     total numeric DEFAULT 0,
+    comentarios_admin text,
     pagado boolean DEFAULT false,
     created_at timestamptz DEFAULT now()
 );
@@ -35,6 +36,7 @@ CREATE TABLE IF NOT EXISTS public.reservas_cumple (
     actividad text,
     num_ninos int DEFAULT 0,
     total numeric DEFAULT 0,
+    comentarios_admin text,
     pagado boolean DEFAULT false,
     created_at timestamptz DEFAULT now()
 );
@@ -48,3 +50,20 @@ CREATE POLICY "Allow all for reservas_eventos" ON public.reservas_eventos FOR AL
 
 DROP POLICY IF EXISTS "Allow all for reservas_cumple" ON public.reservas_cumple;
 CREATE POLICY "Allow all for reservas_cumple" ON public.reservas_cumple FOR ALL USING (true) WITH CHECK (true);
+
+-- Añadir comentarios_admin si no existe (migración segura)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reservas_eventos' AND column_name = 'comentarios_admin'
+    ) THEN
+        ALTER TABLE public.reservas_eventos ADD COLUMN comentarios_admin text;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'reservas_cumple' AND column_name = 'comentarios_admin'
+    ) THEN
+        ALTER TABLE public.reservas_cumple ADD COLUMN comentarios_admin text;
+    END IF;
+END $$;

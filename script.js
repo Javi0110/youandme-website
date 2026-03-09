@@ -1978,13 +1978,17 @@ async function cargarReservasAdmin() {
                 const nombreActividad = eventosMap[r.evento_id] || 'Actividad';
                 const eventoIdEsc = String(r.evento_id || '').replace(/'/g, "\\'");
                 const diasVal = r.dias ?? 1;
+                const comentario = r.comentarios_admin || '';
                 html += `
                     <div class="evento-admin-item" style="margin-bottom: 1rem;">
                         <div class="evento-admin-info">
                             <p><strong>${nombreActividad}</strong></p>
                             <p>Niño/a: ${r.nombre_nino || '-'} | Padre: ${r.nombre_padre || '-'}</p>
                             <p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p>
-                            <p>Total: $${r.total ?? '-'} | Días: ${diasVal}</p>
+                            <p><strong>Días reservados:</strong> ${diasVal}</p>
+                            <p><strong>Total:</strong> $${r.total ?? '-'}</p>
+                            <p><strong>Comentarios (solo admin):</strong></p>
+                            <textarea class="reserva-comentario-admin" data-reserva-id="${r.id}" data-reserva-tipo="evento" rows="2" style="width:100%; padding:0.35rem 0.5rem; border-radius:6px; border:1px solid #ddd; font-size:0.9rem;" placeholder="Notas internas sobre esta reserva (no se envían al cliente).">${comentario}</textarea>
                         </div>
                         <div class="evento-admin-actions" style="align-items: center; gap: 0.5rem; display: flex; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
@@ -2009,6 +2013,7 @@ async function cargarReservasAdmin() {
                 const matchAct = actTexto.match(/\$([0-9]+)/);
                 const precioAct = matchAct ? `$${matchAct[1]}` : '$0';
                 const precioEquipo = r.equipo ? '$125' : '$0';
+                const comentario = r.comentarios_admin || '';
 
                 html += `
                     <div class="evento-admin-item" style="margin-bottom: 1rem;">
@@ -2021,6 +2026,8 @@ async function cargarReservasAdmin() {
                             <p><strong>Equipo para Toddlers:</strong> ${r.equipo ? `Sí (${precioEquipo})` : 'No ($0)'}</p>
                             <p><strong>Actividad extra:</strong> ${actTexto}${r.num_ninos != null ? ` (niños: ${r.num_ninos})` : ''}${precioAct ? ` - ${precioAct}` : ''}</p>
                             <p><strong>Total:</strong> $${r.total ?? '-'}</p>
+                            <p><strong>Comentarios (solo admin):</strong></p>
+                            <textarea class="reserva-comentario-admin" data-reserva-id="${r.id}" data-reserva-tipo="cumple" rows="2" style="width:100%; padding:0.35rem 0.5rem; border-radius:6px; border:1px solid #ddd; font-size:0.9rem;" placeholder="Notas internas sobre esta reserva (no se envían al cliente).">${comentario}</textarea>
                         </div>
                         <div class="evento-admin-actions" style="align-items: center; gap: 0.5rem; display: flex; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
@@ -2039,6 +2046,27 @@ async function cargarReservasAdmin() {
             return;
         }
         container.innerHTML = html;
+
+        // Guardar comentarios de admin para reservas en Supabase
+        if (supabaseClient) {
+            const reservaTextareas = container.querySelectorAll('.reserva-comentario-admin');
+            reservaTextareas.forEach(textarea => {
+                textarea.addEventListener('input', async () => {
+                    const id = textarea.dataset.reservaId;
+                    const tipo = textarea.dataset.reservaTipo;
+                    const texto = textarea.value;
+                    const tabla = tipo === 'cumple' ? 'reservas_cumple' : 'reservas_eventos';
+                    try {
+                        await supabaseClient
+                            .from(tabla)
+                            .update({ comentarios_admin: texto })
+                            .eq('id', id);
+                    } catch (e) {
+                        console.error('Error guardando comentarios_admin de reserva:', e);
+                    }
+                });
+            });
+        }
     } catch (error) {
         console.error('Error cargando reservas:', error);
         container.innerHTML = '<div class="no-data">Error al cargar reservas. Si acabas de añadir las tablas en Supabase, ejecuta el SQL de reservas_eventos y reservas_cumple.</div>';
