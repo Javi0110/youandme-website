@@ -731,24 +731,24 @@
 
                     <!-- Admin Tabs -->
                     <div class="admin-tabs">
-                        <button class="admin-tab-btn active" data-tab="actividades" onclick="mostrarTabAdmin('actividades')">
-                            Administrar Actividades
-                        </button>
-                        <button class="admin-tab-btn" data-tab="reservas" onclick="mostrarTabAdmin('reservas')">
+                        <button class="admin-tab-btn active" data-tab="reservas" onclick="mostrarTabAdmin('reservas')">
                             Reservas
                         </button>
-                        <button class="admin-tab-btn" data-tab="disponibilidad" onclick="mostrarTabAdmin('disponibilidad')">
-                            Disponibilidad
-                        </button>
                         <button class="admin-tab-btn" data-tab="solicitudes" onclick="mostrarTabAdmin('solicitudes')">
-                            Solicitudes de Servicio
+                            Solicitudes de servicios
+                        </button>
+                        <button class="admin-tab-btn" data-tab="actividades" onclick="mostrarTabAdmin('actividades')">
+                            Manejar actividades
+                        </button>
+                        <button class="admin-tab-btn" data-tab="disponibilidad" onclick="mostrarTabAdmin('disponibilidad')">
+                            Manejar disponibilidades
                         </button>
                     </div>
 
                     <!-- Tab: Administrar Actividades -->
-                    <div id="tabActividades" class="admin-tab-content active">
+                    <div id="tabActividades" class="admin-tab-content">
                         <div class="admin-section">
-                            <h3>Gestionar Actividades del Calendario</h3>
+                            <h3>Manejar actividades</h3>
                             
                             <button onclick="mostrarFormularioEvento()" class="btn btn-primary" style="margin-bottom: 2rem;">
                                 + Agregar Nueva Actividad
@@ -816,9 +816,9 @@
                     </div>
 
                     <!-- Tab: Reservas (actividades y cumpleaños) -->
-                    <div id="tabReservas" class="admin-tab-content">
+                    <div id="tabReservas" class="admin-tab-content active">
                         <div class="admin-section">
-                            <h3>Reservas por actividad y cumpleaños</h3>
+                            <h3>Reservas</h3>
                             <p style="color: #666; margin-bottom: 1rem;">Marca el checkbox cuando la persona haya pagado (vía ATH Móvil: Pay a business → YouandMeCenter).</p>
                             <div id="listaReservasAdmin"></div>
                         </div>
@@ -827,11 +827,11 @@
                     <!-- Tab: Disponibilidad (servicios y celebraciones) -->
                     <div id="tabDisponibilidad" class="admin-tab-content">
                         <div class="admin-section">
-                            <h3>Disponibilidad de servicios y celebraciones</h3>
+                            <h3>Manejar disponibilidades</h3>
 
                             <!-- Disponibilidad servicios de terapia -->
                             <div class="admin-form-container">
-                                <h4>Servicios de Terapia</h4>
+                                <h4>Disponibilidad de servicios de terapia</h4>
                                 <form id="formDisponibilidadServicios">
                                     <div class="form-row">
                                         <div class="form-group">
@@ -869,7 +869,7 @@
 
                             <!-- Disponibilidad celebraciones -->
                             <div class="admin-form-container" style="margin-top:2rem;">
-                                <h4>Celebraciones (Cumpleaños)</h4>
+                                <h4>Disponibilidad de celebraciones (cumpleaños)</h4>
                                 <p style="color:#666; margin-bottom:0.75rem;">Bloques sugeridos: viernes 3:00–7:00 PM y sábados/domingos 11:00 AM–6:00 PM, cada :00 y :30.</p>
                                 <form id="formDisponibilidadCumple">
                                     <div class="form-row">
@@ -896,7 +896,7 @@
                     <!-- Tab: Solicitudes de Servicio -->
                     <div id="tabSolicitudes" class="admin-tab-content">
                         <div class="admin-section">
-                            <h3>Solicitudes de Servicio Recibidas</h3>
+                            <h3>Solicitudes de servicios</h3>
                             <p style="color: #666; margin-bottom: 1rem;">
                                 Las solicitudes también se envían a tu email: centroyouandme@gmail.com
                             </p>

@@ -1496,8 +1496,8 @@ window.navigateToPage = async function(pageName) {
         if (tieneSesion) {
             document.getElementById('adminLogin').style.display = 'none';
             document.getElementById('adminDashboard').style.display = 'block';
-            cargarEventosAdmin();
-            cargarSolicitudesAdmin();
+            // Por defecto, mostrar pestaña de Reservas
+            mostrarTabAdmin('reservas');
         } else {
             document.getElementById('adminLogin').style.display = 'block';
             document.getElementById('adminDashboard').style.display = 'none';
