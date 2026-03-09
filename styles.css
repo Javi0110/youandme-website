@@ -1065,6 +1065,82 @@ h1, h2, h3, h4 {
     color: var(--gray-medium);
 }
 
+/* Calendario personalizado para cumpleaños */
+.calendario-cumple {
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    padding: 0.75rem 0.75rem 0.5rem;
+    max-width: 320px;
+    font-size: 0.9rem;
+}
+.calendario-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+.calendario-header span {
+    font-weight: 600;
+    color: var(--gray-dark);
+}
+.calendario-nav-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.15rem 0.35rem;
+    border-radius: 999px;
+}
+.calendario-nav-btn:hover {
+    background: rgba(0,0,0,0.05);
+}
+.calendario-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.15rem;
+}
+.calendario-dia-header {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray-medium);
+}
+.calendario-dia {
+    text-align: center;
+    padding: 0.3rem 0;
+    border-radius: 8px;
+    cursor: default;
+    font-size: 0.8rem;
+    color: var(--gray-medium);
+}
+.calendario-dia.vacio {
+    visibility: hidden;
+}
+.calendario-dia.disponible {
+    cursor: pointer;
+    background: #e6f7ed;
+    color: #1b7b3f;
+    font-weight: 600;
+}
+.calendario-dia.disponible:hover {
+    background: #c9f0da;
+}
+.calendario-dia.seleccionado {
+    background: #1b7b3f;
+    color: #ffffff;
+}
+.calendario-dia.no-disponible {
+    cursor: default;
+    background: #f4f4f4;
+    color: #bbbbbb;
+}
+
+.calendario-servicio {
+    max-width: 260px;
+    font-size: 0.8rem;
+}
+
 /* En móvil: "(por 15 niños)" debajo de "$50–$200" en una sola línea */
 @media (max-width: 768px) {
     .price-main.price-actividad-extra {

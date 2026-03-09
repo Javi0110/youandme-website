@@ -133,10 +133,14 @@ async function enviarEmailConfirmacionCumple(detalles) {
 // Cargar bloques de disponibilidad para un servicio concreto
 async function cargarSlotsServicio(nombreServicio) {
     const slotSelect = document.getElementById('servicioSlot');
+    const contCalendario = document.getElementById('servicioCalendario');
     if (!slotSelect) return;
     if (!supabaseClient) {
         slotSelect.innerHTML = '<option value="">Calendario no disponible en este momento</option>';
         slotSelect.required = false;
+        if (contCalendario) {
+            contCalendario.innerHTML = '<p style="color:#666; font-size:0.8rem;">Calendario no disponible.</p>';
+        }
         return;
     }
     try {
@@ -154,6 +158,9 @@ async function cargarSlotsServicio(nombreServicio) {
         if (filas.length === 0) {
             slotSelect.innerHTML = '<option value="">No hay espacios disponibles para este servicio</option>';
             slotSelect.required = false;
+            if (contCalendario) {
+                contCalendario.innerHTML = '<p style="color:#666; font-size:0.8rem;">No hay fechas con disponibilidad para este servicio.</p>';
+            }
             return;
         }
         slotSelect.required = true;
@@ -162,10 +169,18 @@ async function cargarSlotsServicio(nombreServicio) {
                 const texto = formatearFechaHoraSlot(f.fecha, f.hora);
                 return `<option value="${f.id}">${texto}</option>`;
             }).join('');
+
+        // Renderizar mini-calendario indicador para este servicio
+        if (contCalendario) {
+            renderizarCalendarioServicio(filas, contCalendario);
+        }
     } catch (e) {
         console.error('Error cargando slots de servicio:', e);
         slotSelect.innerHTML = '<option value="">No se pudo cargar la disponibilidad</option>';
         slotSelect.required = false;
+        if (contCalendario) {
+            contCalendario.innerHTML = '<p style="color:#666; font-size:0.8rem;">Error al cargar el calendario.</p>';
+        }
     }
 }
 
@@ -215,6 +230,105 @@ async function cargarSlotsCumpleParaFecha(fechaISO) {
         aviso.style.display = 'block';
         aviso.textContent = 'Error al cargar los horarios disponibles.';
     }
+}
+
+// ==================== CALENDARIO PERSONALIZADO CUMPLEAÑOS ====================
+
+function renderizarCalendarioCumple() {
+    const cont = document.getElementById('cumpleCalendario');
+    const inputFecha = document.getElementById('cumpleFecha');
+    if (!cont || !inputFecha) return;
+
+    // Fecha base: mes actual o fecha seleccionada
+    const hoy = new Date();
+    const fechaSel = inputFecha.value ? new Date(inputFecha.value) : hoy;
+    let year = fechaSel.getFullYear();
+    let month = fechaSel.getMonth(); // 0-11
+
+    function actualizar() {
+        if (!supabaseClient) {
+            cont.innerHTML = '<p style="color:#666; font-size:0.85rem;">Calendario no disponible. Por favor elige cualquier fecha y te contactaremos para coordinar.</p>';
+            return;
+        }
+        const primerDiaMes = new Date(year, month, 1);
+        const ultimoDiaMes = new Date(year, month + 1, 0);
+        const inicioISO = primerDiaMes.toISOString().split('T')[0];
+        const finISO = ultimoDiaMes.toISOString().split('T')[0];
+
+        supabaseClient
+            .from('disponibilidad_cumple')
+            .select('fecha, disponible')
+            .eq('disponible', true)
+            .gte('fecha', inicioISO)
+            .lte('fecha', finISO)
+            .then(({ data, error }) => {
+                if (error) {
+                    console.error('Error cargando disponibilidad para calendario:', error);
+                    cont.innerHTML = '<p style="color:#666; font-size:0.85rem;">Error al cargar el calendario.</p>';
+                    return;
+                }
+                const fechasDisponibles = new Set((data || []).map(f => f.fecha));
+
+                const nombresMes = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+                const header = `
+                    <div class="calendario-header">
+                        <button type="button" class="calendario-nav-btn" data-dir="-1">‹</button>
+                        <span>${nombresMes[month]} ${year}</span>
+                        <button type="button" class="calendario-nav-btn" data-dir="1">›</button>
+                    </div>
+                `;
+                const diasSemana = ['L','M','X','J','V','S','D'];
+                let grid = '<div class="calendario-grid">';
+                diasSemana.forEach(d => {
+                    grid += `<div class="calendario-dia-header">${d}</div>`;
+                });
+                const offset = (primerDiaMes.getDay() + 6) % 7; // Lunes=0
+                for (let i = 0; i < offset; i++) {
+                    grid += '<div class="calendario-dia vacio"></div>';
+                }
+                const hoyISO = hoy.toISOString().split('T')[0];
+                for (let d = 1; d <= ultimoDiaMes.getDate(); d++) {
+                    const fechaActual = new Date(year, month, d);
+                    const iso = fechaActual.toISOString().split('T')[0];
+                    const esFuturo = iso >= hoyISO;
+                    const tieneSlots = fechasDisponibles.has(iso);
+                    let clases = 'calendario-dia';
+                    if (tieneSlots && esFuturo) {
+                        clases += ' disponible';
+                        if (inputFecha.value === iso) clases += ' seleccionado';
+                    } else {
+                        clases += ' no-disponible';
+                    }
+                    grid += `<div class="${clases}" data-fecha="${iso}">${d}</div>`;
+                }
+                grid += '</div>';
+                cont.innerHTML = header + grid;
+
+                // Navegación de mes
+                cont.querySelectorAll('.calendario-nav-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const dir = parseInt(btn.dataset.dir, 10);
+                        month += dir;
+                        if (month < 0) { month = 11; year--; }
+                        if (month > 11) { month = 0; year++; }
+                        actualizar();
+                    });
+                });
+
+                // Selección de día
+                cont.querySelectorAll('.calendario-dia.disponible').forEach(diaEl => {
+                    diaEl.addEventListener('click', () => {
+                        const iso = diaEl.dataset.fecha;
+                        inputFecha.value = iso;
+                        cont.querySelectorAll('.calendario-dia.disponible').forEach(el => el.classList.remove('seleccionado'));
+                        diaEl.classList.add('seleccionado');
+                        cargarSlotsCumpleParaFecha(iso);
+                    });
+                });
+            });
+    }
+
+    actualizar();
 }
 
 // Formatear fecha y hora para mostrar en selects
@@ -1235,6 +1349,74 @@ function inicializarFormularios() {
             this.reset();
         });
     }
+}
+
+// Calendario indicador para servicios (muestra en verde días con al menos un bloque)
+function renderizarCalendarioServicio(filas, cont) {
+    if (!cont) return;
+    if (!filas || filas.length === 0) {
+        cont.innerHTML = '<p style="color:#666; font-size:0.8rem;">No hay disponibilidad cargada.</p>';
+        return;
+    }
+    // Obtener mes/año base desde la primera fila
+    const primera = filas[0];
+    const baseFecha = new Date(primera.fecha);
+    let year = baseFecha.getFullYear();
+    let month = baseFecha.getMonth();
+
+    const fechasSet = new Set(filas.map(f => f.fecha));
+
+    const nombresMes = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const diasSemana = ['L','M','X','J','V','S','D'];
+
+    function actualizar() {
+        const primerDiaMes = new Date(year, month, 1);
+        const ultimoDiaMes = new Date(year, month + 1, 0);
+        const hoyISO = new Date().toISOString().split('T')[0];
+
+        const header = `
+            <div class="calendario-header">
+                <button type="button" class="calendario-nav-btn" data-dir="-1">‹</button>
+                <span>${nombresMes[month]} ${year}</span>
+                <button type="button" class="calendario-nav-btn" data-dir="1">›</button>
+            </div>
+        `;
+        let grid = '<div class="calendario-grid">';
+        diasSemana.forEach(d => {
+            grid += `<div class="calendario-dia-header">${d}</div>`;
+        });
+        const offset = (primerDiaMes.getDay() + 6) % 7;
+        for (let i = 0; i < offset; i++) {
+            grid += '<div class="calendario-dia vacio"></div>';
+        }
+        for (let d = 1; d <= ultimoDiaMes.getDate(); d++) {
+            const fechaActual = new Date(year, month, d);
+            const iso = fechaActual.toISOString().split('T')[0];
+            const esFuturo = iso >= hoyISO;
+            const tiene = fechasSet.has(iso) && esFuturo;
+            let clases = 'calendario-dia';
+            if (tiene) {
+                clases += ' disponible';
+            } else {
+                clases += ' no-disponible';
+            }
+            grid += `<div class="${clases}">${d}</div>`;
+        }
+        grid += '</div>';
+        cont.innerHTML = header + grid;
+
+        cont.querySelectorAll('.calendario-nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const dir = parseInt(btn.dataset.dir, 10);
+                month += dir;
+                if (month < 0) { month = 11; year--; }
+                if (month > 11) { month = 0; year++; }
+                actualizar();
+            });
+        });
+    }
+
+    actualizar();
 }
 
 // Ejecutar cuando el DOM esté listo
@@ -2514,6 +2696,8 @@ function inicializarTodo() {
         inicializarGaleriaCelebra();
         // Inicializar mini carruseles de cada área (Espacio, Decoración, Equipo, Actividades Extras)
         inicializarMiniCarouseles();
+        // Inicializar calendario personalizado de cumpleaños
+        renderizarCalendarioCumple();
         
         // Asegurar que Supabase esté inicializado ANTES de cargar eventos
         inicializarSupabase();

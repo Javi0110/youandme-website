@@ -561,7 +561,9 @@
                             </div>
                             <div class="form-group">
                                 <label>Fecha deseada:</label>
-                                <input type="date" id="cumpleFecha" required>
+                                <input type="hidden" id="cumpleFecha" required>
+                                <div id="cumpleCalendario" class="calendario-cumple"></div>
+                                <small style="display:block; margin-top:0.25rem; color:#666;">Toca un día en verde para seleccionar la fecha.</small>
                             </div>
                         </div>
 
@@ -990,7 +992,8 @@
                         <select id="servicioSlot" required>
                             <option value="">Selecciona fecha y hora disponible</option>
                         </select>
-                        <small style="display:block; margin-top:0.25rem; color:#666;">Solo se muestran espacios disponibles según el calendario del centro.</small>
+                        <div id="servicioCalendario" class="calendario-cumple calendario-servicio" style="margin-top:0.5rem;"></div>
+                        <small style="display:block; margin-top:0.25rem; color:#666;">Los días en verde tienen espacios disponibles para este servicio.</small>
                     </div>
                     <div class="form-group">
                         <label>Email:</label>
