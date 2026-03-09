@@ -2002,16 +2002,25 @@ async function cargarReservasAdmin() {
         if (reservasCumple.length > 0) {
             html += '<h4 style="margin: 2rem 0 1rem; color: var(--orange);">Reservas de cumpleaños</h4>';
             reservasCumple.forEach(r => {
+                const decorTexto = r.decoracion || 'Llevaré mi propia decoración';
+                const matchDec = decorTexto.match(/\$([0-9]+)/);
+                const precioDecor = matchDec ? `$${matchDec[1]}` : '$0';
+                const actTexto = r.actividad || 'Ninguna';
+                const matchAct = actTexto.match(/\$([0-9]+)/);
+                const precioAct = matchAct ? `$${matchAct[1]}` : '$0';
+                const precioEquipo = r.equipo ? '$125' : '$0';
+
                 html += `
                     <div class="evento-admin-item" style="margin-bottom: 1rem;">
                         <div class="evento-admin-info">
                             <p><strong>Cumpleaños - ${r.nombre_nino || '-'}</strong></p>
                             <p>Fecha: ${r.fecha || '-'} | Contacto: ${r.contacto || '-'}</p>
                             <p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p>
-                            <p>Total: $${r.total ?? '-'} | Horas: ${r.horas ?? '-'}</p>
-                            <p><strong>Decoración:</strong> ${r.decoracion || 'Ninguna / propia'}</p>
-                            <p><strong>Equipo para Toddlers:</strong> ${r.equipo ? 'Sí' : 'No'}</p>
-                            <p><strong>Actividad extra:</strong> ${r.actividad || 'Ninguna'}${r.num_ninos != null ? ` (niños: ${r.num_ninos})` : ''}</p>
+                            <p><strong>Horas de espacio:</strong> ${r.horas ?? '-'}</p>
+                            <p><strong>Decoración:</strong> ${decorTexto} ( ${precioDecor} )</p>
+                            <p><strong>Equipo para Toddlers:</strong> ${r.equipo ? `Sí (${precioEquipo})` : 'No ($0)'}</p>
+                            <p><strong>Actividad extra:</strong> ${actTexto}${r.num_ninos != null ? ` (niños: ${r.num_ninos})` : ''}${precioAct ? ` - ${precioAct}` : ''}</p>
+                            <p><strong>Total:</strong> $${r.total ?? '-'}</p>
                         </div>
                         <div class="evento-admin-actions" style="align-items: center; gap: 0.5rem; display: flex; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
