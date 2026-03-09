@@ -1696,6 +1696,9 @@ async function cargarReservasAdmin() {
                             <p>Fecha: ${r.fecha || '-'} | Contacto: ${r.contacto || '-'}</p>
                             <p>Tel: ${r.telefono || '-'} | Email: ${r.email || '-'}</p>
                             <p>Total: $${r.total ?? '-'} | Horas: ${r.horas ?? '-'}</p>
+                            <p><strong>Decoración:</strong> ${r.decoracion || 'Ninguna / propia'}</p>
+                            <p><strong>Equipo para Toddlers:</strong> ${r.equipo ? 'Sí' : 'No'}</p>
+                            <p><strong>Actividad extra:</strong> ${r.actividad || 'Ninguna'}${r.num_ninos != null ? ` (niños: ${r.num_ninos})` : ''}</p>
                         </div>
                         <div class="evento-admin-actions" style="align-items: center; gap: 0.5rem; display: flex; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
