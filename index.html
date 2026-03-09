@@ -988,12 +988,9 @@
                         <input type="text" name="nombre_tutor" id="servicioTutor" required>
                     </div>
                     <div class="form-group">
-                        <label>Fecha y hora preferida:</label>
-                        <select id="servicioSlot" required>
-                            <option value="">Selecciona fecha y hora disponible</option>
-                        </select>
-                        <div id="servicioCalendario" class="calendario-cumple calendario-servicio" style="margin-top:0.5rem;"></div>
-                        <small style="display:block; margin-top:0.25rem; color:#666;">Los días en verde tienen espacios disponibles para este servicio.</small>
+                        <label>Preferencia de días y horarios:</label>
+                        <textarea id="servicioPreferencia" rows="3" placeholder="Ej: Lunes y miércoles después de las 3:00 PM, o martes en la mañana."></textarea>
+                        <small style="display:block; margin-top:0.25rem; color:#666;">Te contactaremos para orientarte y coordinar la fecha y hora más conveniente.</small>
                     </div>
                     <div class="form-group">
                         <label>Email:</label>

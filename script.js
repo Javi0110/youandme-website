@@ -1435,7 +1435,7 @@ function abrirModalServicio(nombreServicio) {
     const titulo = document.getElementById('servicioTitulo');
     const emailSubject = document.getElementById('emailSubject');
     const tipoCoberturaSelect = document.getElementById('servicioTipoCobertura');
-    const slotSelect = document.getElementById('servicioSlot');
+    const prefTextarea = document.getElementById('servicioPreferencia');
     
     servicioInput.value = nombreServicio;
     titulo.textContent = `Solicitar ${nombreServicio}`;
@@ -1453,14 +1453,8 @@ function abrirModalServicio(nombreServicio) {
     if (tipoCoberturaSelect) {
         tipoCoberturaSelect.innerHTML = opts.map(o => `<option value="${o.value}">${o.text}</option>`).join('');
     }
-    
-    // Cargar bloques de disponibilidad para este servicio
-    if (slotSelect) {
-        slotSelect.innerHTML = '<option value="">Cargando opciones...</option>';
-        cargarSlotsServicio(nombreServicio).catch(() => {
-            slotSelect.innerHTML = '<option value="">No se pudo cargar la disponibilidad</option>';
-            slotSelect.required = false;
-        });
+    if (prefTextarea) {
+        prefTextarea.value = '';
     }
     
     modal.style.display = 'block';
@@ -1502,10 +1496,8 @@ function inicializarModalServicios() {
     
     try {
         const formData = new FormData(e.target);
-        const slotSelect = document.getElementById('servicioSlot');
-        const slotTexto = slotSelect && slotSelect.options && slotSelect.selectedIndex > 0
-            ? slotSelect.options[slotSelect.selectedIndex].text
-            : '';
+        const prefTextarea = document.getElementById('servicioPreferencia');
+        const textoPreferencia = prefTextarea ? prefTextarea.value : '';
         
         // Guardar una copia en Supabase o localStorage
         const solicitudData = {
@@ -1516,8 +1508,8 @@ function inicializarModalServicios() {
             email: formData.get('email'),
             telefono: formData.get('telefono'),
             tipo_cobertura: formData.get('tipo_cobertura'),
-            motivo: slotTexto
-                ? `Bloque seleccionado: ${slotTexto}\n\n${formData.get('motivo_consulta') || ''}`
+            motivo: textoPreferencia
+                ? `Preferencia de días/horarios:\n${textoPreferencia}\n\nMotivo de consulta:\n${formData.get('motivo_consulta') || ''}`
                 : formData.get('motivo_consulta'),
             contacto_preferido: formData.get('contacto_preferido'),
             contactado: false,
