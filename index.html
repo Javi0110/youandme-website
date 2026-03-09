@@ -826,53 +826,14 @@
                         </div>
                     </div>
 
-                    <!-- Tab: Disponibilidad (servicios y celebraciones) -->
+                    <!-- Tab: Disponibilidad (solo actividades / celebraciones) -->
                     <div id="tabDisponibilidad" class="admin-tab-content">
                         <div class="admin-section">
                             <h3>Manejar disponibilidades</h3>
 
-                            <!-- Disponibilidad servicios de terapia -->
-                            <div class="admin-form-container">
-                                <h4>Disponibilidad de servicios de terapia</h4>
-                                <form id="formDisponibilidadServicios">
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label>Servicio:</label>
-                                            <select id="dispServicio" required>
-                                                <option value="">Selecciona un servicio</option>
-                                                <option value="Terapia Ocupacional">Terapia Ocupacional</option>
-                                                <option value="Terapia de Habla y Lenguaje">Terapia de Habla y Lenguaje</option>
-                                                <option value="Terapia Oromotora">Terapia Oromotora</option>
-                                                <option value="Terapia de Disfagia">Terapia de Disfagia</option>
-                                                <option value="Terapia Psicológica">Terapia Psicológica</option>
-                                                <option value="Terapia Ocupacional con Enfoque en Integración Sensorial">Terapia Ocupacional con Enfoque en Integración Sensorial</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Fecha:</label>
-                                            <input type="date" id="dispFechaServicio" required>
-                                        </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label>Hora (inicio del bloque):</label>
-                                            <input type="time" id="dispHoraServicio" step="900" required>
-                                            <small style="color:#666;">Bloques de 15 minutos.</small>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Duración (minutos):</label>
-                                            <input type="number" id="dispDuracionServicio" value="15" min="15" step="15" required>
-                                        </div>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">Añadir bloque</button>
-                                </form>
-                                <div id="listaDisponibilidadServicios" style="margin-top:1.5rem;"></div>
-                            </div>
-
                             <!-- Disponibilidad celebraciones -->
                             <div class="admin-form-container" style="margin-top:2rem;">
-                                <h4>Disponibilidad de celebraciones (cumpleaños)</h4>
-                                <p style="color:#666; margin-bottom:0.75rem;">Bloques sugeridos: viernes 3:00–7:00 PM y sábados/domingos 11:00 AM–6:00 PM, cada :00 y :30.</p>
+                                <h4>Disponibilidad de actividades / celebraciones</h4>
                                 <form id="formDisponibilidadCumple">
                                     <div class="form-row">
                                         <div class="form-group">
@@ -885,8 +846,8 @@
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label>Duración (minutos):</label>
-                                        <input type="number" id="dispDuracionCumple" value="60" min="30" step="30" required>
+                                        <label>Duración (horas):</label>
+                                        <input type="number" id="dispDuracionCumple" value="1" min="0.5" step="0.5" required>
                                     </div>
                                     <button type="submit" class="btn btn-primary">Añadir bloque</button>
                                 </form>

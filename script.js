@@ -2076,62 +2076,33 @@ async function cargarReservasAdmin() {
 // ========== GESTIÓN DE DISPONIBILIDAD ==========
 
 async function cargarDisponibilidadesAdmin() {
-    const listaServicios = document.getElementById('listaDisponibilidadServicios');
     const listaCumple = document.getElementById('listaDisponibilidadCumple');
-    if (!supabaseClient || !listaServicios || !listaCumple) return;
+    if (!supabaseClient || !listaCumple) return;
 
     try {
-        const [resServicios, resCumple] = await Promise.all([
-            supabaseClient
-                .from('disponibilidad_servicios')
-                .select('*')
-                .order('fecha', { ascending: true })
-                .order('hora', { ascending: true }),
-            supabaseClient
-                .from('disponibilidad_cumple')
-                .select('*')
-                .order('fecha', { ascending: true })
-                .order('hora', { ascending: true })
-        ]);
+        const { data, error } = await supabaseClient
+            .from('disponibilidad_cumple')
+            .select('*')
+            .order('fecha', { ascending: true })
+            .order('hora', { ascending: true });
 
-        const datosServicios = resServicios.data || [];
+        if (error) throw error;
+
         const datosCumple = resCumple.data || [];
+        const filas = data || [];
 
-        if (datosServicios.length === 0) {
-            listaServicios.innerHTML = '<div class="no-data">Aún no hay bloques de disponibilidad para servicios.</div>';
-        } else {
-            listaServicios.innerHTML = datosServicios.map(d => {
-                const fecha = d.fecha ? new Date(d.fecha).toLocaleDateString('es-PR') : '-';
-                const hora = d.hora ? d.hora.substring(0,5) : '-';
-                return `
-                    <div class="evento-admin-item" style="margin-bottom:0.5rem;">
-                        <div class="evento-admin-info">
-                            <p><strong>${d.servicio}</strong></p>
-                            <p>${fecha} a las ${hora} (${d.duracion_min || 15} min)</p>
-                            <p>Disponible: ${d.disponible ? 'Sí' : 'No'}</p>
-                        </div>
-                        <div class="evento-admin-actions">
-                            <button class="btn-edit" onclick="toggleDisponibilidadServicio('${d.id}', ${!d.disponible})">
-                                ${d.disponible ? 'Marcar como no disponible' : 'Marcar como disponible'}
-                            </button>
-                            <button class="btn-delete" onclick="eliminarDisponibilidadServicio('${d.id}')">Eliminar</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        if (datosCumple.length === 0) {
+        if (filas.length === 0) {
             listaCumple.innerHTML = '<div class="no-data">Aún no hay bloques de disponibilidad para celebraciones.</div>';
         } else {
-            listaCumple.innerHTML = datosCumple.map(d => {
+            listaCumple.innerHTML = filas.map(d => {
                 const fecha = d.fecha ? new Date(d.fecha).toLocaleDateString('es-PR', { weekday:'short', year:'numeric', month:'short', day:'numeric' }) : '-';
                 const hora = d.hora ? d.hora.substring(0,5) : '-';
+                const horasDuracion = d.duracion_min ? (d.duracion_min / 60) : 1;
                 return `
                     <div class="evento-admin-item" style="margin-bottom:0.5rem;">
                         <div class="evento-admin-info">
                             <p><strong>${fecha}</strong></p>
-                            <p>Hora: ${hora} (${d.duracion_min || 60} min)</p>
+                            <p>Hora: ${hora} (${horasDuracion} horas)</p>
                             <p>Disponible: ${d.disponible ? 'Sí' : 'No'}</p>
                         </div>
                         <div class="evento-admin-actions">
@@ -2152,27 +2123,8 @@ async function cargarDisponibilidadesAdmin() {
 }
 
 async function guardarDisponibilidadServicio(e) {
+    // Función mantenida solo para compatibilidad; ya no se muestra el formulario de servicios.
     e.preventDefault();
-    if (!supabaseClient) return;
-    const servicio = document.getElementById('dispServicio').value;
-    const fecha = document.getElementById('dispFechaServicio').value;
-    const hora = document.getElementById('dispHoraServicio').value;
-    const duracion = parseInt(document.getElementById('dispDuracionServicio').value) || 15;
-    if (!servicio || !fecha || !hora) return;
-    try {
-        await supabaseClient.from('disponibilidad_servicios').insert([{
-            servicio,
-            fecha,
-            hora,
-            duracion_min: duracion,
-            disponible: true
-        }]);
-        (document.getElementById('formDisponibilidadServicios') || {}).reset?.();
-        await cargarDisponibilidadesAdmin();
-    } catch (e) {
-        console.error('Error guardando disponibilidad de servicio:', e);
-        alert('Error al guardar el bloque de servicio.');
-    }
 }
 
 async function guardarDisponibilidadCumple(e) {
@@ -2180,7 +2132,8 @@ async function guardarDisponibilidadCumple(e) {
     if (!supabaseClient) return;
     const fecha = document.getElementById('dispFechaCumple').value;
     const hora = document.getElementById('dispHoraCumple').value;
-    const duracion = parseInt(document.getElementById('dispDuracionCumple').value) || 60;
+    const horas = parseFloat(document.getElementById('dispDuracionCumple').value) || 1;
+    const duracion = Math.round(horas * 60);
     if (!fecha || !hora) return;
     try {
         await supabaseClient.from('disponibilidad_cumple').insert([{
@@ -2198,13 +2151,8 @@ async function guardarDisponibilidadCumple(e) {
 }
 
 async function toggleDisponibilidadServicio(id, disponible) {
-    if (!supabaseClient) return;
-    try {
-        await supabaseClient.from('disponibilidad_servicios').update({ disponible }).eq('id', id);
-        await cargarDisponibilidadesAdmin();
-    } catch (e) {
-        console.error('Error actualizando disponibilidad de servicio:', e);
-    }
+    // Ya no se gestiona disponibilidad de servicios desde el panel; función vacía para evitar errores si se llama.
+    return;
 }
 
 async function toggleDisponibilidadCumple(id, disponible) {
@@ -2218,14 +2166,8 @@ async function toggleDisponibilidadCumple(id, disponible) {
 }
 
 async function eliminarDisponibilidadServicio(id) {
-    if (!supabaseClient) return;
-    if (!confirm('¿Eliminar este bloque de servicio?')) return;
-    try {
-        await supabaseClient.from('disponibilidad_servicios').delete().eq('id', id);
-        await cargarDisponibilidadesAdmin();
-    } catch (e) {
-        console.error('Error eliminando bloque de servicio:', e);
-    }
+    // Ya no se gestiona disponibilidad de servicios desde el panel; función vacía para evitar errores si se llama.
+    return;
 }
 
 async function eliminarDisponibilidadCumple(id) {
@@ -2776,11 +2718,6 @@ function inicializarTodo() {
         cargarEventos();
 
         // Listeners para formularios de disponibilidad en el admin
-        const formDispServ = document.getElementById('formDisponibilidadServicios');
-        if (formDispServ && !formDispServ.dataset.handler) {
-            formDispServ.dataset.handler = 'true';
-            formDispServ.addEventListener('submit', guardarDisponibilidadServicio);
-        }
         const formDispCumple = document.getElementById('formDisponibilidadCumple');
         if (formDispCumple && !formDispCumple.dataset.handler) {
             formDispCumple.dataset.handler = 'true';
