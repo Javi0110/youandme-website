@@ -32,6 +32,17 @@ BEGIN
     END IF;
 END $$;
 
+-- Si la tabla ya existía sin comentarios_admin, añadir la columna
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'solicitudes' AND column_name = 'comentarios_admin'
+    ) THEN
+        ALTER TABLE public.solicitudes ADD COLUMN comentarios_admin text;
+    END IF;
+END $$;
+
 -- Habilitar RLS
 ALTER TABLE public.solicitudes ENABLE ROW LEVEL SECURITY;
 

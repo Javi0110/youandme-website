@@ -2365,6 +2365,7 @@ async function cargarSolicitudesAdmin(filtro = null) {
                         tipoCobertura: tipoCob,
                         motivo: s.motivo,
                         contactoPreferido: s.contacto_preferido,
+                        comentariosAdmin: s.comentarios_admin || '',
                         contactado: s.contactado || false,
                         agendado: s.agendado || false
                     };
@@ -2391,7 +2392,6 @@ async function cargarSolicitudesAdmin(filtro = null) {
     });
 
     try {
-        
         // Aplicar filtro
         if (filtroActualSolicitudes === 'pendientes') {
             solicitudes = solicitudes.filter(s => !s.contactado);
@@ -2419,6 +2419,7 @@ async function cargarSolicitudesAdmin(filtro = null) {
         container.innerHTML = solicitudes.map(sol => {
             const contactado = sol.contactado || false;
             const agendado = sol.agendado || false;
+            const comentario = sol.comentariosAdmin || sol.comentarios_admin || '';
             
             return `
             <div class="solicitud-item" style="border-left-color: ${agendado ? '#28a745' : (contactado ? '#ffc107' : '#00d4aa')}">
@@ -2465,6 +2466,12 @@ async function cargarSolicitudesAdmin(filtro = null) {
                     <strong>Motivo:</strong>
                     <span>${sol.motivo}</span>
                 </div>
+                <div class="info-row">
+                    <strong>Comentarios (solo admin):</strong>
+                    <span>
+                        <textarea class="solicitud-comentario-admin" data-solicitud-id="${sol.id}" rows="2" style="width:100%; padding:0.35rem 0.5rem; border-radius:6px; border:1px solid #ddd; font-size:0.9rem;" placeholder="Notas internas sobre esta solicitud (no se envían al cliente).">${comentario}</textarea>
+                    </span>
+                </div>
                 <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
                     ${!contactado ? `
                         <button onclick="marcarContactado('${sol.id}')" class="btn-edit" style="background: #ffc107;">
@@ -2487,6 +2494,37 @@ async function cargarSolicitudesAdmin(filtro = null) {
             </div>
         `;
         }).join('');
+
+        // Guardar comentarios de admin en Supabase (o localStorage como fallback)
+        const textareaElems = container.querySelectorAll('.solicitud-comentario-admin');
+        textareaElems.forEach(textarea => {
+            textarea.addEventListener('input', async () => {
+                const id = textarea.dataset.solicitudId;
+                const nuevoTexto = textarea.value;
+                if (supabaseClient) {
+                    try {
+                        await supabaseClient
+                            .from('solicitudes')
+                            .update({ comentarios_admin: nuevoTexto })
+                            .eq('id', id);
+                    } catch (e) {
+                        console.error('Error guardando comentarios_admin en Supabase:', e);
+                    }
+                } else {
+                    // Fallback: guardar en localStorage si no hay Supabase
+                    try {
+                        let solicitudesLocales = JSON.parse(localStorage.getItem('youme_solicitudes') || '[]');
+                        const idx = solicitudesLocales.findIndex(s => String(s.id) === String(id));
+                        if (idx !== -1) {
+                            solicitudesLocales[idx].comentarios_admin = nuevoTexto;
+                            localStorage.setItem('youme_solicitudes', JSON.stringify(solicitudesLocales));
+                        }
+                    } catch (e) {
+                        console.error('Error guardando comentarios_admin en localStorage:', e);
+                    }
+                }
+            });
+        });
     } catch (error) {
         console.error('Error cargando solicitudes:', error);
         container.innerHTML = '<div class="no-data">Error al cargar solicitudes. Por favor recarga la página.</div>';
