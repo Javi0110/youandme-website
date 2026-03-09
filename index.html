@@ -565,6 +565,17 @@
                             </div>
                         </div>
 
+                        <div class="form-group" id="cumpleHoraGroup" style="display: none;">
+                            <label>Horario:</label>
+                            <select id="cumpleHoraSlot">
+                                <option value="">Selecciona un horario disponible</option>
+                            </select>
+                            <small style="display:block; margin-top:0.25rem; color:#666;">Basado en la disponibilidad del centro para esa fecha.</small>
+                        </div>
+                        <div class="form-group" id="cumpleHoraNoSlots" style="display: none; color: var(--orange);">
+                            No hay horarios disponibles para esta fecha. Por favor elige otra fecha o contáctanos directamente.
+                        </div>
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Tu nombre:</label>
@@ -726,6 +737,9 @@
                         <button class="admin-tab-btn" data-tab="reservas" onclick="mostrarTabAdmin('reservas')">
                             Reservas
                         </button>
+                        <button class="admin-tab-btn" data-tab="disponibilidad" onclick="mostrarTabAdmin('disponibilidad')">
+                            Disponibilidad
+                        </button>
                         <button class="admin-tab-btn" data-tab="solicitudes" onclick="mostrarTabAdmin('solicitudes')">
                             Solicitudes de Servicio
                         </button>
@@ -807,6 +821,75 @@
                             <h3>Reservas por actividad y cumpleaños</h3>
                             <p style="color: #666; margin-bottom: 1rem;">Marca el checkbox cuando la persona haya pagado (vía ATH Móvil: Pay a business → YouandMeCenter).</p>
                             <div id="listaReservasAdmin"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Disponibilidad (servicios y celebraciones) -->
+                    <div id="tabDisponibilidad" class="admin-tab-content">
+                        <div class="admin-section">
+                            <h3>Disponibilidad de servicios y celebraciones</h3>
+
+                            <!-- Disponibilidad servicios de terapia -->
+                            <div class="admin-form-container">
+                                <h4>Servicios de Terapia</h4>
+                                <form id="formDisponibilidadServicios">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Servicio:</label>
+                                            <select id="dispServicio" required>
+                                                <option value="">Selecciona un servicio</option>
+                                                <option value="Terapia Ocupacional">Terapia Ocupacional</option>
+                                                <option value="Terapia de Habla y Lenguaje">Terapia de Habla y Lenguaje</option>
+                                                <option value="Terapia Oromotora">Terapia Oromotora</option>
+                                                <option value="Terapia de Disfagia">Terapia de Disfagia</option>
+                                                <option value="Terapia Psicológica">Terapia Psicológica</option>
+                                                <option value="Terapia Ocupacional con Enfoque en Integración Sensorial">Terapia Ocupacional con Enfoque en Integración Sensorial</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Fecha:</label>
+                                            <input type="date" id="dispFechaServicio" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Hora (inicio del bloque):</label>
+                                            <input type="time" id="dispHoraServicio" step="900" required>
+                                            <small style="color:#666;">Bloques de 15 minutos.</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Duración (minutos):</label>
+                                            <input type="number" id="dispDuracionServicio" value="15" min="15" step="15" required>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Añadir bloque</button>
+                                </form>
+                                <div id="listaDisponibilidadServicios" style="margin-top:1.5rem;"></div>
+                            </div>
+
+                            <!-- Disponibilidad celebraciones -->
+                            <div class="admin-form-container" style="margin-top:2rem;">
+                                <h4>Celebraciones (Cumpleaños)</h4>
+                                <p style="color:#666; margin-bottom:0.75rem;">Bloques sugeridos: viernes 3:00–7:00 PM y sábados/domingos 11:00 AM–6:00 PM, cada :00 y :30.</p>
+                                <form id="formDisponibilidadCumple">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Fecha:</label>
+                                            <input type="date" id="dispFechaCumple" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Hora:</label>
+                                            <input type="time" id="dispHoraCumple" step="1800" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Duración (minutos):</label>
+                                        <input type="number" id="dispDuracionCumple" value="60" min="30" step="30" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Añadir bloque</button>
+                                </form>
+                                <div id="listaDisponibilidadCumple" style="margin-top:1.5rem;"></div>
+                            </div>
                         </div>
                     </div>
 
@@ -901,6 +984,13 @@
                     <div class="form-group">
                         <label>Nombre del padre/madre/tutor:</label>
                         <input type="text" name="nombre_tutor" id="servicioTutor" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha y hora preferida:</label>
+                        <select id="servicioSlot" required>
+                            <option value="">Selecciona fecha y hora disponible</option>
+                        </select>
+                        <small style="display:block; margin-top:0.25rem; color:#666;">Solo se muestran espacios disponibles según el calendario del centro.</small>
                     </div>
                     <div class="form-group">
                         <label>Email:</label>

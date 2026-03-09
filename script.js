@@ -130,6 +130,109 @@ async function enviarEmailConfirmacionCumple(detalles) {
     }
 }
 
+// Cargar bloques de disponibilidad para un servicio concreto
+async function cargarSlotsServicio(nombreServicio) {
+    const slotSelect = document.getElementById('servicioSlot');
+    if (!slotSelect) return;
+    if (!supabaseClient) {
+        slotSelect.innerHTML = '<option value="">Calendario no disponible en este momento</option>';
+        slotSelect.required = false;
+        return;
+    }
+    try {
+        const hoyISO = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabaseClient
+            .from('disponibilidad_servicios')
+            .select('*')
+            .eq('servicio', nombreServicio)
+            .eq('disponible', true)
+            .gte('fecha', hoyISO)
+            .order('fecha', { ascending: true })
+            .order('hora', { ascending: true });
+        if (error) throw error;
+        const filas = data || [];
+        if (filas.length === 0) {
+            slotSelect.innerHTML = '<option value="">No hay espacios disponibles para este servicio</option>';
+            slotSelect.required = false;
+            return;
+        }
+        slotSelect.required = true;
+        slotSelect.innerHTML = '<option value="">Selecciona fecha y hora disponible</option>' +
+            filas.map(f => {
+                const texto = formatearFechaHoraSlot(f.fecha, f.hora);
+                return `<option value="${f.id}">${texto}</option>`;
+            }).join('');
+    } catch (e) {
+        console.error('Error cargando slots de servicio:', e);
+        slotSelect.innerHTML = '<option value="">No se pudo cargar la disponibilidad</option>';
+        slotSelect.required = false;
+    }
+}
+
+// Cargar horarios disponibles para cumpleaños en una fecha dada
+async function cargarSlotsCumpleParaFecha(fechaISO) {
+    const grupo = document.getElementById('cumpleHoraGroup');
+    const select = document.getElementById('cumpleHoraSlot');
+    const aviso = document.getElementById('cumpleHoraNoSlots');
+    if (!grupo || !select || !aviso) return;
+    if (!fechaISO) {
+        grupo.style.display = 'none';
+        aviso.style.display = 'none';
+        return;
+    }
+    if (!supabaseClient) {
+        grupo.style.display = 'none';
+        aviso.style.display = 'block';
+        aviso.textContent = 'El calendario no está disponible en este momento. Por favor contáctanos para coordinar.';
+        return;
+    }
+    try {
+        const { data, error } = await supabaseClient
+            .from('disponibilidad_cumple')
+            .select('*')
+            .eq('fecha', fechaISO)
+            .eq('disponible', true)
+            .order('hora', { ascending: true });
+        if (error) throw error;
+        const filas = data || [];
+        if (filas.length === 0) {
+            grupo.style.display = 'none';
+            select.innerHTML = '<option value="">Sin horarios</option>';
+            aviso.style.display = 'block';
+            aviso.textContent = 'No hay horarios disponibles para esta fecha. Por favor elige otra fecha o contáctanos directamente.';
+            return;
+        }
+        aviso.style.display = 'none';
+        grupo.style.display = 'block';
+        select.innerHTML = '<option value="">Selecciona un horario disponible</option>' +
+            filas.map(f => {
+                const hora = f.hora ? f.hora.substring(0,5) : '';
+                return `<option value="${hora}">${hora}</option>`;
+            }).join('');
+    } catch (e) {
+        console.error('Error cargando horarios de cumpleaños:', e);
+        grupo.style.display = 'none';
+        aviso.style.display = 'block';
+        aviso.textContent = 'Error al cargar los horarios disponibles.';
+    }
+}
+
+// Formatear fecha y hora para mostrar en selects
+function formatearFechaHoraSlot(fechaISO, horaStr) {
+    if (!fechaISO || !horaStr) return `${fechaISO} ${horaStr}`;
+    try {
+        const [h, m] = horaStr.split(':').map(n => parseInt(n, 10));
+        const fecha = new Date(fechaISO + 'T' + horaStr);
+        const opcionesFecha = { weekday: 'short', month: 'short', day: 'numeric' };
+        const opcionesHora = { hour: 'numeric', minute: '2-digit' };
+        const textoFecha = fecha.toLocaleDateString('es-PR', opcionesFecha);
+        const textoHora = new Date(0, 0, 0, h, m).toLocaleTimeString('es-PR', opcionesHora);
+        return `${textoFecha} - ${textoHora}`;
+    } catch {
+        return `${fechaISO} ${horaStr}`;
+    }
+}
+
 // Variables globales para navegación
 let navMenu = null;
 
@@ -911,6 +1014,8 @@ function inicializarCalculadoraCumpleanos() {
     const actividad = document.getElementById('cumpleActividad');
     const numNinos = document.getElementById('cumpleNumNinos');
     const totalAmount = document.getElementById('totalAmount');
+    const fechaCumple = document.getElementById('cumpleFecha');
+    const horaSlot = document.getElementById('cumpleHoraSlot');
     
     // Solo inicializar si todos los elementos existen
     if (horas && decoracion && equipo && actividad && numNinos && totalAmount) {
@@ -939,6 +1044,13 @@ function inicializarCalculadoraCumpleanos() {
             calcularTotalCumpleanos();
         });
         cumpleForm.numNinos.addEventListener('input', calcularTotalCumpleanos);
+
+        // Cargar horarios disponibles cuando cambie la fecha
+        if (fechaCumple && horaSlot && supabaseClient) {
+            fechaCumple.addEventListener('change', () => {
+                cargarSlotsCumpleParaFecha(fechaCumple.value);
+            });
+        }
         
         // Calcular total inicial
         calcularTotalCumpleanos();
@@ -1058,6 +1170,7 @@ function inicializarFormularios() {
     const detalles = {
         nombreNino: nombre,
         fecha,
+        horaSlot: document.getElementById('cumpleHoraSlot') ? document.getElementById('cumpleHoraSlot').value : '',
         contacto,
         telefono,
         email,
@@ -1068,6 +1181,14 @@ function inicializarFormularios() {
         numNinos: cumpleForm.actividad.value !== 'none' ? cumpleForm.numNinos.value : 0,
         total
     };
+
+    // Validar que se haya escogido un horario si hay disponibilidad
+    if (document.getElementById('cumpleHoraGroup') && document.getElementById('cumpleHoraGroup').style.display !== 'none') {
+        if (!detalles.horaSlot) {
+            alert('Por favor selecciona un horario disponible para el cumpleaños.');
+            return;
+        }
+    }
     
     try {
         if (supabaseClient) {
@@ -1079,7 +1200,7 @@ function inicializarFormularios() {
                     contacto: detalles.contacto,
                     telefono: detalles.telefono,
                     email: detalles.email,
-                    horas: detalles.horas,
+                    horas: detalles.horaSlot ? `${detalles.horas} (inicio: ${detalles.horaSlot})` : detalles.horas,
                     decoracion: detalles.decoracion,
                     equipo: detalles.equipo,
                     pretend_play: false,
@@ -1132,6 +1253,7 @@ function abrirModalServicio(nombreServicio) {
     const titulo = document.getElementById('servicioTitulo');
     const emailSubject = document.getElementById('emailSubject');
     const tipoCoberturaSelect = document.getElementById('servicioTipoCobertura');
+    const slotSelect = document.getElementById('servicioSlot');
     
     servicioInput.value = nombreServicio;
     titulo.textContent = `Solicitar ${nombreServicio}`;
@@ -1148,6 +1270,15 @@ function abrirModalServicio(nombreServicio) {
     }
     if (tipoCoberturaSelect) {
         tipoCoberturaSelect.innerHTML = opts.map(o => `<option value="${o.value}">${o.text}</option>`).join('');
+    }
+    
+    // Cargar bloques de disponibilidad para este servicio
+    if (slotSelect) {
+        slotSelect.innerHTML = '<option value="">Cargando opciones...</option>';
+        cargarSlotsServicio(nombreServicio).catch(() => {
+            slotSelect.innerHTML = '<option value="">No se pudo cargar la disponibilidad</option>';
+            slotSelect.required = false;
+        });
     }
     
     modal.style.display = 'block';
@@ -1189,6 +1320,10 @@ function inicializarModalServicios() {
     
     try {
         const formData = new FormData(e.target);
+        const slotSelect = document.getElementById('servicioSlot');
+        const slotTexto = slotSelect && slotSelect.options && slotSelect.selectedIndex > 0
+            ? slotSelect.options[slotSelect.selectedIndex].text
+            : '';
         
         // Guardar una copia en Supabase o localStorage
         const solicitudData = {
@@ -1199,7 +1334,9 @@ function inicializarModalServicios() {
             email: formData.get('email'),
             telefono: formData.get('telefono'),
             tipo_cobertura: formData.get('tipo_cobertura'),
-            motivo: formData.get('motivo_consulta'),
+            motivo: slotTexto
+                ? `Bloque seleccionado: ${slotTexto}\n\n${formData.get('motivo_consulta') || ''}`
+                : formData.get('motivo_consulta'),
             contacto_preferido: formData.get('contacto_preferido'),
             contactado: false,
             agendado: false
@@ -1389,6 +1526,8 @@ function mostrarTabAdmin(tabName) {
         cargarEventosAdmin();
     } else if (tabName === 'reservas') {
         cargarReservasAdmin();
+    } else if (tabName === 'disponibilidad') {
+        cargarDisponibilidadesAdmin();
     } else if (tabName === 'solicitudes') {
         cargarSolicitudesAdmin();
     }
@@ -1720,6 +1859,172 @@ async function cargarReservasAdmin() {
     } catch (error) {
         console.error('Error cargando reservas:', error);
         container.innerHTML = '<div class="no-data">Error al cargar reservas. Si acabas de añadir las tablas en Supabase, ejecuta el SQL de reservas_eventos y reservas_cumple.</div>';
+    }
+}
+
+// ========== GESTIÓN DE DISPONIBILIDAD ==========
+
+async function cargarDisponibilidadesAdmin() {
+    const listaServicios = document.getElementById('listaDisponibilidadServicios');
+    const listaCumple = document.getElementById('listaDisponibilidadCumple');
+    if (!supabaseClient || !listaServicios || !listaCumple) return;
+
+    try {
+        const [resServicios, resCumple] = await Promise.all([
+            supabaseClient
+                .from('disponibilidad_servicios')
+                .select('*')
+                .order('fecha', { ascending: true })
+                .order('hora', { ascending: true }),
+            supabaseClient
+                .from('disponibilidad_cumple')
+                .select('*')
+                .order('fecha', { ascending: true })
+                .order('hora', { ascending: true })
+        ]);
+
+        const datosServicios = resServicios.data || [];
+        const datosCumple = resCumple.data || [];
+
+        if (datosServicios.length === 0) {
+            listaServicios.innerHTML = '<div class="no-data">Aún no hay bloques de disponibilidad para servicios.</div>';
+        } else {
+            listaServicios.innerHTML = datosServicios.map(d => {
+                const fecha = d.fecha ? new Date(d.fecha).toLocaleDateString('es-PR') : '-';
+                const hora = d.hora ? d.hora.substring(0,5) : '-';
+                return `
+                    <div class="evento-admin-item" style="margin-bottom:0.5rem;">
+                        <div class="evento-admin-info">
+                            <p><strong>${d.servicio}</strong></p>
+                            <p>${fecha} a las ${hora} (${d.duracion_min || 15} min)</p>
+                            <p>Disponible: ${d.disponible ? 'Sí' : 'No'}</p>
+                        </div>
+                        <div class="evento-admin-actions">
+                            <button class="btn-edit" onclick="toggleDisponibilidadServicio('${d.id}', ${!d.disponible})">
+                                ${d.disponible ? 'Marcar como no disponible' : 'Marcar como disponible'}
+                            </button>
+                            <button class="btn-delete" onclick="eliminarDisponibilidadServicio('${d.id}')">Eliminar</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        if (datosCumple.length === 0) {
+            listaCumple.innerHTML = '<div class="no-data">Aún no hay bloques de disponibilidad para celebraciones.</div>';
+        } else {
+            listaCumple.innerHTML = datosCumple.map(d => {
+                const fecha = d.fecha ? new Date(d.fecha).toLocaleDateString('es-PR', { weekday:'short', year:'numeric', month:'short', day:'numeric' }) : '-';
+                const hora = d.hora ? d.hora.substring(0,5) : '-';
+                return `
+                    <div class="evento-admin-item" style="margin-bottom:0.5rem;">
+                        <div class="evento-admin-info">
+                            <p><strong>${fecha}</strong></p>
+                            <p>Hora: ${hora} (${d.duracion_min || 60} min)</p>
+                            <p>Disponible: ${d.disponible ? 'Sí' : 'No'}</p>
+                        </div>
+                        <div class="evento-admin-actions">
+                            <button class="btn-edit" onclick="toggleDisponibilidadCumple('${d.id}', ${!d.disponible})">
+                                ${d.disponible ? 'Marcar como no disponible' : 'Marcar como disponible'}
+                            </button>
+                            <button class="btn-delete" onclick="eliminarDisponibilidadCumple('${d.id}')">Eliminar</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    } catch (error) {
+        console.error('Error cargando disponibilidad:', error);
+        listaServicios.innerHTML = '<div class="no-data">Error al cargar disponibilidad de servicios.</div>';
+        listaCumple.innerHTML = '<div class="no-data">Error al cargar disponibilidad de celebraciones.</div>';
+    }
+}
+
+async function guardarDisponibilidadServicio(e) {
+    e.preventDefault();
+    if (!supabaseClient) return;
+    const servicio = document.getElementById('dispServicio').value;
+    const fecha = document.getElementById('dispFechaServicio').value;
+    const hora = document.getElementById('dispHoraServicio').value;
+    const duracion = parseInt(document.getElementById('dispDuracionServicio').value) || 15;
+    if (!servicio || !fecha || !hora) return;
+    try {
+        await supabaseClient.from('disponibilidad_servicios').insert([{
+            servicio,
+            fecha,
+            hora,
+            duracion_min: duracion,
+            disponible: true
+        }]);
+        (document.getElementById('formDisponibilidadServicios') || {}).reset?.();
+        await cargarDisponibilidadesAdmin();
+    } catch (e) {
+        console.error('Error guardando disponibilidad de servicio:', e);
+        alert('Error al guardar el bloque de servicio.');
+    }
+}
+
+async function guardarDisponibilidadCumple(e) {
+    e.preventDefault();
+    if (!supabaseClient) return;
+    const fecha = document.getElementById('dispFechaCumple').value;
+    const hora = document.getElementById('dispHoraCumple').value;
+    const duracion = parseInt(document.getElementById('dispDuracionCumple').value) || 60;
+    if (!fecha || !hora) return;
+    try {
+        await supabaseClient.from('disponibilidad_cumple').insert([{
+            fecha,
+            hora,
+            duracion_min: duracion,
+            disponible: true
+        }]);
+        (document.getElementById('formDisponibilidadCumple') || {}).reset?.();
+        await cargarDisponibilidadesAdmin();
+    } catch (e) {
+        console.error('Error guardando disponibilidad de cumpleaños:', e);
+        alert('Error al guardar el bloque de celebración.');
+    }
+}
+
+async function toggleDisponibilidadServicio(id, disponible) {
+    if (!supabaseClient) return;
+    try {
+        await supabaseClient.from('disponibilidad_servicios').update({ disponible }).eq('id', id);
+        await cargarDisponibilidadesAdmin();
+    } catch (e) {
+        console.error('Error actualizando disponibilidad de servicio:', e);
+    }
+}
+
+async function toggleDisponibilidadCumple(id, disponible) {
+    if (!supabaseClient) return;
+    try {
+        await supabaseClient.from('disponibilidad_cumple').update({ disponible }).eq('id', id);
+        await cargarDisponibilidadesAdmin();
+    } catch (e) {
+        console.error('Error actualizando disponibilidad de cumpleaños:', e);
+    }
+}
+
+async function eliminarDisponibilidadServicio(id) {
+    if (!supabaseClient) return;
+    if (!confirm('¿Eliminar este bloque de servicio?')) return;
+    try {
+        await supabaseClient.from('disponibilidad_servicios').delete().eq('id', id);
+        await cargarDisponibilidadesAdmin();
+    } catch (e) {
+        console.error('Error eliminando bloque de servicio:', e);
+    }
+}
+
+async function eliminarDisponibilidadCumple(id) {
+    if (!supabaseClient) return;
+    if (!confirm('¿Eliminar este bloque de celebración?')) return;
+    try {
+        await supabaseClient.from('disponibilidad_cumple').delete().eq('id', id);
+        await cargarDisponibilidadesAdmin();
+    } catch (e) {
+        console.error('Error eliminando bloque de celebración:', e);
     }
 }
 
@@ -2218,6 +2523,18 @@ function inicializarTodo() {
         
         // Cargar eventos (usa Supabase si está configurado, si no eventos.json)
         cargarEventos();
+
+        // Listeners para formularios de disponibilidad en el admin
+        const formDispServ = document.getElementById('formDisponibilidadServicios');
+        if (formDispServ && !formDispServ.dataset.handler) {
+            formDispServ.dataset.handler = 'true';
+            formDispServ.addEventListener('submit', guardarDisponibilidadServicio);
+        }
+        const formDispCumple = document.getElementById('formDisponibilidadCumple');
+        if (formDispCumple && !formDispCumple.dataset.handler) {
+            formDispCumple.dataset.handler = 'true';
+            formDispCumple.addEventListener('submit', guardarDisponibilidadCumple);
+        }
         
         // Aplicar URL por si el hash llegó después (común en móvil)
         aplicarUrlInicial();
