@@ -1605,37 +1605,14 @@ async function eliminarEvento(eventoId) {
 // ========== GESTIÓN DE RESERVAS ==========
 
 // Sincronizar reservas guardadas en localStorage hacia Supabase (cuando ya existan las tablas)
+// IMPORTANTE: esta migración se usó solo al principio. Para evitar duplicados,
+// ya no subimos automáticamente las reservas locales; simplemente limpiamos el storage.
 async function syncReservasLocalesASupabase() {
     if (!supabaseClient) return;
     const pendientes = JSON.parse(localStorage.getItem('youme_reservas_eventos') || '[]');
-    if (pendientes.length === 0) return;
-    const restantes = [];
-    for (const r of pendientes) {
-        const { error } = await supabaseClient
-            .from('reservas_eventos')
-            .insert([{
-                evento_id: String(r.evento_id),
-                nombre_nino: r.nombre_nino,
-                edad_nino: r.edad_nino != null ? parseInt(r.edad_nino) : null,
-                nombre_padre: r.nombre_padre,
-                email: r.email,
-                telefono: r.telefono,
-                dias: r.dias || 1,
-                total: r.total,
-                pagado: false
-            }]);
-        if (error) {
-            restantes.push(r);
-            continue;
-        }
-        const { data: ev } = await supabaseClient.from('eventos').select('cupos').eq('id', r.evento_id).single();
-        if (ev && ev.cupos != null) {
-            const nuevoCupos = Math.max(0, (ev.cupos || 0) - (r.dias || 1));
-            await supabaseClient.from('eventos').update({ cupos: nuevoCupos }).eq('id', r.evento_id);
-        }
-    }
-    if (restantes.length !== pendientes.length) {
-        localStorage.setItem('youme_reservas_eventos', JSON.stringify(restantes));
+    if (pendientes.length > 0) {
+        console.log('Sync de reservas locales desactivado. Eliminando youme_reservas_eventos de localStorage para evitar duplicados.');
+        localStorage.removeItem('youme_reservas_eventos');
     }
 }
 
