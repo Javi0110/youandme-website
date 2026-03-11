@@ -1413,6 +1413,44 @@ function inicializarFormularios() {
         });
     }
     
+    // ==================== REQUEST DATE (solicitar fecha no disponible) ====================
+    const formRequestDate = document.getElementById('formRequestDateCumple');
+    if (formRequestDate && !formRequestDate.dataset.handler) {
+        formRequestDate.dataset.handler = 'true';
+        const reqDateInput = document.getElementById('requestDateFecha');
+        if (reqDateInput) {
+            const today = new Date().toISOString().split('T')[0];
+            reqDateInput.setAttribute('min', today);
+        }
+        formRequestDate.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const fecha = document.getElementById('requestDateFecha').value;
+            const nombre = document.getElementById('requestDateNombre').value;
+            const email = document.getElementById('requestDateEmail').value;
+            const telefono = document.getElementById('requestDateTelefono').value;
+            const mensaje = (document.getElementById('requestDateMensaje').value || '').trim();
+            if (!fecha || !nombre || !email || !telefono) {
+                alert('Completa fecha, nombre, email y teléfono.');
+                return;
+            }
+            const successEl = document.getElementById('requestDateSuccess');
+            try {
+                if (supabaseClient) {
+                    const { error } = await supabaseClient
+                        .from('solicitudes_fecha_celebracion')
+                        .insert([{ fecha_solicitada: fecha, nombre_contacto: nombre, email, telefono, mensaje: mensaje || null }]);
+                    if (error) throw error;
+                }
+                if (successEl) successEl.style.display = 'block';
+                formRequestDate.reset();
+                setTimeout(() => { if (successEl) successEl.style.display = 'none'; }, 5000);
+            } catch (err) {
+                console.error(err);
+                alert('No se pudo enviar la solicitud. Intenta de nuevo o contáctanos por teléfono.');
+            }
+        });
+    }
+
     // ==================== FORMULARIO DE CONTACTO ====================
     const contactoForm = document.getElementById('contactoForm');
     if (contactoForm) {
@@ -1778,6 +1816,7 @@ function mostrarTabAdmin(tabName) {
         cargarReservasAdmin();
     } else if (tabName === 'disponibilidad') {
         cargarDisponibilidadesAdmin();
+        cargarSolicitudesFechaAdmin();
     } else if (tabName === 'solicitudes') {
         cargarSolicitudesAdmin();
     }
@@ -2245,6 +2284,53 @@ async function cargarDisponibilidadesAdmin() {
         console.error('Error cargando disponibilidad de celebraciones:', error);
         listaCumple.innerHTML = '<div class="no-data">Error al cargar disponibilidad de celebraciones.</div>';
     }
+}
+
+async function cargarSolicitudesFechaAdmin() {
+    const container = document.getElementById('listaSolicitudesFechaAdmin');
+    if (!container) return;
+    if (!supabaseClient) {
+        container.innerHTML = '<div class="no-data">No disponible sin Supabase.</div>';
+        return;
+    }
+    try {
+        const { data, error } = await supabaseClient
+            .from('solicitudes_fecha_celebracion')
+            .select('*')
+            .order('fecha_solicitada', { ascending: true })
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        const list = data || [];
+        if (list.length === 0) {
+            container.innerHTML = '<div class="no-data">Aún no hay solicitudes de fecha.</div>';
+            return;
+        }
+        container.innerHTML = list.map(s => {
+            const fechaStr = s.fecha_solicitada ? String(s.fecha_solicitada).split('T')[0] : '-';
+            const created = s.created_at ? new Date(s.created_at).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+            const msg = (s.mensaje || '').trim() ? `<p><strong>Mensaje:</strong> ${escapeHtml(s.mensaje)}</p>` : '';
+            return `
+                <div class="evento-admin-item" style="margin-bottom:0.75rem;">
+                    <div class="evento-admin-info">
+                        <p><strong>Fecha solicitada:</strong> ${fechaStr}</p>
+                        <p><strong>Contacto:</strong> ${escapeHtml(s.nombre_contacto || '')} | ${escapeHtml(s.email || '')} | ${escapeHtml(s.telefono || '')}</p>
+                        ${msg}
+                        <p style="font-size:0.8rem; color:#666;">Enviado: ${created}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Error cargando solicitudes de fecha:', e);
+        container.innerHTML = '<div class="no-data">Error al cargar. ¿Ejecutaste supabase-solicitudes-fecha-celebracion.sql?</div>';
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 async function guardarDisponibilidadServicio(e) {

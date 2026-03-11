@@ -617,6 +617,38 @@
                             <div id="cumpleCalendario" class="calendario-cumple"></div>
                             <small style="display:block; margin-top:0.25rem; color:#666;">Toca un día en verde para seleccionar la fecha.</small>
                         </div>
+                        <div class="form-group" style="margin-top:1.25rem; padding:1rem; background:#f8f9fa; border-radius:8px; border:1px solid #eee;">
+                            <h4 style="margin:0 0 0.75rem 0; font-size:1rem;">¿No ves la fecha que buscas?</h4>
+                            <p style="color:#666; font-size:0.9rem; margin-bottom:0.75rem;">Solicita una fecha para celebración y nos pondremos en contacto contigo.</p>
+                            <form id="formRequestDateCumple">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Fecha deseada:</label>
+                                        <input type="date" id="requestDateFecha" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Tu nombre:</label>
+                                        <input type="text" id="requestDateNombre" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Email:</label>
+                                        <input type="email" id="requestDateEmail" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Teléfono:</label>
+                                    <input type="tel" id="requestDateTelefono" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Mensaje (opcional):</label>
+                                    <textarea id="requestDateMensaje" rows="2" placeholder="Ej: preferencia de horario, tipo de celebración..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Solicitar fecha</button>
+                            </form>
+                            <p id="requestDateSuccess" style="display:none; color:var(--green, #28a745); margin-top:0.5rem; font-size:0.9rem;">Solicitud enviada. Nos comunicaremos contigo pronto.</p>
+                        </div>
                         </div>
 
                         <div class="form-group" id="cumpleHoraGroup" style="display: none;">
@@ -862,6 +894,11 @@
                                     <button type="submit" class="btn btn-primary">Añadir bloque(s)</button>
                                 </form>
                                 <div id="listaDisponibilidadCumple" style="margin-top:1.5rem;"></div>
+                            </div>
+                            <div class="admin-section" style="margin-top:2rem;">
+                                <h4>Solicitudes de fecha (celebraciones)</h4>
+                                <p style="color:#666; font-size:0.9rem; margin-bottom:1rem;">Fechas que los clientes solicitaron porque no aparecían disponibles.</p>
+                                <div id="listaSolicitudesFechaAdmin"></div>
                             </div>
                         </div>
                     </div>
