@@ -2216,6 +2216,7 @@ async function guardarDisponibilidadCumple(e) {
     if (!supabaseClient) return;
     const fechaInicio = document.getElementById('dispFechaCumple').value;
     const fechaFin = document.getElementById('dispFechaCumpleFin')?.value || '';
+    const fechasMultiplesRaw = document.getElementById('dispFechasMultiples')?.value || '';
     const hora1 = document.getElementById('dispHoraCumple1').value;
     const duracionHoras1 = parseFloat(document.getElementById('dispDuracionCumple1').value) || 1;
     const hora2 = document.getElementById('dispHoraCumple2')?.value || '';
@@ -2223,20 +2224,39 @@ async function guardarDisponibilidadCumple(e) {
     const hora3 = document.getElementById('dispHoraCumple3')?.value || '';
     const duracionHoras3 = parseFloat(document.getElementById('dispDuracionCumple3')?.value || '0') || 0;
 
-    if (!fechaInicio || !hora1) return;
+    if (!hora1) return;
 
     try {
-        // Construir rango de fechas (si no hay fin, solo un día)
         const fechasAInsertar = [];
-        const inicio = new Date(fechaInicio);
-        const fin = fechaFin ? new Date(fechaFin) : new Date(fechaInicio);
-        if (fin < inicio) {
-            alert('La fecha fin no puede ser anterior a la fecha inicio.');
-            return;
-        }
-        for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
-            const iso = d.toISOString().split('T')[0];
-            fechasAInsertar.push(iso);
+
+        const textoFechas = fechasMultiplesRaw.trim();
+        if (textoFechas) {
+            // Usar fechas sueltas (no corridas)
+            const partes = textoFechas
+                .split(/[\n,;]+/)
+                .map(s => s.trim())
+                .filter(Boolean);
+            const regexFecha = /^\d{4}-\d{2}-\d{2}$/;
+            for (const f of partes) {
+                if (!regexFecha.test(f)) {
+                    alert('Revisa las fechas sueltas. Usa el formato YYYY-MM-DD, por ejemplo: 2026-04-05.');
+                    return;
+                }
+                fechasAInsertar.push(f);
+            }
+        } else {
+            // Construir rango de fechas (si no hay fin, solo un día)
+            if (!fechaInicio) return;
+            const inicio = new Date(fechaInicio);
+            const fin = fechaFin ? new Date(fechaFin) : new Date(fechaInicio);
+            if (fin < inicio) {
+                alert('La fecha fin no puede ser anterior a la fecha inicio.');
+                return;
+            }
+            for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+                const iso = d.toISOString().split('T')[0];
+                fechasAInsertar.push(iso);
+            }
         }
 
         const registros = [];
