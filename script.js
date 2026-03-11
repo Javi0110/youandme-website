@@ -1482,12 +1482,9 @@ function inicializarFormularios() {
         formRequestDate.addEventListener('submit', async function(e) {
             e.preventDefault();
             const fecha = document.getElementById('requestDateFecha').value;
-            const nombre = document.getElementById('requestDateNombre').value;
-            const email = document.getElementById('requestDateEmail').value;
-            const telefono = document.getElementById('requestDateTelefono').value;
             const mensaje = (document.getElementById('requestDateMensaje').value || '').trim();
-            if (!fecha || !nombre || !email || !telefono) {
-                alert('Completa fecha, nombre, email y teléfono.');
+            if (!fecha) {
+                alert('Indica la fecha deseada.');
                 return;
             }
             const successEl = document.getElementById('requestDateSuccess');
@@ -1495,7 +1492,7 @@ function inicializarFormularios() {
                 if (supabaseClient) {
                     const { error } = await supabaseClient
                         .from('solicitudes_fecha_celebracion')
-                        .insert([{ fecha_solicitada: fecha, nombre_contacto: nombre, email, telefono, mensaje: mensaje || null }]);
+                        .insert([{ fecha_solicitada: fecha, nombre_contacto: '', email: '', telefono: '', mensaje: mensaje || null }]);
                     if (error) throw error;
                 }
                 if (successEl) successEl.style.display = 'block';
