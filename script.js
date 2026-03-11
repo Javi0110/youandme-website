@@ -2169,10 +2169,11 @@ async function cargarDisponibilidadesAdmin() {
             listaCumple.innerHTML = '<div class="no-data">Aún no hay bloques de disponibilidad para celebraciones.</div>';
         } else {
             listaCumple.innerHTML = filas.map(d => {
+                const isoFecha = d.fecha ? String(d.fecha).split('T')[0] : '';
                 // Formatear fecha en local sin cambios de día por zona horaria
                 let fecha = '-';
                 if (d.fecha) {
-                    const [y, m, dia] = String(d.fecha).split('T')[0].split('-').map(Number);
+                    const [y, m, dia] = isoFecha.split('-').map(Number);
                     const fechaLocal = new Date(y, (m || 1) - 1, dia || 1);
                     fecha = fechaLocal.toLocaleDateString('es-PR', {
                         weekday: 'short',
@@ -2195,7 +2196,7 @@ async function cargarDisponibilidadesAdmin() {
                             <button class="btn-edit" onclick="toggleDisponibilidadCumple('${d.id}', ${!d.disponible})">
                                 ${d.disponible ? 'Marcar como no disponible' : 'Marcar como disponible'}
                             </button>
-                            <button class="btn-edit" onclick="editarDisponibilidadCumple('${d.id}', '${hora}', ${horasDuracion})">
+                            <button class="btn-edit" onclick="editarDisponibilidadCumple('${d.id}', '${isoFecha}', '${hora}', ${horasDuracion})">
                                 Editar
                             </button>
                             <button class="btn-delete" onclick="eliminarDisponibilidadCumple('${d.id}')">Eliminar</button>
@@ -2215,8 +2216,18 @@ async function guardarDisponibilidadServicio(e) {
     e.preventDefault();
 }
 
-async function editarDisponibilidadCumple(id, horaActual, horasActuales) {
+async function editarDisponibilidadCumple(id, fechaActualISO, horaActual, horasActuales) {
     if (!supabaseClient) return;
+    // Editar fecha
+    const nuevaFecha = window.prompt('Nueva fecha para este bloque (formato AAAA-MM-DD, por ejemplo 2026-04-15):', fechaActualISO || '');
+    if (nuevaFecha == null) return; // cancelar
+    const fechaTrim = (nuevaFecha || '').trim();
+    const regexFecha = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regexFecha.test(fechaTrim)) {
+        alert('Por favor ingresa una fecha válida en formato AAAA-MM-DD (por ejemplo 2026-04-15).');
+        return;
+    }
+
     // Editar hora de inicio
     const nuevaHora = window.prompt('Nueva hora de inicio (formato HH:MM, por ejemplo 15:30):', horaActual || '');
     if (nuevaHora == null) return; // cancelar
@@ -2239,7 +2250,7 @@ async function editarDisponibilidadCumple(id, horaActual, horasActuales) {
     try {
         await supabaseClient
             .from('disponibilidad_cumple')
-            .update({ hora: horaTrim, duracion_min: duracionMin })
+            .update({ fecha: fechaTrim, hora: horaTrim, duracion_min: duracionMin })
             .eq('id', id);
         await cargarDisponibilidadesAdmin();
     } catch (e) {
