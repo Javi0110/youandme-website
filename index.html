@@ -559,25 +559,6 @@
                                 <label>Nombre del festejado/a:</label>
                                 <input type="text" id="cumpleNombre" required>
                             </div>
-                            <div class="form-group">
-                                <label>Fecha deseada:</label>
-                                <input type="hidden" id="cumpleFecha" required>
-                                <div id="cumpleCalendario" class="calendario-cumple"></div>
-                                <small style="display:block; margin-top:0.25rem; color:#666;">Toca un día en verde para seleccionar la fecha.</small>
-                            </div>
-                        </div>
-
-                        <div class="form-group" id="cumpleHoraGroup" style="display: none;">
-                            <label>Horario:</label>
-                            <select id="cumpleHoraSlot">
-                                <option value="">Selecciona un horario disponible</option>
-                            </select>
-                            <small style="display:block; margin-top:0.25rem; color:#666;">Basado en la disponibilidad del centro para esa fecha.</small>
-                        </div>
-                        <div class="form-group" id="cumpleHoraNoSlots" style="display: none; color: var(--orange);">
-                            No hay horarios disponibles para esta fecha. Por favor elige otra fecha o contáctanos directamente.
-                        </div>
-
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Tu nombre:</label>
@@ -608,7 +589,7 @@
                                 <option value="350">Decoración Elaborada - $350</option>
                             </select>
                         </div>
-
+                        
                         <div class="form-group">
                             <label>
                                 <input type="checkbox" id="cumpleEquipo">
@@ -628,6 +609,25 @@
                                 <option value="carteras">Decorar carteras/tote bags - $200 (por 15 niños)</option>
                                 <option value="jackets">Personalizar Jackets - $200 (por 15 niños)</option>
                             </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Fecha deseada:</label>
+                            <input type="hidden" id="cumpleFecha" required>
+                            <div id="cumpleCalendario" class="calendario-cumple"></div>
+                            <small style="display:block; margin-top:0.25rem; color:#666;">Toca un día en verde para seleccionar la fecha.</small>
+                        </div>
+                        </div>
+
+                        <div class="form-group" id="cumpleHoraGroup" style="display: none;">
+                            <label>Horario:</label>
+                            <select id="cumpleHoraSlot">
+                                <option value="">Selecciona un horario disponible</option>
+                            </select>
+                            <small style="display:block; margin-top:0.25rem; color:#666;">Basado en la disponibilidad del centro para esa fecha.</small>
+                        </div>
+                        <div class="form-group" id="cumpleHoraNoSlots" style="display: none; color: var(--orange);">
+                            No hay horarios disponibles para esta fecha. Por favor elige otra fecha o contáctanos directamente.
                         </div>
 
                         <div class="form-group" id="numNinosGroup" style="display: none;">
