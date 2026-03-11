@@ -88,13 +88,15 @@ async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActivid
     }
     try {
         if (typeof emailjs === 'undefined') return;
+        const instruccionesAth = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
         await emailjs.send(cfg.serviceId, cfg.templateIdActividad, {
             to_email: email,
             nombre_nino: nombreNino || '',
             nombre_actividad: nombreActividad || '',
             total: total != null ? '$' + total : '',
             telefono_centro: '(787) 204-9041',
-            mensaje_pago: 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter'
+            mensaje_pago: instruccionesAth,
+            instrucciones_ath: instruccionesAth
         });
     } catch (e) {
         console.error('Error enviando email de confirmación (actividad):', e);
@@ -104,13 +106,22 @@ async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActivid
 async function enviarEmailConfirmacionCumple(detalles) {
     const cfg = window.EMAILJS_CONFIG;
     const email = detalles?.email;
-    if (!cfg || !cfg.publicKey || !cfg.serviceId || !email) return;
-    if (!cfg.templateIdCumple) {
-            console.log('EmailJS: añade templateIdCumple en index.html y crea la plantilla "Confirmación reserva cumpleaños" en EmailJS. Ver EMAILJS_SETUP.md');
+    if (!cfg || !cfg.publicKey || !cfg.serviceId || !email) {
+        console.warn('EmailJS cumple: falta config (publicKey, serviceId o email).');
         return;
     }
+    if (!cfg.templateIdCumple || cfg.templateIdCumple.trim() === '') {
+        console.warn('EmailJS cumple: templateIdCumple está vacío en index.html. Añade el Template ID de la plantilla "Confirmación reserva cumpleaños" para que se envíen los emails. Ver EMAILJS_SETUP.md');
+        return;
+    }
+    const totalNum = detalles.total != null && detalles.total !== '' ? Number(detalles.total) : 0;
+    const totalFormato = totalNum > 0 ? '$' + totalNum : (detalles.total != null ? '$' + detalles.total : '');
+    const instruccionesAth = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
     try {
-        if (typeof emailjs === 'undefined') return;
+        if (typeof emailjs === 'undefined') {
+            console.warn('EmailJS cumple: emailjs no está cargado. Incluye el script de EmailJS en index.html.');
+            return;
+        }
         await emailjs.send(cfg.serviceId, cfg.templateIdCumple, {
             to_email: email,
             nombre_nino: detalles.nombreNino || '',
@@ -121,8 +132,10 @@ async function enviarEmailConfirmacionCumple(detalles) {
             decoracion: detalles.decoracion || '',
             equipo: detalles.equipo ? 'Sí' : 'No',
             actividad: detalles.actividad || '',
-            num_ninos: detalles.numNinos || '0',
-            total: detalles.total != null ? '$' + detalles.total : '',
+            num_ninos: detalles.numNinos != null ? String(detalles.numNinos) : '0',
+            total: totalFormato,
+            total_a_pagar: totalFormato,
+            instrucciones_ath: instruccionesAth,
             telefono_centro: '(787) 204-9041'
         });
     } catch (e) {
