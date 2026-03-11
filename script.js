@@ -2136,6 +2136,7 @@ async function guardarDisponibilidadCumple(e) {
     const duracion = Math.round(horas * 60);
     if (!fecha || !hora) return;
     try {
+        console.log('Guardando disponibilidad_cumple', { fecha, hora, duracion });
         await supabaseClient.from('disponibilidad_cumple').insert([{
             fecha,
             hora,
@@ -2146,7 +2147,8 @@ async function guardarDisponibilidadCumple(e) {
         await cargarDisponibilidadesAdmin();
     } catch (e) {
         console.error('Error guardando disponibilidad de cumpleaños:', e);
-        alert('Error al guardar el bloque de celebración.');
+        const detalle = e?.message || e?.code || JSON.stringify(e);
+        alert('Error al guardar el bloque de celebración.\n\nDetalle: ' + detalle);
     }
 }
 
