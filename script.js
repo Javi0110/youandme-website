@@ -1269,13 +1269,29 @@ function inicializarFormularios() {
         return;
     }
     
-    // Validar fecha mínima (debe ser al menos 3 días en el futuro)
+    // Validar fecha mínima según tipo de decoración
     const fechaSeleccionada = new Date(fecha);
     const hoy = new Date();
-    const tresDias = new Date(hoy.getTime() + (3 * 24 * 60 * 60 * 1000));
+    const decoracionValor = parseInt(document.getElementById('cumpleDecoracion')?.value || '0', 10) || 0;
+    let diasMinimos;
+    let semanasTexto;
+    if (decoracionValor === 0) {          // Lleva su propia decoración
+        diasMinimos = 14;                // 2 semanas
+        semanasTexto = '2 semanas';
+    } else if (decoracionValor === 175) { // Decoración básica
+        diasMinimos = 21;                // 3 semanas
+        semanasTexto = '3 semanas';
+    } else if (decoracionValor === 350) { // Decoración elaborada
+        diasMinimos = 28;                // 4 semanas
+        semanasTexto = '4 semanas';
+    } else {
+        diasMinimos = 14;
+        semanasTexto = '2 semanas';
+    }
+    const fechaMinima = new Date(hoy.getTime() + (diasMinimos * 24 * 60 * 60 * 1000));
     
-    if (fechaSeleccionada < tresDias) {
-        alert('La fecha debe ser al menos 3 días en el futuro para poder procesar tu reserva.');
+    if (fechaSeleccionada < fechaMinima) {
+        alert(`Según el tipo de decoración seleccionado, la fecha debe ser al menos ${semanasTexto} a partir de hoy para poder procesar tu reserva.`);
         return;
     }
     
