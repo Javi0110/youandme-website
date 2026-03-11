@@ -110,34 +110,50 @@ async function enviarEmailConfirmacionCumple(detalles) {
         console.warn('EmailJS cumple: falta config (publicKey, serviceId o email).');
         return;
     }
-    if (!cfg.templateIdCumple || cfg.templateIdCumple.trim() === '') {
-        console.warn('EmailJS cumple: templateIdCumple está vacío en index.html. Añade el Template ID de la plantilla "Confirmación reserva cumpleaños" para que se envíen los emails. Ver EMAILJS_SETUP.md');
+    if (typeof emailjs === 'undefined') {
+        console.warn('EmailJS cumple: emailjs no está cargado.');
         return;
     }
     const totalNum = detalles.total != null && detalles.total !== '' ? Number(detalles.total) : 0;
     const totalFormato = totalNum > 0 ? '$' + totalNum : (detalles.total != null ? '$' + detalles.total : '');
     const instruccionesAth = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
+    const templateId = (cfg.templateIdCumple && cfg.templateIdCumple.trim() !== '') ? cfg.templateIdCumple : cfg.templateIdActividad;
+
+    if (!templateId) {
+        console.warn('EmailJS cumple: ni templateIdCumple ni templateIdActividad están configurados. No se envía email.');
+        return;
+    }
+
     try {
-        if (typeof emailjs === 'undefined') {
-            console.warn('EmailJS cumple: emailjs no está cargado. Incluye el script de EmailJS en index.html.');
-            return;
+        if (templateId === cfg.templateIdCumple) {
+            await emailjs.send(cfg.serviceId, templateId, {
+                to_email: email,
+                nombre_nino: detalles.nombreNino || '',
+                fecha: detalles.fecha || '',
+                contacto: detalles.contacto || '',
+                telefono: detalles.telefono || '',
+                horas: detalles.horas || '',
+                decoracion: detalles.decoracion || '',
+                equipo: detalles.equipo ? 'Sí' : 'No',
+                actividad: detalles.actividad || '',
+                num_ninos: detalles.numNinos != null ? String(detalles.numNinos) : '0',
+                total: totalFormato,
+                total_a_pagar: totalFormato,
+                instrucciones_ath: instruccionesAth,
+                telefono_centro: '(787) 204-9041'
+            });
+        } else {
+            const nombreActividad = 'Celebración / Cumpleaños - ' + (detalles.nombreNino || '');
+            await emailjs.send(cfg.serviceId, templateId, {
+                to_email: email,
+                nombre_nino: detalles.nombreNino || '',
+                nombre_actividad: nombreActividad,
+                total: totalFormato,
+                telefono_centro: '(787) 204-9041',
+                mensaje_pago: instruccionesAth,
+                instrucciones_ath: instruccionesAth
+            });
         }
-        await emailjs.send(cfg.serviceId, cfg.templateIdCumple, {
-            to_email: email,
-            nombre_nino: detalles.nombreNino || '',
-            fecha: detalles.fecha || '',
-            contacto: detalles.contacto || '',
-            telefono: detalles.telefono || '',
-            horas: detalles.horas || '',
-            decoracion: detalles.decoracion || '',
-            equipo: detalles.equipo ? 'Sí' : 'No',
-            actividad: detalles.actividad || '',
-            num_ninos: detalles.numNinos != null ? String(detalles.numNinos) : '0',
-            total: totalFormato,
-            total_a_pagar: totalFormato,
-            instrucciones_ath: instruccionesAth,
-            telefono_centro: '(787) 204-9041'
-        });
     } catch (e) {
         console.error('Error enviando email de confirmación (cumpleaños):', e);
     }
