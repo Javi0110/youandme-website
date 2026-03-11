@@ -2224,7 +2224,7 @@ function renderFechasDisponibilidadSeleccionadas() {
     cont.innerHTML = fechasDisponibilidadSeleccionadas.map(f => `
         <span class="fecha-chip" data-fecha="${f}" style="display:inline-flex; align-items:center; padding:0.2rem 0.4rem; margin:0.1rem; border-radius:999px; background:#f0f0f0; font-size:0.85rem;">
             <span>${f}</span>
-            <button type="button" class="fecha-chip-remove" data-fecha="${f}" style="margin-left:0.3rem; border:none; background:none; cursor:pointer; font-size:0.9rem;" aria-label="Eliminar fecha ${f}">🗑️</button>
+            <button type="button" class="fecha-chip-remove" data-fecha="${f}" style="margin-left:0.3rem; border:none; background:none; cursor:pointer; font-size:0.8rem; color:#dc3545; text-decoration:underline;" aria-label="Eliminar fecha ${f}">Eliminar</button>
         </span>
     `).join('');
 
