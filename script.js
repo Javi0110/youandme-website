@@ -2171,33 +2171,56 @@ async function cargarDisponibilidadesAdmin() {
             listaCumple.innerHTML = filas.map(d => {
                 const isoFecha = d.fecha ? String(d.fecha).split('T')[0] : '';
                 // Formatear fecha en local sin cambios de día por zona horaria
-                let fecha = '-';
+                let fechaLegible = '-';
                 if (d.fecha) {
                     const [y, m, dia] = isoFecha.split('-').map(Number);
                     const fechaLocal = new Date(y, (m || 1) - 1, dia || 1);
-                    fecha = fechaLocal.toLocaleDateString('es-PR', {
+                    fechaLegible = fechaLocal.toLocaleDateString('es-PR', {
                         weekday: 'short',
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
                     });
                 }
-                const hora = d.hora ? d.hora.substring(0,5) : '-';
+                const hora = d.hora ? d.hora.substring(0,5) : '';
                 const horasDuracion = d.duracion_min ? (d.duracion_min / 60) : 1;
                 return `
                     <div class="evento-admin-item" style="margin-bottom:0.5rem;">
                         <div class="evento-admin-info">
-                            <p><strong>${fecha}</strong></p>
-                            <p>Hora: ${hora}</p>
-                            <p>Duración: ${horasDuracion} horas</p>
+                            <p><strong>${fechaLegible}</strong></p>
+                            <p>
+                                Fecha:
+                                <input type="date"
+                                       value="${isoFecha}"
+                                       data-disp-id="${d.id}-fecha"
+                                       style="margin-left:0.25rem; padding:0.1rem 0.25rem; border-radius:4px; border:1px solid #ccc; font-size:0.85rem;">
+                            </p>
+                            <p>
+                                Hora:
+                                <input type="time"
+                                       value="${hora}"
+                                       step="1800"
+                                       data-disp-id="${d.id}-hora"
+                                       style="margin-left:0.25rem; padding:0.1rem 0.25rem; border-radius:4px; border:1px solid #ccc; font-size:0.85rem;">
+                            </p>
+                            <p>
+                                Duración:
+                                <input type="number"
+                                       min="0.5"
+                                       step="0.5"
+                                       value="${horasDuracion}"
+                                       data-disp-id="${d.id}-duracion"
+                                       style="width:4rem; margin:0 0.25rem; padding:0.1rem 0.25rem; border-radius:4px; border:1px solid #ccc; font-size:0.85rem;">
+                                horas
+                            </p>
                             <p>Disponible: ${d.disponible ? 'Sí' : 'No'}</p>
                         </div>
                         <div class="evento-admin-actions">
                             <button class="btn-edit" onclick="toggleDisponibilidadCumple('${d.id}', ${!d.disponible})">
                                 ${d.disponible ? 'Marcar como no disponible' : 'Marcar como disponible'}
                             </button>
-                            <button class="btn-edit" onclick="editarDisponibilidadCumple('${d.id}', '${isoFecha}', '${hora}', ${horasDuracion})">
-                                Editar
+                            <button class="btn-edit" onclick="guardarCambiosDisponibilidadCumple('${d.id}')">
+                                Guardar
                             </button>
                             <button class="btn-delete" onclick="eliminarDisponibilidadCumple('${d.id}')">Eliminar</button>
                         </div>
@@ -2216,37 +2239,36 @@ async function guardarDisponibilidadServicio(e) {
     e.preventDefault();
 }
 
-async function editarDisponibilidadCumple(id, fechaActualISO, horaActual, horasActuales) {
+async function guardarCambiosDisponibilidadCumple(id) {
     if (!supabaseClient) return;
-    // Editar fecha
-    const nuevaFecha = window.prompt('Nueva fecha para este bloque (formato AAAA-MM-DD, por ejemplo 2026-04-15):', fechaActualISO || '');
-    if (nuevaFecha == null) return; // cancelar
-    const fechaTrim = (nuevaFecha || '').trim();
+    const inputFecha = document.querySelector(`input[data-disp-id="${id}-fecha"]`);
+    const inputHora = document.querySelector(`input[data-disp-id="${id}-hora"]`);
+    const inputDur = document.querySelector(`input[data-disp-id="${id}-duracion"]`);
+    if (!inputFecha || !inputHora || !inputDur) return;
+
+    const fechaTrim = (inputFecha.value || '').trim();
+    const horaTrim = (inputHora.value || '').trim();
+    const durStr = (inputDur.value || '').trim();
+
     const regexFecha = /^\d{4}-\d{2}-\d{2}$/;
     if (!regexFecha.test(fechaTrim)) {
         alert('Por favor ingresa una fecha válida en formato AAAA-MM-DD (por ejemplo 2026-04-15).');
         return;
     }
 
-    // Editar hora de inicio
-    const nuevaHora = window.prompt('Nueva hora de inicio (formato HH:MM, por ejemplo 15:30):', horaActual || '');
-    if (nuevaHora == null) return; // cancelar
-    const horaTrim = (nuevaHora || '').trim();
     const regexHora = /^([01]\d|2[0-3]):[0-5]\d$/;
     if (!regexHora.test(horaTrim)) {
         alert('Por favor ingresa una hora válida en formato HH:MM (por ejemplo 15:30).');
         return;
     }
 
-    // Editar duración
-    const valorDur = window.prompt('Nueva duración en horas para este bloque (por ejemplo, 1.5):', horasActuales != null ? String(horasActuales) : '1');
-    if (valorDur == null) return; // cancelar
-    const horas = parseFloat(valorDur);
+    const horas = parseFloat(durStr);
     if (!horas || horas <= 0) {
-        alert('Por favor ingresa una duración válida en horas.');
+        alert('Por favor ingresa una duración válida en horas (por ejemplo 1.5).');
         return;
     }
     const duracionMin = Math.round(horas * 60);
+
     try {
         await supabaseClient
             .from('disponibilidad_cumple')
@@ -2254,8 +2276,8 @@ async function editarDisponibilidadCumple(id, fechaActualISO, horaActual, horasA
             .eq('id', id);
         await cargarDisponibilidadesAdmin();
     } catch (e) {
-        console.error('Error actualizando duración de disponibilidad de cumpleaños:', e);
-        alert('Error al actualizar la duración del bloque de celebración.');
+        console.error('Error actualizando disponibilidad de cumpleaños:', e);
+        alert('Error al actualizar el bloque de celebración.');
     }
 }
 
