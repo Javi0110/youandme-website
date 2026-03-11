@@ -2109,7 +2109,18 @@ async function cargarDisponibilidadesAdmin() {
             listaCumple.innerHTML = '<div class="no-data">Aún no hay bloques de disponibilidad para celebraciones.</div>';
         } else {
             listaCumple.innerHTML = filas.map(d => {
-                const fecha = d.fecha ? new Date(d.fecha).toLocaleDateString('es-PR', { weekday:'short', year:'numeric', month:'short', day:'numeric' }) : '-';
+                // Formatear fecha en local sin cambios de día por zona horaria
+                let fecha = '-';
+                if (d.fecha) {
+                    const [y, m, dia] = String(d.fecha).split('T')[0].split('-').map(Number);
+                    const fechaLocal = new Date(y, (m || 1) - 1, dia || 1);
+                    fecha = fechaLocal.toLocaleDateString('es-PR', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                }
                 const hora = d.hora ? d.hora.substring(0,5) : '-';
                 const horasDuracion = d.duracion_min ? (d.duracion_min / 60) : 1;
                 return `
