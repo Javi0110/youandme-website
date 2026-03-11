@@ -2195,7 +2195,7 @@ async function cargarDisponibilidadesAdmin() {
                             <button class="btn-edit" onclick="toggleDisponibilidadCumple('${d.id}', ${!d.disponible})">
                                 ${d.disponible ? 'Marcar como no disponible' : 'Marcar como disponible'}
                             </button>
-                            <button class="btn-edit" onclick="actualizarDuracionDisponibilidadCumple('${d.id}', ${horasDuracion})">
+                            <button class="btn-edit" onclick="editarDisponibilidadCumple('${d.id}', '${hora}', ${horasDuracion})">
                                 Editar
                             </button>
                             <button class="btn-delete" onclick="eliminarDisponibilidadCumple('${d.id}')">Eliminar</button>
@@ -2215,11 +2215,22 @@ async function guardarDisponibilidadServicio(e) {
     e.preventDefault();
 }
 
-async function actualizarDuracionDisponibilidadCumple(id, horasActuales) {
+async function editarDisponibilidadCumple(id, horaActual, horasActuales) {
     if (!supabaseClient) return;
-    const valor = window.prompt('Nueva duración en horas para este bloque (por ejemplo, 1.5):', horasActuales != null ? String(horasActuales) : '1');
-    if (valor == null) return; // cancelar
-    const horas = parseFloat(valor);
+    // Editar hora de inicio
+    const nuevaHora = window.prompt('Nueva hora de inicio (formato HH:MM, por ejemplo 15:30):', horaActual || '');
+    if (nuevaHora == null) return; // cancelar
+    const horaTrim = (nuevaHora || '').trim();
+    const regexHora = /^([01]\d|2[0-3]):[0-5]\d$/;
+    if (!regexHora.test(horaTrim)) {
+        alert('Por favor ingresa una hora válida en formato HH:MM (por ejemplo 15:30).');
+        return;
+    }
+
+    // Editar duración
+    const valorDur = window.prompt('Nueva duración en horas para este bloque (por ejemplo, 1.5):', horasActuales != null ? String(horasActuales) : '1');
+    if (valorDur == null) return; // cancelar
+    const horas = parseFloat(valorDur);
     if (!horas || horas <= 0) {
         alert('Por favor ingresa una duración válida en horas.');
         return;
@@ -2228,7 +2239,7 @@ async function actualizarDuracionDisponibilidadCumple(id, horasActuales) {
     try {
         await supabaseClient
             .from('disponibilidad_cumple')
-            .update({ duracion_min: duracionMin })
+            .update({ hora: horaTrim, duracion_min: duracionMin })
             .eq('id', id);
         await cargarDisponibilidadesAdmin();
     } catch (e) {
