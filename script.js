@@ -2519,11 +2519,43 @@ async function eliminarReservaCumple(reservaId) {
     if (!confirm('¿Eliminar esta reserva de cumpleaños?')) return;
     try {
         if (supabaseClient) {
-            const { error } = await supabaseClient
+            // 1) Obtener la fecha de la reserva antes de borrarla
+            const { data: reservaData, error: errSelect } = await supabaseClient
+                .from('reservas_cumple')
+                .select('fecha')
+                .eq('id', reservaId)
+                .maybeSingle();
+            if (errSelect) throw errSelect;
+
+            // 2) Borrar la reserva
+            const { error: errDelete } = await supabaseClient
                 .from('reservas_cumple')
                 .delete()
                 .eq('id', reservaId);
-            if (error) throw error;
+            if (errDelete) throw errDelete;
+
+            // 3) Si tenemos fecha, desbloquear el día, el anterior y el siguiente
+            if (reservaData && reservaData.fecha) {
+                const fechaStr = String(reservaData.fecha).split('T')[0];
+                const base = new Date(fechaStr);
+                if (!isNaN(base.getTime())) {
+                    const fechasADesbloquear = [];
+                    const fPrev = new Date(base); fPrev.setDate(fPrev.getDate() - 1);
+                    const fCurr = new Date(base);
+                    const fNext = new Date(base); fNext.setDate(fNext.getDate() + 1);
+                    [fPrev, fCurr, fNext].forEach(d => {
+                        fechasADesbloquear.push(d.toISOString().split('T')[0]);
+                    });
+
+                    const { error: errUpdate } = await supabaseClient
+                        .from('disponibilidad_cumple')
+                        .update({ disponible: true })
+                        .in('fecha', fechasADesbloquear);
+                    if (errUpdate) {
+                        console.error('Error desbloqueando fechas de disponibilidad tras eliminar reserva de cumple:', errUpdate);
+                    }
+                }
+            }
         } else {
             let reservas = JSON.parse(localStorage.getItem('youme_reservas_cumple') || '[]');
             reservas = reservas.filter(r => String(r.id) !== String(reservaId));
