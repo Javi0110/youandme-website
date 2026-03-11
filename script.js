@@ -2188,24 +2188,15 @@ async function cargarDisponibilidadesAdmin() {
                         <div class="evento-admin-info">
                             <p><strong>${fecha}</strong></p>
                             <p>Hora: ${hora}</p>
-                            <p>
-                                Duración:
-                                <input type="number"
-                                       min="0.5"
-                                       step="0.5"
-                                       value="${horasDuracion}"
-                                       data-disp-id="${d.id}"
-                                       style="width:4rem; margin:0 0.25rem; padding:0.1rem 0.25rem; border-radius:4px; border:1px solid #ccc; font-size:0.85rem;">
-                                horas
-                            </p>
+                            <p>Duración: ${horasDuracion} horas</p>
                             <p>Disponible: ${d.disponible ? 'Sí' : 'No'}</p>
                         </div>
                         <div class="evento-admin-actions">
                             <button class="btn-edit" onclick="toggleDisponibilidadCumple('${d.id}', ${!d.disponible})">
                                 ${d.disponible ? 'Marcar como no disponible' : 'Marcar como disponible'}
                             </button>
-                            <button class="btn-edit" onclick="actualizarDuracionDisponibilidadCumple('${d.id}')">
-                                Guardar duración
+                            <button class="btn-edit" onclick="actualizarDuracionDisponibilidadCumple('${d.id}', ${horasDuracion})">
+                                Editar
                             </button>
                             <button class="btn-delete" onclick="eliminarDisponibilidadCumple('${d.id}')">Eliminar</button>
                         </div>
@@ -2224,11 +2215,11 @@ async function guardarDisponibilidadServicio(e) {
     e.preventDefault();
 }
 
-async function actualizarDuracionDisponibilidadCumple(id) {
+async function actualizarDuracionDisponibilidadCumple(id, horasActuales) {
     if (!supabaseClient) return;
-    const input = document.querySelector(`input[data-disp-id="${id}"]`);
-    if (!input) return;
-    const horas = parseFloat(input.value);
+    const valor = window.prompt('Nueva duración en horas para este bloque (por ejemplo, 1.5):', horasActuales != null ? String(horasActuales) : '1');
+    if (valor == null) return; // cancelar
+    const horas = parseFloat(valor);
     if (!horas || horas <= 0) {
         alert('Por favor ingresa una duración válida en horas.');
         return;
