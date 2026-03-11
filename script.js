@@ -1417,13 +1417,41 @@ function inicializarFormularios() {
             }
         }
         await enviarEmailConfirmacionCumple(detalles);
-        alert(`Reserva registrada para el cumpleaños de ${nombre}.\n\nTotal: $${total}\n\nNos comunicaremos contigo para confirmar que la fecha esté disponible.`);
+        mostrarExitoReservaCumple(total, nombre);
     } catch (e) {
         console.error(e);
         alert(`Reserva registrada.\n\nTotal: $${total}\n\nNos comunicaremos contigo para confirmar que la fecha esté disponible.`);
+        mostrarExitoReservaCumple(total, nombre);
     }
     console.log('Detalles de reserva:', detalles);
         });
+    }
+
+    function mostrarExitoReservaCumple(total, nombre) {
+        const form = document.getElementById('cumpleForm');
+        const successEl = document.getElementById('cumpleReservaSuccess');
+        const otraReservaBtn = document.getElementById('cumpleOtraReservaBtn');
+        if (form) form.reset();
+        if (document.getElementById('cumpleFecha')) document.getElementById('cumpleFecha').removeAttribute('value');
+        if (document.getElementById('cumpleDecoracion') && document.getElementById('cumpleFecha')) {
+            document.getElementById('cumpleFecha').disabled = true;
+        }
+        if (document.getElementById('cumpleHoraGroup')) document.getElementById('cumpleHoraGroup').style.display = 'none';
+        if (document.getElementById('cumpleHoraNoSlots')) document.getElementById('cumpleHoraNoSlots').style.display = 'none';
+        if (form) form.style.display = 'none';
+        if (successEl) {
+            successEl.style.display = 'block';
+            successEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        if (otraReservaBtn && !otraReservaBtn.dataset.listener) {
+            otraReservaBtn.dataset.listener = 'true';
+            otraReservaBtn.addEventListener('click', function() {
+                if (successEl) successEl.style.display = 'none';
+                if (form) form.style.display = '';
+                renderizarCalendarioCumple();
+                if (typeof calcularTotalCumpleanos === 'function') calcularTotalCumpleanos();
+            });
+        }
     }
     
     // ==================== REQUEST DATE (solicitar fecha no disponible) ====================
