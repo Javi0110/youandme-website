@@ -2220,7 +2220,25 @@ function renderFechasDisponibilidadSeleccionadas() {
         cont.textContent = 'Ninguna fecha seleccionada aún.';
         return;
     }
-    cont.textContent = fechasDisponibilidadSeleccionadas.join(', ');
+    // Renderizar como chips con icono de zafacón
+    cont.innerHTML = fechasDisponibilidadSeleccionadas.map(f => `
+        <span class="fecha-chip" data-fecha="${f}" style="display:inline-flex; align-items:center; padding:0.2rem 0.4rem; margin:0.1rem; border-radius:999px; background:#f0f0f0; font-size:0.85rem;">
+            <span>${f}</span>
+            <button type="button" class="fecha-chip-remove" data-fecha="${f}" style="margin-left:0.3rem; border:none; background:none; cursor:pointer; font-size:0.9rem;" aria-label="Eliminar fecha ${f}">🗑️</button>
+        </span>
+    `).join('');
+
+    cont.querySelectorAll('.fecha-chip-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const f = btn.getAttribute('data-fecha');
+            const idx = fechasDisponibilidadSeleccionadas.indexOf(f);
+            if (idx !== -1) {
+                fechasDisponibilidadSeleccionadas.splice(idx, 1);
+                fechasDisponibilidadSeleccionadas.sort();
+                renderFechasDisponibilidadSeleccionadas();
+            }
+        });
+    });
 }
 
 async function guardarDisponibilidadCumple(e) {
