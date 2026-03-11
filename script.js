@@ -87,6 +87,13 @@ async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActivid
         }
         return;
     }
+    let totalNum = total;
+    if (total !== null && total !== undefined && total !== '') {
+        totalNum = Number(total);
+    } else {
+        totalNum = 0;
+    }
+    const totalFormato = totalNum > 0 ? '$' + totalNum : (total != null ? '$' + total : '$0');
     try {
         if (typeof emailjs === 'undefined') return;
         const instruccionesAth = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
@@ -95,7 +102,7 @@ async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActivid
             reply_to: 'centroyouandme@gmail.com',
             nombre_nino: nombreNino || '',
             nombre_actividad: nombreActividad || '',
-            total: total != null ? '$' + total : '',
+            total: totalFormato,
             telefono_centro: '(787) 204-9041',
             mensaje_pago: instruccionesAth,
             instrucciones_ath: instruccionesAth
@@ -108,56 +115,34 @@ async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActivid
 async function enviarEmailConfirmacionCumple(detalles) {
     const cfg = window.EMAILJS_CONFIG;
     const email = detalles?.email;
-    if (!cfg || !cfg.publicKey || !cfg.serviceId || !email) {
-        console.warn('EmailJS cumple: falta config (publicKey, serviceId o email).');
+    if (!cfg || !cfg.publicKey || !cfg.serviceId || !cfg.templateIdActividad || !email) {
+        console.warn('EmailJS cumple: falta config o templateIdActividad. No se envía email.');
         return;
     }
     if (typeof emailjs === 'undefined') {
         console.warn('EmailJS cumple: emailjs no está cargado.');
         return;
     }
-    const totalNum = detalles.total != null && detalles.total !== '' ? Number(detalles.total) : 0;
-    const totalFormato = totalNum > 0 ? '$' + totalNum : (detalles.total != null ? '$' + detalles.total : '');
-    const instruccionesAth = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
-    const templateId = (cfg.templateIdCumple && cfg.templateIdCumple.trim() !== '') ? cfg.templateIdCumple : cfg.templateIdActividad;
-
-    if (!templateId) {
-        console.warn('EmailJS cumple: ni templateIdCumple ni templateIdActividad están configurados. No se envía email.');
-        return;
+    let totalReserva = detalles.total;
+    if (totalReserva !== null && totalReserva !== undefined && totalReserva !== '') {
+        totalReserva = Number(totalReserva);
+    } else {
+        totalReserva = 0;
     }
-
+    const totalFormato = totalReserva > 0 ? '$' + totalReserva : (detalles.total != null ? '$' + detalles.total : '$0');
+    const instruccionesAth = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
+    const nombreActividad = 'Celebración / Cumpleaños - ' + (detalles.nombreNino || '');
     try {
-        if (templateId === cfg.templateIdCumple) {
-            await emailjs.send(cfg.serviceId, templateId, {
-                to_email: email,
-                reply_to: 'centroyouandme@gmail.com',
-                nombre_nino: detalles.nombreNino || '',
-                fecha: detalles.fecha || '',
-                contacto: detalles.contacto || '',
-                telefono: detalles.telefono || '',
-                horas: detalles.horas || '',
-                decoracion: detalles.decoracion || '',
-                equipo: detalles.equipo ? 'Sí' : 'No',
-                actividad: detalles.actividad || '',
-                num_ninos: detalles.numNinos != null ? String(detalles.numNinos) : '0',
-                total: totalFormato,
-                total_a_pagar: totalFormato,
-                instrucciones_ath: instruccionesAth,
-                telefono_centro: '(787) 204-9041'
-            });
-        } else {
-            const nombreActividad = 'Celebración / Cumpleaños - ' + (detalles.nombreNino || '');
-            await emailjs.send(cfg.serviceId, templateId, {
-                to_email: email,
-                reply_to: 'centroyouandme@gmail.com',
-                nombre_nino: detalles.nombreNino || '',
-                nombre_actividad: nombreActividad,
-                total: totalFormato,
-                telefono_centro: '(787) 204-9041',
-                mensaje_pago: instruccionesAth,
-                instrucciones_ath: instruccionesAth
-            });
-        }
+        await emailjs.send(cfg.serviceId, cfg.templateIdActividad, {
+            to_email: email,
+            reply_to: 'centroyouandme@gmail.com',
+            nombre_nino: detalles.nombreNino || '',
+            nombre_actividad: nombreActividad,
+            total: totalFormato,
+            telefono_centro: '(787) 204-9041',
+            mensaje_pago: instruccionesAth,
+            instrucciones_ath: instruccionesAth
+        });
     } catch (e) {
         console.error('Error enviando email de confirmación (cumpleaños):', e);
         if (e?.text || e?.message) {
