@@ -2211,11 +2211,22 @@ async function guardarDisponibilidadServicio(e) {
     e.preventDefault();
 }
 
+let fechasDisponibilidadSeleccionadas = [];
+
+function renderFechasDisponibilidadSeleccionadas() {
+    const cont = document.getElementById('dispFechasSeleccionadas');
+    if (!cont) return;
+    if (!fechasDisponibilidadSeleccionadas.length) {
+        cont.textContent = 'Ninguna fecha seleccionada aún.';
+        return;
+    }
+    cont.textContent = fechasDisponibilidadSeleccionadas.join(', ');
+}
+
 async function guardarDisponibilidadCumple(e) {
     e.preventDefault();
     if (!supabaseClient) return;
     const fechaInicio = document.getElementById('dispFechaCumple').value;
-    const fechasMultiplesRaw = document.getElementById('dispFechasMultiples')?.value || '';
     const hora1 = document.getElementById('dispHoraCumple1').value;
     const duracionHoras1 = parseFloat(document.getElementById('dispDuracionCumple1').value) || 1;
 
@@ -2224,30 +2235,14 @@ async function guardarDisponibilidadCumple(e) {
     try {
         const fechasAInsertar = [];
 
-        const textoFechas = fechasMultiplesRaw.trim();
-        if (textoFechas) {
-            // Usar fechas sueltas (no corridas)
-            const partes = textoFechas
-                .split(/[\n,;]+/)
-                .map(s => s.trim())
-                .filter(Boolean);
-            const regexFecha = /^\d{4}-\d{2}-\d{2}$/;
-            for (const f of partes) {
-                if (!regexFecha.test(f)) {
-                    alert('Revisa las fechas sueltas. Usa el formato YYYY-MM-DD, por ejemplo: 2026-04-05.');
-                    return;
-                }
-                fechasAInsertar.push(f);
-            }
+        if (fechasDisponibilidadSeleccionadas.length) {
+            fechasDisponibilidadSeleccionadas.forEach(f => fechasAInsertar.push(f));
         } else {
-            // Construir rango de fechas (si no hay fin, solo un día)
-            if (!fechaInicio) return;
-            const inicio = new Date(fechaInicio);
-            const fin = new Date(fechaInicio);
-            for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
-                const iso = d.toISOString().split('T')[0];
-                fechasAInsertar.push(iso);
+            if (!fechaInicio) {
+                alert('Selecciona al menos una fecha y pulsa "Agregar fecha" antes de guardar.');
+                return;
             }
+            fechasAInsertar.push(fechaInicio);
         }
 
         const registros = [];
@@ -2263,6 +2258,8 @@ async function guardarDisponibilidadCumple(e) {
         console.log('Guardando disponibilidad_cumple', { fechasAInsertar, registros });
         await supabaseClient.from('disponibilidad_cumple').insert(registros);
         (document.getElementById('formDisponibilidadCumple') || {}).reset?.();
+        fechasDisponibilidadSeleccionadas = [];
+        renderFechasDisponibilidadSeleccionadas();
         await cargarDisponibilidadesAdmin();
     } catch (e) {
         console.error('Error guardando disponibilidad de cumpleaños:', e);
@@ -2843,6 +2840,34 @@ function inicializarTodo() {
         if (formDispCumple && !formDispCumple.dataset.handler) {
             formDispCumple.dataset.handler = 'true';
             formDispCumple.addEventListener('submit', guardarDisponibilidadCumple);
+
+            // Inicializar selección múltiple de fechas para disponibilidad
+            const btnAgregarFechaDisp = document.getElementById('btnAgregarFechaDisp');
+            const btnLimpiarFechasDisp = document.getElementById('btnLimpiarFechasDisp');
+            const inputFechaDisp = document.getElementById('dispFechaCumple');
+
+            fechasDisponibilidadSeleccionadas = [];
+            renderFechasDisponibilidadSeleccionadas();
+
+            if (btnAgregarFechaDisp && inputFechaDisp) {
+                btnAgregarFechaDisp.addEventListener('click', () => {
+                    const valor = inputFechaDisp.value;
+                    if (!valor) return;
+                    if (!fechasDisponibilidadSeleccionadas.includes(valor)) {
+                        fechasDisponibilidadSeleccionadas.push(valor);
+                        // Ordenar las fechas para que se vean organizadas
+                        fechasDisponibilidadSeleccionadas.sort();
+                        renderFechasDisponibilidadSeleccionadas();
+                    }
+                });
+            }
+
+            if (btnLimpiarFechasDisp) {
+                btnLimpiarFechasDisp.addEventListener('click', () => {
+                    fechasDisponibilidadSeleccionadas = [];
+                    renderFechasDisponibilidadSeleccionadas();
+                });
+            }
         }
         
         // Aplicar URL por si el hash llegó después (común en móvil)

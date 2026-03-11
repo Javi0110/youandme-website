@@ -839,12 +839,19 @@
                                     <div class="form-row">
                                         <div class="form-group">
                                             <label>Fecha:</label>
-                                            <input type="date" id="dispFechaCumple" required>
+                                            <input type="date" id="dispFechaCumple">
+                                            <small style="display:block; margin-top:0.25rem; color:#666;">
+                                                Selecciona una fecha en el calendario y pulsa "Agregar fecha". Puedes agregar varias, aunque no sean días corridos.
+                                            </small>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label>Fechas sueltas (opcionales, para días no corridos):</label>
-                                        <textarea id="dispFechasMultiples" rows="2" placeholder="Ejemplo: 2026-04-05, 2026-04-12, 2026-04-26&#10;Si completas este campo, se usará en lugar del rango inicio/fin."></textarea>
+                                        <button type="button" id="btnAgregarFechaDisp" class="btn btn-secondary">Agregar fecha</button>
+                                        <button type="button" id="btnLimpiarFechasDisp" class="btn btn-secondary" style="margin-left:0.5rem;">Limpiar fechas</button>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Fechas seleccionadas:</label>
+                                        <div id="dispFechasSeleccionadas" style="font-size:0.9rem; color:#333;"></div>
                                     </div>
                                     <div class="form-row">
                                         <div class="form-group">
