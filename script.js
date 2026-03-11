@@ -2087,8 +2087,6 @@ async function cargarDisponibilidadesAdmin() {
             .order('hora', { ascending: true });
 
         if (error) throw error;
-
-        const datosCumple = resCumple.data || [];
         const filas = data || [];
 
         if (filas.length === 0) {
@@ -2116,8 +2114,7 @@ async function cargarDisponibilidadesAdmin() {
             }).join('');
         }
     } catch (error) {
-        console.error('Error cargando disponibilidad:', error);
-        listaServicios.innerHTML = '<div class="no-data">Error al cargar disponibilidad de servicios.</div>';
+        console.error('Error cargando disponibilidad de celebraciones:', error);
         listaCumple.innerHTML = '<div class="no-data">Error al cargar disponibilidad de celebraciones.</div>';
     }
 }
