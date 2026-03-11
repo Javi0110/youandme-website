@@ -287,11 +287,29 @@ function renderizarCalendarioCumple() {
                     grid += '<div class="calendario-dia vacio"></div>';
                 }
                 const hoyISO = hoy.toISOString().split('T')[0];
+                // Calcular fecha mínima según decoración seleccionada
+                const decoracionSel = document.getElementById('cumpleDecoracion');
+                let minISO = null;
+                if (decoracionSel && decoracionSel.value) {
+                    let diasMinimos;
+                    if (decoracionSel.value === '0') {
+                        diasMinimos = 14;
+                    } else if (decoracionSel.value === '175') {
+                        diasMinimos = 21;
+                    } else if (decoracionSel.value === '350') {
+                        diasMinimos = 28;
+                    } else {
+                        diasMinimos = 14;
+                    }
+                    const fechaMin = new Date(hoy.getTime() + diasMinimos * 24 * 60 * 60 * 1000);
+                    minISO = fechaMin.toISOString().split('T')[0];
+                }
                 for (let d = 1; d <= ultimoDiaMes.getDate(); d++) {
                     const fechaActual = new Date(year, month, d);
                     const iso = fechaActual.toISOString().split('T')[0];
                     const esFuturo = iso >= hoyISO;
-                    const tieneSlots = fechasDisponibles.has(iso);
+                    const cumpleMin = !minISO || iso >= minISO;
+                    const tieneSlots = fechasDisponibles.has(iso) && cumpleMin;
                     let clases = 'calendario-dia';
                     if (tieneSlots && esFuturo) {
                         clases += ' disponible';
@@ -319,6 +337,11 @@ function renderizarCalendarioCumple() {
                 cont.querySelectorAll('.calendario-dia.disponible').forEach(diaEl => {
                     diaEl.addEventListener('click', () => {
                         const iso = diaEl.dataset.fecha;
+                        const decoracionSel = document.getElementById('cumpleDecoracion');
+                        if (!decoracionSel || !decoracionSel.value) {
+                            alert('Primero selecciona el tipo de decoración para ver desde cuándo puedes reservar.');
+                            return;
+                        }
                         inputFecha.value = iso;
                         cont.querySelectorAll('.calendario-dia.disponible').forEach(el => el.classList.remove('seleccionado'));
                         diaEl.classList.add('seleccionado');
@@ -1144,7 +1167,38 @@ function inicializarCalculadoraCumpleanos() {
         
         // Event listeners para calculadora
         cumpleForm.horas.addEventListener('input', calcularTotalCumpleanos);
-        cumpleForm.decoracion.addEventListener('change', calcularTotalCumpleanos);
+        cumpleForm.decoracion.addEventListener('change', function() {
+            // Recalcular total
+            calcularTotalCumpleanos();
+            // Controlar desde cuándo se puede reservar según decoración
+            if (!fechaCumple) return;
+            const val = this.value;
+            if (!val) {
+                fechaCumple.value = '';
+                fechaCumple.disabled = true;
+                fechaCumple.removeAttribute('min');
+                return;
+            }
+            const hoy = new Date();
+            let diasMinimos;
+            if (val === '0') {
+                diasMinimos = 14; // 2 semanas
+            } else if (val === '175') {
+                diasMinimos = 21; // 3 semanas
+            } else if (val === '350') {
+                diasMinimos = 28; // 4 semanas
+            } else {
+                diasMinimos = 14;
+            }
+            const fechaMinima = new Date(hoy.getTime() + diasMinimos * 24 * 60 * 60 * 1000);
+            const isoMin = fechaMinima.toISOString().split('T')[0];
+            fechaCumple.disabled = false;
+            fechaCumple.min = isoMin;
+            // Si la fecha seleccionada actual se queda corta, limpiarla
+            if (fechaCumple.value && fechaCumple.value < isoMin) {
+                fechaCumple.value = '';
+            }
+        });
         cumpleForm.equipo.addEventListener('change', calcularTotalCumpleanos);
         cumpleForm.actividad.addEventListener('change', function() {
             const numNinosGroup = document.getElementById('numNinosGroup');
@@ -1158,6 +1212,11 @@ function inicializarCalculadoraCumpleanos() {
             calcularTotalCumpleanos();
         });
         cumpleForm.numNinos.addEventListener('input', calcularTotalCumpleanos);
+
+        // Inicialmente deshabilitar fecha hasta que elijan decoración
+        if (fechaCumple) {
+            fechaCumple.disabled = true;
+        }
 
         // Cargar horarios disponibles cuando cambie la fecha
         if (fechaCumple && horaSlot && supabaseClient) {
@@ -1263,8 +1322,9 @@ function inicializarFormularios() {
     const contacto = document.getElementById('cumpleContacto').value;
     const telefono = document.getElementById('cumpleTelefono').value;
     const email = document.getElementById('cumpleEmail').value;
+    const decoracionSelect = document.getElementById('cumpleDecoracion');
     
-    if (!nombre || !fecha || !contacto || !telefono || !email) {
+    if (!nombre || !fecha || !contacto || !telefono || !email || !decoracionSelect || !decoracionSelect.value) {
         alert('Por favor completa todos los campos requeridos.');
         return;
     }
