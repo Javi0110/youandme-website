@@ -2216,10 +2216,15 @@ async function guardarDisponibilidadCumple(e) {
     if (!supabaseClient) return;
     const fechaInicio = document.getElementById('dispFechaCumple').value;
     const fechaFin = document.getElementById('dispFechaCumpleFin')?.value || '';
-    const hora = document.getElementById('dispHoraCumple').value;
-    const horas = parseFloat(document.getElementById('dispDuracionCumple').value) || 1;
-    const duracion = Math.round(horas * 60);
-    if (!fechaInicio || !hora) return;
+    const hora1 = document.getElementById('dispHoraCumple1').value;
+    const duracionHoras1 = parseFloat(document.getElementById('dispDuracionCumple1').value) || 1;
+    const hora2 = document.getElementById('dispHoraCumple2')?.value || '';
+    const duracionHoras2 = parseFloat(document.getElementById('dispDuracionCumple2')?.value || '0') || 0;
+    const hora3 = document.getElementById('dispHoraCumple3')?.value || '';
+    const duracionHoras3 = parseFloat(document.getElementById('dispDuracionCumple3')?.value || '0') || 0;
+
+    if (!fechaInicio || !hora1) return;
+
     try {
         // Construir rango de fechas (si no hay fin, solo un día)
         const fechasAInsertar = [];
@@ -2234,13 +2239,36 @@ async function guardarDisponibilidadCumple(e) {
             fechasAInsertar.push(iso);
         }
 
-        console.log('Guardando disponibilidad_cumple', { fechasAInsertar, hora, duracion });
-        const registros = fechasAInsertar.map(f => ({
-            fecha: f,
-            hora,
-            duracion_min: duracion,
-            disponible: true
-        }));
+        const registros = [];
+        fechasAInsertar.forEach(f => {
+            // Bloque 1 (obligatorio)
+            registros.push({
+                fecha: f,
+                hora: hora1,
+                duracion_min: Math.round(duracionHoras1 * 60),
+                disponible: true
+            });
+            // Bloque 2 (opcional)
+            if (hora2 && duracionHoras2 > 0) {
+                registros.push({
+                    fecha: f,
+                    hora: hora2,
+                    duracion_min: Math.round(duracionHoras2 * 60),
+                    disponible: true
+                });
+            }
+            // Bloque 3 (opcional)
+            if (hora3 && duracionHoras3 > 0) {
+                registros.push({
+                    fecha: f,
+                    hora: hora3,
+                    duracion_min: Math.round(duracionHoras3 * 60),
+                    disponible: true
+                });
+            }
+        });
+
+        console.log('Guardando disponibilidad_cumple', { fechasAInsertar, registros });
         await supabaseClient.from('disponibilidad_cumple').insert(registros);
         (document.getElementById('formDisponibilidadCumple') || {}).reset?.();
         await cargarDisponibilidadesAdmin();
