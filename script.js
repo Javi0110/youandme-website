@@ -68,6 +68,7 @@ async function enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio,
         if (typeof emailjs === 'undefined') return;
         await emailjs.send(cfg.serviceId, cfg.templateIdSolicitud, {
             to_email: email,
+            reply_to: 'centroyouandme@gmail.com',
             nombre_paciente: nombrePaciente || '',
             servicio: servicio || '',
             tutor: tutor || '',
@@ -91,6 +92,7 @@ async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActivid
         const instruccionesAth = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
         await emailjs.send(cfg.serviceId, cfg.templateIdActividad, {
             to_email: email,
+            reply_to: 'centroyouandme@gmail.com',
             nombre_nino: nombreNino || '',
             nombre_actividad: nombreActividad || '',
             total: total != null ? '$' + total : '',
@@ -128,6 +130,7 @@ async function enviarEmailConfirmacionCumple(detalles) {
         if (templateId === cfg.templateIdCumple) {
             await emailjs.send(cfg.serviceId, templateId, {
                 to_email: email,
+                reply_to: 'centroyouandme@gmail.com',
                 nombre_nino: detalles.nombreNino || '',
                 fecha: detalles.fecha || '',
                 contacto: detalles.contacto || '',
@@ -146,6 +149,7 @@ async function enviarEmailConfirmacionCumple(detalles) {
             const nombreActividad = 'Celebración / Cumpleaños - ' + (detalles.nombreNino || '');
             await emailjs.send(cfg.serviceId, templateId, {
                 to_email: email,
+                reply_to: 'centroyouandme@gmail.com',
                 nombre_nino: detalles.nombreNino || '',
                 nombre_actividad: nombreActividad,
                 total: totalFormato,
@@ -156,6 +160,9 @@ async function enviarEmailConfirmacionCumple(detalles) {
         }
     } catch (e) {
         console.error('Error enviando email de confirmación (cumpleaños):', e);
+        if (e?.text || e?.message) {
+            console.warn('EmailJS error detail:', e.text || e.message);
+        }
     }
 }
 
@@ -1346,14 +1353,47 @@ function inicializarFormularios() {
     if (reservarBtn && !reservarBtn.dataset.reservaCumpleHandler) {
         reservarBtn.dataset.reservaCumpleHandler = 'true';
         reservarBtn.addEventListener('click', async function() {
-    const nombre = document.getElementById('cumpleNombre').value;
+    const nombre = document.getElementById('cumpleNombre').value.trim();
     const fecha = document.getElementById('cumpleFecha').value;
-    const contacto = document.getElementById('cumpleContacto').value;
-    const telefono = document.getElementById('cumpleTelefono').value;
-    const email = document.getElementById('cumpleEmail').value;
+    const requestDateFecha = document.getElementById('requestDateFecha')?.value?.trim() || '';
+    const requestDateMensaje = (document.getElementById('requestDateMensaje')?.value || '').trim();
+    const contacto = document.getElementById('cumpleContacto').value.trim();
+    const telefono = document.getElementById('cumpleTelefono').value.trim();
+    const email = document.getElementById('cumpleEmail').value.trim();
     const decoracionSelect = document.getElementById('cumpleDecoracion');
+
+    const esSolicitudSoloFecha = !fecha && requestDateFecha;
+
+    if (esSolicitudSoloFecha) {
+        if (!nombre || !contacto || !telefono || !email) {
+            alert('Para solicitar una fecha indica tu nombre, contacto, teléfono y email.');
+            return;
+        }
+        try {
+            if (supabaseClient) {
+                const { error } = await supabaseClient
+                    .from('solicitudes_fecha_celebracion')
+                    .insert([{ fecha_solicitada: requestDateFecha, nombre_contacto: nombre, email, telefono, mensaje: requestDateMensaje || null }]);
+                if (error) throw error;
+            }
+            const successEl = document.getElementById('requestDateSuccess');
+            if (successEl) successEl.style.display = 'block';
+            if (document.getElementById('requestDateFecha')) document.getElementById('requestDateFecha').value = '';
+            if (document.getElementById('requestDateMensaje')) document.getElementById('requestDateMensaje').value = '';
+            setTimeout(function() { if (successEl) successEl.style.display = 'none'; }, 6000);
+        } catch (e) {
+            console.error(e);
+            alert('No se pudo enviar la solicitud. Intenta de nuevo.');
+        }
+        return;
+    }
+
+    if (!fecha) {
+        alert('Selecciona una fecha en el calendario (día en verde) o indica una fecha en "¿No ves la fecha que buscas?" para solicitar.');
+        return;
+    }
     
-    if (!nombre || !fecha || !contacto || !telefono || !email || !decoracionSelect || !decoracionSelect.value) {
+    if (!nombre || !contacto || !telefono || !email || !decoracionSelect || !decoracionSelect.value) {
         alert('Por favor completa todos los campos requeridos.');
         return;
     }
@@ -1470,39 +1510,11 @@ function inicializarFormularios() {
         }
     }
     
-    // ==================== REQUEST DATE (solicitar fecha no disponible) ====================
-    const formRequestDate = document.getElementById('formRequestDateCumple');
-    if (formRequestDate && !formRequestDate.dataset.handler) {
-        formRequestDate.dataset.handler = 'true';
-        const reqDateInput = document.getElementById('requestDateFecha');
-        if (reqDateInput) {
-            const today = new Date().toISOString().split('T')[0];
-            reqDateInput.setAttribute('min', today);
-        }
-        formRequestDate.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const fecha = document.getElementById('requestDateFecha').value;
-            const mensaje = (document.getElementById('requestDateMensaje').value || '').trim();
-            if (!fecha) {
-                alert('Indica la fecha deseada.');
-                return;
-            }
-            const successEl = document.getElementById('requestDateSuccess');
-            try {
-                if (supabaseClient) {
-                    const { error } = await supabaseClient
-                        .from('solicitudes_fecha_celebracion')
-                        .insert([{ fecha_solicitada: fecha, nombre_contacto: '', email: '', telefono: '', mensaje: mensaje || null }]);
-                    if (error) throw error;
-                }
-                if (successEl) successEl.style.display = 'block';
-                formRequestDate.reset();
-                setTimeout(() => { if (successEl) successEl.style.display = 'none'; }, 5000);
-            } catch (err) {
-                console.error(err);
-                alert('No se pudo enviar la solicitud. Intenta de nuevo o contáctanos por teléfono.');
-            }
-        });
+    // Fecha mínima para "solicitar fecha" (parte del form completo)
+    const reqDateInput = document.getElementById('requestDateFecha');
+    if (reqDateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        reqDateInput.setAttribute('min', today);
     }
 
     // ==================== FORMULARIO DE CONTACTO ====================
