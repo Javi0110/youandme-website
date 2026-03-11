@@ -2188,39 +2188,52 @@ async function cargarDisponibilidadesAdmin() {
                     <div class="evento-admin-item" style="margin-bottom:0.5rem;">
                         <div class="evento-admin-info">
                             <p><strong>${fechaLegible}</strong></p>
-                            <p>
-                                Fecha:
-                                <input type="date"
-                                       value="${isoFecha}"
-                                       data-disp-id="${d.id}-fecha"
-                                       style="margin-left:0.25rem; padding:0.1rem 0.25rem; border-radius:4px; border:1px solid #ccc; font-size:0.85rem;">
+                            <p id="dispResumen-${d.id}">
+                                Fecha: ${isoFecha || '-'} |
+                                Hora: ${hora || '-'} |
+                                Duración: ${horasDuracion} horas
                             </p>
-                            <p>
-                                Hora:
-                                <input type="time"
-                                       value="${hora}"
-                                       step="1800"
-                                       data-disp-id="${d.id}-hora"
-                                       style="margin-left:0.25rem; padding:0.1rem 0.25rem; border-radius:4px; border:1px solid #ccc; font-size:0.85rem;">
-                            </p>
-                            <p>
-                                Duración:
-                                <input type="number"
-                                       min="0.5"
-                                       step="0.5"
-                                       value="${horasDuracion}"
-                                       data-disp-id="${d.id}-duracion"
-                                       style="width:4rem; margin:0 0.25rem; padding:0.1rem 0.25rem; border-radius:4px; border:1px solid #ccc; font-size:0.85rem;">
-                                horas
-                            </p>
+                            <div id="dispEditor-${d.id}" style="display:none; margin-top:0.25rem;">
+                                <p>
+                                    Fecha:
+                                    <input type="date"
+                                           value="${isoFecha}"
+                                           data-disp-id="${d.id}-fecha"
+                                           style="margin-left:0.25rem; padding:0.1rem 0.25rem; border-radius:4px; border:1px solid #ccc; font-size:0.85rem;">
+                                </p>
+                                <p>
+                                    Hora:
+                                    <input type="time"
+                                           value="${hora}"
+                                           step="1800"
+                                           data-disp-id="${d.id}-hora"
+                                           style="margin-left:0.25rem; padding:0.1rem 0.25rem; border-radius:4px; border:1px solid #ccc; font-size:0.85rem;">
+                                </p>
+                                <p>
+                                    Duración:
+                                    <input type="number"
+                                           min="0.5"
+                                           step="0.5"
+                                           value="${horasDuracion}"
+                                           data-disp-id="${d.id}-duracion"
+                                           style="width:4rem; margin:0 0.25rem; padding:0.1rem 0.25rem; border-radius:4px; border:1px solid #ccc; font-size:0.85rem;">
+                                    horas
+                                </p>
+                            </div>
                             <p>Disponible: ${d.disponible ? 'Sí' : 'No'}</p>
                         </div>
                         <div class="evento-admin-actions">
                             <button class="btn-edit" onclick="toggleDisponibilidadCumple('${d.id}', ${!d.disponible})">
                                 ${d.disponible ? 'Marcar como no disponible' : 'Marcar como disponible'}
                             </button>
-                            <button class="btn-edit" onclick="guardarCambiosDisponibilidadCumple('${d.id}')">
+                            <button class="btn-edit" onclick="mostrarEditorDisponibilidadCumple('${d.id}')">
+                                Editar
+                            </button>
+                            <button class="btn-edit" onclick="guardarCambiosDisponibilidadCumple('${d.id}')" style="display:none;" id="dispGuardarBtn-${d.id}">
                                 Guardar
+                            </button>
+                            <button class="btn-edit" onclick="cancelarEditorDisponibilidadCumple('${d.id}')" style="display:none;" id="dispCancelarBtn-${d.id}">
+                                Cancelar
                             </button>
                             <button class="btn-delete" onclick="eliminarDisponibilidadCumple('${d.id}')">Eliminar</button>
                         </div>
@@ -2278,6 +2291,28 @@ async function guardarCambiosDisponibilidadCumple(id) {
     } catch (e) {
         console.error('Error actualizando disponibilidad de cumpleaños:', e);
         alert('Error al actualizar el bloque de celebración.');
+    }
+}
+
+function mostrarEditorDisponibilidadCumple(id) {
+    const editor = document.getElementById(`dispEditor-${id}`);
+    const guardarBtn = document.getElementById(`dispGuardarBtn-${id}`);
+    const cancelarBtn = document.getElementById(`dispCancelarBtn-${id}`);
+    if (editor && guardarBtn && cancelarBtn) {
+        editor.style.display = 'block';
+        guardarBtn.style.display = 'inline-block';
+        cancelarBtn.style.display = 'inline-block';
+    }
+}
+
+function cancelarEditorDisponibilidadCumple(id) {
+    const editor = document.getElementById(`dispEditor-${id}`);
+    const guardarBtn = document.getElementById(`dispGuardarBtn-${id}`);
+    const cancelarBtn = document.getElementById(`dispCancelarBtn-${id}`);
+    if (editor && guardarBtn && cancelarBtn) {
+        editor.style.display = 'none';
+        guardarBtn.style.display = 'none';
+        cancelarBtn.style.display = 'none';
     }
 }
 
