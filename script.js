@@ -2154,19 +2154,34 @@ async function guardarDisponibilidadServicio(e) {
 async function guardarDisponibilidadCumple(e) {
     e.preventDefault();
     if (!supabaseClient) return;
-    const fecha = document.getElementById('dispFechaCumple').value;
+    const fechaInicio = document.getElementById('dispFechaCumple').value;
+    const fechaFin = document.getElementById('dispFechaCumpleFin')?.value || '';
     const hora = document.getElementById('dispHoraCumple').value;
     const horas = parseFloat(document.getElementById('dispDuracionCumple').value) || 1;
     const duracion = Math.round(horas * 60);
-    if (!fecha || !hora) return;
+    if (!fechaInicio || !hora) return;
     try {
-        console.log('Guardando disponibilidad_cumple', { fecha, hora, duracion });
-        await supabaseClient.from('disponibilidad_cumple').insert([{
-            fecha,
+        // Construir rango de fechas (si no hay fin, solo un día)
+        const fechasAInsertar = [];
+        const inicio = new Date(fechaInicio);
+        const fin = fechaFin ? new Date(fechaFin) : new Date(fechaInicio);
+        if (fin < inicio) {
+            alert('La fecha fin no puede ser anterior a la fecha inicio.');
+            return;
+        }
+        for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+            const iso = d.toISOString().split('T')[0];
+            fechasAInsertar.push(iso);
+        }
+
+        console.log('Guardando disponibilidad_cumple', { fechasAInsertar, hora, duracion });
+        const registros = fechasAInsertar.map(f => ({
+            fecha: f,
             hora,
             duracion_min: duracion,
             disponible: true
-        }]);
+        }));
+        await supabaseClient.from('disponibilidad_cumple').insert(registros);
         (document.getElementById('formDisponibilidadCumple') || {}).reset?.();
         await cargarDisponibilidadesAdmin();
     } catch (e) {
