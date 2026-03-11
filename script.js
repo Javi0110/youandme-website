@@ -2187,12 +2187,25 @@ async function cargarDisponibilidadesAdmin() {
                     <div class="evento-admin-item" style="margin-bottom:0.5rem;">
                         <div class="evento-admin-info">
                             <p><strong>${fecha}</strong></p>
-                            <p>Hora: ${hora} (${horasDuracion} horas)</p>
+                            <p>Hora: ${hora}</p>
+                            <p>
+                                Duración:
+                                <input type="number"
+                                       min="0.5"
+                                       step="0.5"
+                                       value="${horasDuracion}"
+                                       data-disp-id="${d.id}"
+                                       style="width:4rem; margin:0 0.25rem; padding:0.1rem 0.25rem; border-radius:4px; border:1px solid #ccc; font-size:0.85rem;">
+                                horas
+                            </p>
                             <p>Disponible: ${d.disponible ? 'Sí' : 'No'}</p>
                         </div>
                         <div class="evento-admin-actions">
                             <button class="btn-edit" onclick="toggleDisponibilidadCumple('${d.id}', ${!d.disponible})">
                                 ${d.disponible ? 'Marcar como no disponible' : 'Marcar como disponible'}
+                            </button>
+                            <button class="btn-edit" onclick="actualizarDuracionDisponibilidadCumple('${d.id}')">
+                                Guardar duración
                             </button>
                             <button class="btn-delete" onclick="eliminarDisponibilidadCumple('${d.id}')">Eliminar</button>
                         </div>
@@ -2209,6 +2222,28 @@ async function cargarDisponibilidadesAdmin() {
 async function guardarDisponibilidadServicio(e) {
     // Función mantenida solo para compatibilidad; ya no se muestra el formulario de servicios.
     e.preventDefault();
+}
+
+async function actualizarDuracionDisponibilidadCumple(id) {
+    if (!supabaseClient) return;
+    const input = document.querySelector(`input[data-disp-id="${id}"]`);
+    if (!input) return;
+    const horas = parseFloat(input.value);
+    if (!horas || horas <= 0) {
+        alert('Por favor ingresa una duración válida en horas.');
+        return;
+    }
+    const duracionMin = Math.round(horas * 60);
+    try {
+        await supabaseClient
+            .from('disponibilidad_cumple')
+            .update({ duracion_min: duracionMin })
+            .eq('id', id);
+        await cargarDisponibilidadesAdmin();
+    } catch (e) {
+        console.error('Error actualizando duración de disponibilidad de cumpleaños:', e);
+        alert('Error al actualizar la duración del bloque de celebración.');
+    }
 }
 
 let fechasDisponibilidadSeleccionadas = [];
