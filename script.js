@@ -2842,29 +2842,22 @@ function inicializarTodo() {
             formDispCumple.addEventListener('submit', guardarDisponibilidadCumple);
 
             // Inicializar selección múltiple de fechas para disponibilidad
-            const btnAgregarFechaDisp = document.getElementById('btnAgregarFechaDisp');
-            const btnLimpiarFechasDisp = document.getElementById('btnLimpiarFechasDisp');
             const inputFechaDisp = document.getElementById('dispFechaCumple');
 
             fechasDisponibilidadSeleccionadas = [];
             renderFechasDisponibilidadSeleccionadas();
 
-            if (btnAgregarFechaDisp && inputFechaDisp) {
-                btnAgregarFechaDisp.addEventListener('click', () => {
+            if (inputFechaDisp) {
+                inputFechaDisp.addEventListener('change', () => {
                     const valor = inputFechaDisp.value;
                     if (!valor) return;
-                    if (!fechasDisponibilidadSeleccionadas.includes(valor)) {
+                    const idx = fechasDisponibilidadSeleccionadas.indexOf(valor);
+                    if (idx === -1) {
                         fechasDisponibilidadSeleccionadas.push(valor);
-                        // Ordenar las fechas para que se vean organizadas
-                        fechasDisponibilidadSeleccionadas.sort();
-                        renderFechasDisponibilidadSeleccionadas();
+                    } else {
+                        fechasDisponibilidadSeleccionadas.splice(idx, 1);
                     }
-                });
-            }
-
-            if (btnLimpiarFechasDisp) {
-                btnLimpiarFechasDisp.addEventListener('click', () => {
-                    fechasDisponibilidadSeleccionadas = [];
+                    fechasDisponibilidadSeleccionadas.sort();
                     renderFechasDisponibilidadSeleccionadas();
                 });
             }
