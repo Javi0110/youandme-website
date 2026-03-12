@@ -2489,7 +2489,7 @@ async function aprobarSolicitudFecha(id) {
     }
     const confirmAprobar = confirm('¿Aprobar esta solicitud de fecha y crear una reserva de cumpleaños básica?');
     if (!confirmAprobar) return;
-    const comentario = prompt('Comentario para el cliente (opcional, se incluirá en el email):', '') || '';
+    const comentario = '';
     try {
         const { data: s, error } = await supabaseClient
             .from('solicitudes_fecha_celebracion')
@@ -2552,7 +2552,7 @@ async function rechazarSolicitudFecha(id) {
     }
     const confirmRechazar = confirm('¿Rechazar esta solicitud de fecha?');
     if (!confirmRechazar) return;
-    const comentario = prompt('Explica brevemente por qué no está disponible esa fecha (opcional, se incluirá en el email):', '') || '';
+    const comentario = '';
     try {
         const { data: s, error } = await supabaseClient
             .from('solicitudes_fecha_celebracion')
