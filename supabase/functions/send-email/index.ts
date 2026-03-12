@@ -161,9 +161,32 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1) Email al cliente + copias de notificación en UNA sola llamada (evita 429 rate-limit)
-    const allRecipients = [toEmail, ...NOTIFICATION_EMAILS];
-    await sendResend(apiKey, fromEnv, allRecipients, subject, html);
+    // 1) Email al cliente
+    await sendResend(apiKey, fromEnv, toEmail, subject, html);
+
+    // 2) Email de notificación interna al centro (resumen)
+    const tipoDescripcion =
+      type === 'solicitud'
+        ? 'solicitud de servicios'
+        : type === 'actividad'
+        ? 'reserva de actividad'
+        : type === 'cumple'
+        ? 'reserva de cumpleaños'
+        : 'actualización de solicitud de fecha';
+
+    const adminHtml = `
+      <p><strong>Notificación interna:</strong> se ha recibido una nueva ${tipoDescripcion} a través del formulario de la página web.</p>
+      <p>Detalle enviado al cliente:</p>
+      <hr />
+      ${html}
+    `.trim();
+
+    const notifSubject = `[Notificación] ${subject}`;
+    try {
+      await sendResend(apiKey, fromEnv, NOTIFICATION_EMAILS, notifSubject, adminHtml);
+    } catch (e) {
+      console.error('Error enviando notificación interna:', e);
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
