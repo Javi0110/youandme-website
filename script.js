@@ -43,30 +43,31 @@ if (document.readyState === 'loading') {
     setTimeout(inicializarSupabase, 100);
 }
 
-// ==================== EMAIL DE CONFIRMACIÓN (Gmail relay) ====================
-// Envío solo con Gmail vía api/send-email (Vercel). Cliente + copia a centroyouandme y magaribyelena.
+// ==================== EMAIL DE CONFIRMACIÓN (Brevo vía Edge Function de Supabase) ====================
+// Cliente + copia a centroyouandme y magaribyelena.
 
 async function enviarEmailRelay(payload) {
-    const cfg = window.SEND_EMAIL_CONFIG;
-    const apiUrl = cfg?.apiUrl?.trim();
-    if (!apiUrl) {
-        console.warn('SEND_EMAIL_CONFIG.apiUrl no configurado. Ver GMAIL_RELAY_SETUP.md');
+    const cfg = window.SUPABASE_CONFIG;
+    if (!cfg?.url || !cfg?.anonKey) {
+        console.warn('SUPABASE_CONFIG no configurado. No se envía email.');
         return;
     }
     try {
-        const body = { ...payload };
-        if (cfg?.apiKey?.trim()) body.api_key = cfg.apiKey.trim();
-        const res = await fetch(apiUrl.replace(/\/$/, ''), {
+        const url = `${cfg.url.replace(/\/$/, '')}/functions/v1/send-email`;
+        const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${cfg.anonKey}`,
+            },
+            body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-            console.error('Error enviando email:', data?.error || res.statusText);
+            console.error('Error enviando email (Brevo):', data?.error || res.statusText);
         }
     } catch (e) {
-        console.error('Error enviando email:', e?.message || e);
+        console.error('Error enviando email (Brevo):', e?.message || e);
     }
 }
 

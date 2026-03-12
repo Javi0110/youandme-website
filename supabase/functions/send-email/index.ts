@@ -1,5 +1,5 @@
-// Edge Function: envía emails con Brevo (antes Sendinblue) - plan gratis 300/día
-// Requiere: BREVO_API_KEY en secrets. Opcional: SENDER_EMAIL y SENDER_NAME (remitente registrado en Brevo)
+// Edge Function: envía emails con Resend
+// Requiere: RESEND_API_KEY en secrets. Opcional: EMAIL_FROM (ej: "You&Me Center <hola@tudominio.com>")
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -32,6 +32,33 @@ function htmlActividad(p: { nombre_nino: string; nombre_actividad: string; total
   `.trim();
 }
 
+function htmlSolicitudFechaDecision(p: { nombre_contacto: string; fecha_solicitada: string; estado: string; decision_mensaje?: string }) {
+  const nombre = escapeHtml(p.nombre_contacto || '');
+  const fecha = escapeHtml(p.fecha_solicitada || '');
+  const comentario = (p.decision_mensaje || '').trim()
+    ? `<p>${escapeHtml(p.decision_mensaje || '')}</p>`
+    : '';
+
+  if (p.estado === 'aprobada') {
+    return `
+      <p>Hola ${nombre},</p>
+      <p>Hemos revisado tu solicitud de fecha para celebración con fecha deseada <strong>${fecha}</strong> y ha sido <strong>APROBADA</strong>.</p>
+      <p>Nos comunicaremos contigo para coordinar los detalles de la reserva y confirmar horario, decoración y demás.</p>
+      ${comentario}
+      <p>Si tienes preguntas, puedes escribirnos o llamar al ${TELEFONO}.</p>
+      <p>Saludos,<br>You&amp;Me Development Center<br>510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>Mayagüez, Puerto Rico 00682<br>${TELEFONO}<br>centroyouandme@gmail.com</p>
+    `.trim();
+  }
+
+  return `
+    <p>Hola ${nombre},</p>
+    <p>Hemos revisado tu solicitud de fecha para celebración con fecha deseada <strong>${fecha}</strong>, pero lamentablemente en esta ocasión <strong>no podemos ofrecer esa fecha</strong>.</p>
+    ${comentario || '<p>Te invitamos a escribirnos o llamarnos para explorar otras fechas y alternativas.</p>'}
+    <p>Si deseas, podemos ayudarte a buscar otra fecha disponible que se ajuste a tus necesidades.</p>
+    <p>Saludos,<br>You&amp;Me Development Center<br>510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>Mayagüez, Puerto Rico 00682<br>${TELEFONO}<br>centroyouandme@gmail.com</p>
+  `.trim();
+}
+
 function escapeHtml(s: string): string {
   return String(s)
     .replace(/&/g, '&amp;')
@@ -40,31 +67,30 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-async function sendBrevo(
+async function sendResend(
   apiKey: string,
-  sender: { name: string; email: string },
+  from: string,
   to: string,
   subject: string,
   html: string
 ) {
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+  const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      'accept': 'application/json',
-      'api-key': apiKey,
-      'content-type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      sender: { name: sender.name, email: sender.email },
-      to: [{ email: to }],
+      from,
+      to: [to],
       subject,
-      htmlContent: html,
-      replyTo: { email: REPLY_TO },
+      html,
+      reply_to: REPLY_TO,
     }),
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Brevo ${res.status}: ${err}`);
+    throw new Error(`Resend ${res.status}: ${err}`);
   }
   return res.json();
 }
@@ -74,21 +100,19 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: CORS_HEADERS });
   }
 
-  const apiKey = Deno.env.get('BREVO_API_KEY');
-  const senderEmail = Deno.env.get('SENDER_EMAIL') || 'centroyouandme@gmail.com';
-  const senderName = Deno.env.get('SENDER_NAME') || 'You&Me Development Center';
-  const sender = { name: senderName, email: senderEmail };
+  const apiKey = Deno.env.get('RESEND_API_KEY');
+  const fromEnv = Deno.env.get('EMAIL_FROM') || 'You&Me Center <onboarding@resend.dev>';
 
   if (!apiKey) {
     return new Response(
-      JSON.stringify({ error: 'BREVO_API_KEY no configurado en Supabase secrets' }),
+      JSON.stringify({ error: 'RESEND_API_KEY no configurado en Supabase secrets' }),
       { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 
   try {
     const body = await req.json();
-    const type = body.type; // 'solicitud' | 'actividad' | 'cumple'
+    const type = body.type; // 'solicitud' | 'actividad' | 'cumple' | 'solicitud_fecha_decision'
     const toEmail = body.to_email;
 
     if (!type || !toEmail) {
@@ -108,6 +132,17 @@ Deno.serve(async (req) => {
         servicio: body.servicio,
         tutor: body.tutor,
       });
+    } else if (type === 'solicitud_fecha_decision') {
+      const estado = body.estado === 'aprobada' ? 'aprobada' : 'rechazada';
+      subject = estado === 'aprobada'
+        ? 'Actualización de tu solicitud de fecha - Aprobada'
+        : 'Actualización de tu solicitud de fecha - No disponible';
+      html = htmlSolicitudFechaDecision({
+        nombre_contacto: body.nombre_contacto,
+        fecha_solicitada: body.fecha_solicitada,
+        estado,
+        decision_mensaje: body.decision_mensaje,
+      });
     } else if (type === 'actividad' || type === 'cumple') {
       subject = type === 'cumple'
         ? 'Confirmación - Reserva de cumpleaños - You&Me Development Center'
@@ -126,13 +161,13 @@ Deno.serve(async (req) => {
     }
 
     // 1) Email al cliente
-    await sendBrevo(apiKey, sender, toEmail, subject, html);
+    await sendResend(apiKey, fromEnv, toEmail, subject, html);
 
     // 2) Copias a notificaciones
     const notifSubject = `[Notificación] ${subject}`;
     for (const to of NOTIFICATION_EMAILS) {
       try {
-        await sendBrevo(apiKey, sender, to, notifSubject, html);
+        await sendResend(apiKey, fromEnv, to, notifSubject, html);
       } catch (e) {
         console.error('Error enviando notificación a', to, e);
       }
