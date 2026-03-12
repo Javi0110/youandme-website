@@ -1386,11 +1386,14 @@ function inicializarFormularios() {
     if (decoracionValor === 0) {          // Lleva su propia decoración
         diasMinimos = 14;                // 2 semanas
         semanasTexto = '2 semanas';
-    } else if (decoracionValor === 175) { // Decoración básica
+    } else if (decoracionValor === 250) { // Mini Setup
         diasMinimos = 21;                // 3 semanas
         semanasTexto = '3 semanas';
-    } else if (decoracionValor === 350) { // Decoración elaborada
+    } else if (decoracionValor === 300) { // Basic Setup
         diasMinimos = 28;                // 4 semanas
+        semanasTexto = '4 semanas';
+    } else if (decoracionValor === 575) { // Signature Setup
+        diasMinimos = 28;                // 4 semanas (o más si lo prefieres)
         semanasTexto = '4 semanas';
     } else {
         diasMinimos = 14;
