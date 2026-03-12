@@ -10,8 +10,18 @@ CREATE TABLE IF NOT EXISTS public.solicitudes_fecha_celebracion (
     email text NOT NULL,
     telefono text NOT NULL,
     mensaje text,
+    -- Estado de la solicitud: pendiente / aprobada / rechazada
+    estado text NOT NULL DEFAULT 'pendiente',
+    decision_comentario text,
+    resuelta_en timestamptz,
     created_at timestamptz DEFAULT now()
 );
+
+-- Si la tabla ya existía, asegurarnos de que tenga las columnas nuevas
+ALTER TABLE public.solicitudes_fecha_celebracion
+    ADD COLUMN IF NOT EXISTS estado text NOT NULL DEFAULT 'pendiente',
+    ADD COLUMN IF NOT EXISTS decision_comentario text,
+    ADD COLUMN IF NOT EXISTS resuelta_en timestamptz;
 
 ALTER TABLE public.solicitudes_fecha_celebracion ENABLE ROW LEVEL SECURITY;
 

@@ -35,6 +35,34 @@ function htmlActividad(p) {
   `.trim();
 }
 
+function htmlSolicitudFechaDecision(p) {
+  const nombre = escapeHtml(p.nombre_contacto || '');
+  const fecha = escapeHtml(p.fecha_solicitada || '');
+  const comentario = (p.decision_mensaje || '').trim()
+    ? `<p>${escapeHtml(p.decision_mensaje)}</p>`
+    : '';
+
+  if (p.estado === 'aprobada') {
+    return `
+      <p>Hola ${nombre},</p>
+      <p>Hemos revisado tu solicitud de fecha para celebración con fecha deseada <strong>${fecha}</strong> y ha sido <strong>APROBADA</strong>.</p>
+      <p>Nos comunicaremos contigo para coordinar los detalles de la reserva y confirmar horario, decoración y demás.</p>
+      ${comentario}
+      <p>Si tienes preguntas, puedes escribirnos o llamar al ${TELEFONO}.</p>
+      <p>Saludos,<br>You&amp;Me Development Center<br>510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>Mayagüez, Puerto Rico 00682<br>${TELEFONO}<br>centroyouandme@gmail.com</p>
+    `.trim();
+  }
+
+  // Rechazada
+  return `
+    <p>Hola ${nombre},</p>
+    <p>Hemos revisado tu solicitud de fecha para celebración con fecha deseada <strong>${fecha}</strong>, pero lamentablemente en esta ocasión <strong>no podemos ofrecer esa fecha</strong>.</p>
+    ${comentario || '<p>Te invitamos a escribirnos o llamarnos para explorar otras fechas y alternativas.</p>'}
+    <p>Si deseas, podemos ayudarte a buscar otra fecha disponible que se ajuste a tus necesidades.</p>
+    <p>Saludos,<br>You&amp;Me Development Center<br>510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>Mayagüez, Puerto Rico 00682<br>${TELEFONO}<br>centroyouandme@gmail.com</p>
+  `.trim();
+}
+
 function sendOne(transporter, to, subject, html) {
   return new Promise((resolve, reject) => {
     transporter.sendMail(
@@ -103,6 +131,18 @@ module.exports = async function handler(req, res) {
       nombre_paciente: body.nombre_paciente,
       servicio: body.servicio,
       tutor: body.tutor,
+    });
+  } else if (type === 'solicitud_fecha_decision') {
+    const estado = body.estado === 'aprobada' ? 'aprobada' : 'rechazada';
+    subject =
+      estado === 'aprobada'
+        ? 'Actualización de tu solicitud de fecha - Aprobada'
+        : 'Actualización de tu solicitud de fecha - No disponible';
+    html = htmlSolicitudFechaDecision({
+      nombre_contacto: body.nombre_contacto,
+      fecha_solicitada: body.fecha_solicitada,
+      estado,
+      decision_mensaje: body.decision_mensaje,
     });
   } else if (type === 'actividad' || type === 'cumple') {
     subject =

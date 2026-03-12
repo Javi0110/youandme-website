@@ -126,6 +126,18 @@ async function enviarEmailConfirmacionCumple(detalles) {
     });
 }
 
+async function enviarEmailDecisionSolicitudFecha(email, nombreContacto, fechaStr, estado, comentario) {
+    if (!email) return;
+    await enviarEmailRelay({
+        type: 'solicitud_fecha_decision',
+        to_email: email,
+        nombre_contacto: nombreContacto || '',
+        fecha_solicitada: fechaStr || '',
+        estado: estado === 'aprobada' ? 'aprobada' : 'rechazada',
+        decision_mensaje: comentario || ''
+    });
+}
+
 // Cargar bloques de disponibilidad para un servicio concreto
 async function cargarSlotsServicio(nombreServicio) {
     const slotSelect = document.getElementById('servicioSlot');
@@ -2208,14 +2220,42 @@ async function cargarReservasAdmin() {
                 const fechaStr = s.fecha_solicitada ? String(s.fecha_solicitada).split('T')[0] : '-';
                 const created = s.created_at ? new Date(s.created_at).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' }) : '';
                 const msgHtml = (s.mensaje || '').trim() ? `<p><strong>Mensaje:</strong> ${escapeHtml(String(s.mensaje))}</p>` : '';
+                const estado = (s.estado || 'pendiente').toLowerCase();
+                let estadoColor = '#f97316';
+                let estadoBg = '#ffedd5';
+                let estadoText = 'Pendiente';
+                if (estado === 'aprobada') {
+                    estadoColor = '#16a34a';
+                    estadoBg = '#dcfce7';
+                    estadoText = 'Aprobada';
+                } else if (estado === 'rechazada') {
+                    estadoColor = '#b91c1c';
+                    estadoBg = '#fee2e2';
+                    estadoText = 'Rechazada';
+                }
+                const decisionInfo = s.resuelta_en
+                    ? `<p style="font-size:0.8rem; color:#666;">Resuelta: ${new Date(s.resuelta_en).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' })}</p>`
+                    : '';
+                const decisionComentario = (s.decision_comentario || '').trim();
                 html += `
                     <div class="evento-admin-item" style="margin-bottom: 1rem; border-left: 4px solid #0ea5e9;">
                         <div class="evento-admin-info">
-                            <p><strong>Solicitud de fecha</strong> <span style="background:#e0f2fe; color:#0369a1; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.85rem;">Requesting this date</span></p>
+                            <p>
+                                <strong>Solicitud de fecha</strong>
+                                <span style="background:#e0f2fe; color:#0369a1; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.85rem; margin-left:0.25rem;">Requesting this date</span>
+                                <span style="background:${estadoBg}; color:${estadoColor}; padding:0.15rem 0.45rem; border-radius:999px; font-size:0.8rem; margin-left:0.35rem;">${estadoText}</span>
+                            </p>
                             <p><strong>Fecha solicitada:</strong> ${fechaStr}</p>
                             <p>Contacto: ${escapeHtml(s.nombre_contacto || '-')} | Tel: ${escapeHtml(s.telefono || '-')} | Email: ${escapeHtml(s.email || '-')}</p>
                             ${msgHtml}
+                            ${decisionComentario ? `<p><strong>Comentario decisión:</strong> ${escapeHtml(decisionComentario)}</p>` : ''}
                             <p style="font-size:0.8rem; color:#666;">Enviado: ${created}</p>
+                            ${decisionInfo}
+                        </div>
+                        <div class="evento-admin-actions" style="align-items:flex-start; gap:0.5rem; display:flex; flex-wrap:wrap; margin-top:0.5rem;">
+                            <button type="button" class="btn-edit" onclick="aprobarSolicitudFecha('${s.id}')" ${estado === 'aprobada' ? 'disabled' : ''}>Aprobar y crear reserva</button>
+                            <button type="button" class="btn-edit" onclick="rechazarSolicitudFecha('${s.id}')" ${estado === 'rechazada' ? 'disabled' : ''} style="background:#fee2e2; color:#b91c1c; border-color:#fecaca;">Rechazar</button>
+                            <button type="button" class="btn-delete" onclick="eliminarSolicitudFecha('${s.id}')">Borrar</button>
                         </div>
                     </div>
                 `;
@@ -2375,13 +2415,35 @@ async function cargarSolicitudesFechaAdmin() {
             const fechaStr = s.fecha_solicitada ? String(s.fecha_solicitada).split('T')[0] : '-';
             const created = s.created_at ? new Date(s.created_at).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' }) : '';
             const msg = (s.mensaje || '').trim() ? `<p><strong>Mensaje:</strong> ${escapeHtml(s.mensaje)}</p>` : '';
+            const estado = (s.estado || 'pendiente').toLowerCase();
+            let estadoColor = '#f97316';
+            let estadoBg = '#ffedd5';
+            let estadoText = 'Pendiente';
+            if (estado === 'aprobada') {
+                estadoColor = '#16a34a';
+                estadoBg = '#dcfce7';
+                estadoText = 'Aprobada';
+            } else if (estado === 'rechazada') {
+                estadoColor = '#b91c1c';
+                estadoBg = '#fee2e2';
+                estadoText = 'Rechazada';
+            }
+            const decisionInfo = s.resuelta_en
+                ? `<p style="font-size:0.8rem; color:#666;">Resuelta: ${new Date(s.resuelta_en).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' })}</p>`
+                : '';
+            const decisionComentario = (s.decision_comentario || '').trim();
             return `
                 <div class="evento-admin-item" style="margin-bottom:0.75rem;">
                     <div class="evento-admin-info">
-                        <p><strong>Fecha solicitada:</strong> ${fechaStr}</p>
+                        <p>
+                            <strong>Fecha solicitada:</strong> ${fechaStr}
+                            <span style="background:${estadoBg}; color:${estadoColor}; padding:0.15rem 0.45rem; border-radius:999px; font-size:0.8rem; margin-left:0.5rem;">${estadoText}</span>
+                        </p>
                         <p><strong>Contacto:</strong> ${escapeHtml(s.nombre_contacto || '')} | ${escapeHtml(s.email || '')} | ${escapeHtml(s.telefono || '')}</p>
                         ${msg}
+                        ${decisionComentario ? `<p><strong>Comentario decisión:</strong> ${escapeHtml(decisionComentario)}</p>` : ''}
                         <p style="font-size:0.8rem; color:#666;">Enviado: ${created}</p>
+                        ${decisionInfo}
                     </div>
                 </div>
             `;
@@ -2402,6 +2464,125 @@ function escapeHtml(text) {
 async function guardarDisponibilidadServicio(e) {
     // Función mantenida solo para compatibilidad; ya no se muestra el formulario de servicios.
     e.preventDefault();
+}
+
+async function aprobarSolicitudFecha(id) {
+    if (!supabaseClient) {
+        alert('Supabase no está configurado. No se puede aprobar la solicitud.');
+        return;
+    }
+    const confirmAprobar = confirm('¿Aprobar esta solicitud de fecha y crear una reserva de cumpleaños básica?');
+    if (!confirmAprobar) return;
+    const comentario = prompt('Comentario para el cliente (opcional, se incluirá en el email):', '') || '';
+    try {
+        const { data: s, error } = await supabaseClient
+            .from('solicitudes_fecha_celebracion')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+        if (error || !s) {
+            console.error('Error obteniendo solicitud de fecha:', error);
+            alert('No se pudo obtener la solicitud. Intenta de nuevo.');
+            return;
+        }
+        const fechaStr = s.fecha_solicitada ? String(s.fecha_solicitada).split('T')[0] : null;
+        // Crear una reserva básica de cumpleaños para tenerla en el sistema
+        if (fechaStr) {
+            try {
+                await supabaseClient
+                    .from('reservas_cumple')
+                    .insert([{
+                        nombre_nino: null,
+                        fecha: fechaStr,
+                        contacto: s.nombre_contacto || '',
+                        telefono: s.telefono || '',
+                        email: s.email || '',
+                        horas: null,
+                        decoracion: 'Pendiente definir (creada desde solicitud de fecha)',
+                        equipo: false,
+                        pretend_play: false,
+                        actividad: 'Pendiente definir',
+                        num_ninos: 0,
+                        total: null,
+                        pagado: false,
+                        comentarios_admin: `Creado desde solicitud de fecha (ID: ${id}). Revisar detalles con el cliente.`
+                    }]);
+            } catch (e) {
+                console.error('Error creando reserva_cumple desde solicitud:', e);
+            }
+        }
+        await supabaseClient
+            .from('solicitudes_fecha_celebracion')
+            .update({
+                estado: 'aprobada',
+                decision_comentario: comentario || null,
+                resuelta_en: new Date().toISOString()
+            })
+            .eq('id', id);
+        await enviarEmailDecisionSolicitudFecha(s.email, s.nombre_contacto, fechaStr || '', 'aprobada', comentario);
+        await cargarReservasAdmin();
+        await cargarSolicitudesFechaAdmin();
+    } catch (e) {
+        console.error('Error aprobando solicitud de fecha:', e);
+        alert('Ocurrió un error al aprobar la solicitud.');
+    }
+}
+
+async function rechazarSolicitudFecha(id) {
+    if (!supabaseClient) {
+        alert('Supabase no está configurado. No se puede rechazar la solicitud.');
+        return;
+    }
+    const confirmRechazar = confirm('¿Rechazar esta solicitud de fecha?');
+    if (!confirmRechazar) return;
+    const comentario = prompt('Explica brevemente por qué no está disponible esa fecha (opcional, se incluirá en el email):', '') || '';
+    try {
+        const { data: s, error } = await supabaseClient
+            .from('solicitudes_fecha_celebracion')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+        if (error || !s) {
+            console.error('Error obteniendo solicitud de fecha:', error);
+            alert('No se pudo obtener la solicitud. Intenta de nuevo.');
+            return;
+        }
+        const fechaStr = s.fecha_solicitada ? String(s.fecha_solicitada).split('T')[0] : '';
+        await supabaseClient
+            .from('solicitudes_fecha_celebracion')
+            .update({
+                estado: 'rechazada',
+                decision_comentario: comentario || null,
+                resuelta_en: new Date().toISOString()
+            })
+            .eq('id', id);
+        await enviarEmailDecisionSolicitudFecha(s.email, s.nombre_contacto, fechaStr, 'rechazada', comentario);
+        await cargarReservasAdmin();
+        await cargarSolicitudesFechaAdmin();
+    } catch (e) {
+        console.error('Error rechazando solicitud de fecha:', e);
+        alert('Ocurrió un error al rechazar la solicitud.');
+    }
+}
+
+async function eliminarSolicitudFecha(id) {
+    if (!supabaseClient) {
+        alert('Supabase no está configurado. No se puede borrar la solicitud.');
+        return;
+    }
+    const confirmBorrar = confirm('¿Borrar esta solicitud de fecha? Esta acción no se puede deshacer.');
+    if (!confirmBorrar) return;
+    try {
+        await supabaseClient
+            .from('solicitudes_fecha_celebracion')
+            .delete()
+            .eq('id', id);
+        await cargarReservasAdmin();
+        await cargarSolicitudesFechaAdmin();
+    } catch (e) {
+        console.error('Error borrando solicitud de fecha:', e);
+        alert('Ocurrió un error al borrar la solicitud.');
+    }
 }
 
 async function guardarCambiosDisponibilidadCumple(id) {
