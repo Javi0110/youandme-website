@@ -2229,7 +2229,7 @@ async function cargarReservasAdmin() {
                 const fechaStr = s.fecha_solicitada ? String(s.fecha_solicitada).split('T')[0] : '-';
                 const created = s.created_at ? new Date(s.created_at).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' }) : '';
                 const msgHtml = (s.mensaje || '').trim() ? `<p><strong>Mensaje:</strong> ${escapeHtml(String(s.mensaje))}</p>` : '';
-                const estado = (s.estado || 'pendiente').toLowerCase();
+                const estado = ((s.estado || 'pendiente') + '').trim().toLowerCase();
                 let estadoColor = '#f97316';
                 let estadoBg = '#ffedd5';
                 let estadoText = 'Pendiente';
@@ -2431,7 +2431,7 @@ async function cargarSolicitudesFechaAdmin() {
             const fechaStr = s.fecha_solicitada ? String(s.fecha_solicitada).split('T')[0] : '-';
             const created = s.created_at ? new Date(s.created_at).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' }) : '';
             const msg = (s.mensaje || '').trim() ? `<p><strong>Mensaje:</strong> ${escapeHtml(s.mensaje)}</p>` : '';
-            const estado = (s.estado || 'pendiente').toLowerCase();
+            const estado = ((s.estado || 'pendiente') + '').trim().toLowerCase();
             let estadoColor = '#f97316';
             let estadoBg = '#ffedd5';
             let estadoText = 'Pendiente';
