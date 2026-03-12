@@ -14,7 +14,7 @@ function htmlSolicitud(p: { nombre_paciente: string; servicio: string; tutor: st
   return `
     <p>Hola ${escapeHtml(p.nombre_paciente || '')},</p>
     <p>Gracias por contactarnos. Hemos recibido tu solicitud de ${escapeHtml(p.servicio || '')}.</p>
-    <p>Nos pondremos en contacto contigo pronto. Si tienes alguna pregunta, llámanos al ${TELEFONO}.</p>
+    <p><strong>Nos pondremos en contacto contigo pronto.</strong> Si tienes alguna pregunta, llámanos al ${TELEFONO} o responde a este correo.</p>
     <p>Saludos,<br>You&amp;Me Development Center<br>510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>Mayagüez, Puerto Rico 00682<br>${TELEFONO}<br>centroyouandme@gmail.com</p>
   `.trim();
 }
