@@ -82,6 +82,22 @@ function htmlSolicitudFechaDecision(p: { nombre_contacto: string; fecha_solicita
   `.trim();
 }
 
+function htmlSolicitudFechaNueva(p: { nombre_contacto: string; fecha_solicitada: string; mensaje?: string }) {
+  const nombre = escapeHtml(p.nombre_contacto || '');
+  const fecha = escapeHtml(p.fecha_solicitada || '');
+  const comentario = (p.mensaje || '').trim()
+    ? `<p><strong>Mensaje adicional:</strong> ${escapeHtml(p.mensaje || '')}</p>`
+    : '';
+
+  return `
+    <p>Hola ${nombre},</p>
+    <p>Hemos recibido tu <strong>solicitud de fecha para celebración</strong> con fecha deseada <strong>${fecha}</strong>.</p>
+    <p>Revisaremos la disponibilidad del centro y <strong>nos pondremos en contacto contigo pronto</strong> para confirmarte si es posible y coordinar los detalles.</p>
+    ${comentario}
+    ${firmaHtml()}
+  `.trim();
+}
+
 function escapeHtml(s: string): string {
   return String(s)
     .replace(/&/g, '&amp;')
@@ -136,7 +152,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const type = body.type; // 'solicitud' | 'actividad' | 'cumple' | 'solicitud_fecha_decision'
+    const type = body.type; // 'solicitud' | 'actividad' | 'cumple' | 'solicitud_fecha_decision' | 'solicitud_fecha'
     const toEmail = body.to_email;
 
     if (!type || !toEmail) {
@@ -155,6 +171,13 @@ Deno.serve(async (req) => {
         nombre_paciente: body.nombre_paciente,
         servicio: body.servicio,
         tutor: body.tutor,
+      });
+    } else if (type === 'solicitud_fecha') {
+      subject = 'Confirmación - Recibimos tu solicitud de fecha - You&Me Development Center';
+      html = htmlSolicitudFechaNueva({
+        nombre_contacto: body.nombre_contacto,
+        fecha_solicitada: body.fecha_solicitada,
+        mensaje: body.mensaje,
       });
     } else if (type === 'solicitud_fecha_decision') {
       const estado = body.estado === 'aprobada' ? 'aprobada' : 'rechazada';

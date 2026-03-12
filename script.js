@@ -1351,6 +1351,14 @@ function inicializarFormularios() {
                     .insert([{ fecha_solicitada: requestDateFecha, nombre_contacto: nombre, email, telefono, mensaje: requestDateMensaje || null }]);
                 if (error) throw error;
             }
+            // Email de confirmación al cliente + notificación interna
+            await enviarEmailRelay({
+                type: 'solicitud_fecha',
+                to_email: email,
+                nombre_contacto: nombre,
+                fecha_solicitada: requestDateFecha,
+                mensaje: requestDateMensaje || ''
+            });
             mostrarExitoSolicitudFecha();
         } catch (e) {
             console.error(e);
