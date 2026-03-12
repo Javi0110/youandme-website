@@ -2523,6 +2523,7 @@ async function aprobarSolicitudFecha(id) {
         await enviarEmailDecisionSolicitudFecha(s.email, s.nombre_contacto, fechaStr || '', 'aprobada', comentario);
         await cargarReservasAdmin();
         await cargarSolicitudesFechaAdmin();
+        alert('Solicitud aprobada. Se creó una reserva básica y se envió un email al cliente (si no hubo errores).');
     } catch (e) {
         console.error('Error aprobando solicitud de fecha:', e);
         alert('Ocurrió un error al aprobar la solicitud.');
@@ -2560,6 +2561,7 @@ async function rechazarSolicitudFecha(id) {
         await enviarEmailDecisionSolicitudFecha(s.email, s.nombre_contacto, fechaStr, 'rechazada', comentario);
         await cargarReservasAdmin();
         await cargarSolicitudesFechaAdmin();
+        alert('Solicitud rechazada y email de notificación enviado al cliente (si no hubo errores).');
     } catch (e) {
         console.error('Error rechazando solicitud de fecha:', e);
         alert('Ocurrió un error al rechazar la solicitud.');
@@ -3380,11 +3382,14 @@ function inicializarTodo() {
     }
 }
 
-// Exponer funciones de eliminar en window para que los onclick del admin las encuentren (deploy)
+// Exponer funciones en window para que los onclick del admin las encuentren
 window.eliminarReservaEvento = eliminarReservaEvento;
 window.eliminarReservaEventoLocal = eliminarReservaEventoLocal;
 window.eliminarReservaCumple = eliminarReservaCumple;
 window.eliminarSolicitud = eliminarSolicitud;
+window.aprobarSolicitudFecha = aprobarSolicitudFecha;
+window.rechazarSolicitudFecha = rechazarSolicitudFecha;
+window.eliminarSolicitudFecha = eliminarSolicitudFecha;
 
 // Ejecutar cuando el DOM esté listo
 if (document.readyState === 'loading') {
