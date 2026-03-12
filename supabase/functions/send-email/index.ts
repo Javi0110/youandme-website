@@ -70,10 +70,11 @@ function escapeHtml(s: string): string {
 async function sendResend(
   apiKey: string,
   from: string,
-  to: string,
+  to: string | string[],
   subject: string,
   html: string
 ) {
+  const toArray = Array.isArray(to) ? to : [to];
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -82,7 +83,7 @@ async function sendResend(
     },
     body: JSON.stringify({
       from,
-      to: [to],
+      to: toArray,
       subject,
       html,
       reply_to: REPLY_TO,
@@ -160,18 +161,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1) Email al cliente
-    await sendResend(apiKey, fromEnv, toEmail, subject, html);
-
-    // 2) Copias a notificaciones
-    const notifSubject = `[Notificación] ${subject}`;
-    for (const to of NOTIFICATION_EMAILS) {
-      try {
-        await sendResend(apiKey, fromEnv, to, notifSubject, html);
-      } catch (e) {
-        console.error('Error enviando notificación a', to, e);
-      }
-    }
+    // 1) Email al cliente + copias de notificación en UNA sola llamada (evita 429 rate-limit)
+    const allRecipients = [toEmail, ...NOTIFICATION_EMAILS];
+    await sendResend(apiKey, fromEnv, allRecipients, subject, html);
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
