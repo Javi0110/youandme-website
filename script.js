@@ -2245,7 +2245,6 @@ async function cargarReservasAdmin() {
                 const decisionInfo = s.resuelta_en
                     ? `<p style="font-size:0.8rem; color:#666;">Resuelta: ${new Date(s.resuelta_en).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' })}</p>`
                     : '';
-                const decisionComentario = (s.decision_comentario || '').trim();
                 const esPendiente = estado === 'pendiente';
                 html += `
                     <div class="evento-admin-item" style="margin-bottom: 1rem; border-left: 4px solid #0ea5e9;">
@@ -2258,7 +2257,6 @@ async function cargarReservasAdmin() {
                             <p><strong>Fecha solicitada:</strong> ${fechaStr}</p>
                             <p>Contacto: ${escapeHtml(s.nombre_contacto || '-')} | Tel: ${escapeHtml(s.telefono || '-')} | Email: ${escapeHtml(s.email || '-')}</p>
                             ${msgHtml}
-                            ${decisionComentario ? `<p><strong>Comentario decisión:</strong> ${escapeHtml(decisionComentario)}</p>` : ''}
                             <p style="font-size:0.8rem; color:#666;">Enviado: ${created}</p>
                             ${decisionInfo}
                         </div>
@@ -2447,7 +2445,6 @@ async function cargarSolicitudesFechaAdmin() {
             const decisionInfo = s.resuelta_en
                 ? `<p style="font-size:0.8rem; color:#666;">Resuelta: ${new Date(s.resuelta_en).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' })}</p>`
                 : '';
-            const decisionComentario = (s.decision_comentario || '').trim();
             return `
                 <div class="evento-admin-item" style="margin-bottom:0.75rem;">
                     <div class="evento-admin-info">
@@ -2457,7 +2454,6 @@ async function cargarSolicitudesFechaAdmin() {
                         </p>
                         <p><strong>Contacto:</strong> ${escapeHtml(s.nombre_contacto || '')} | ${escapeHtml(s.email || '')} | ${escapeHtml(s.telefono || '')}</p>
                         ${msg}
-                        ${decisionComentario ? `<p><strong>Comentario decisión:</strong> ${escapeHtml(decisionComentario)}</p>` : ''}
                         <p style="font-size:0.8rem; color:#666;">Enviado: ${created}</p>
                         ${decisionInfo}
                     </div>
