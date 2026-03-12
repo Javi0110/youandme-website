@@ -607,6 +607,18 @@
                             <div id="cumpleCalendario" class="calendario-cumple"></div>
                             <small style="display:block; margin-top:0.25rem; color:#666;">Toca un día en verde para seleccionar la fecha.</small>
                         </div>
+
+                        <div class="form-group" id="cumpleHoraGroup" style="display: none; margin-top:0.75rem;">
+                            <label>Horario:</label>
+                            <select id="cumpleHoraSlot">
+                                <option value="">Selecciona un horario disponible</option>
+                            </select>
+                            <small style="display:block; margin-top:0.25rem; color:#666;">Basado en la disponibilidad del centro para esa fecha.</small>
+                        </div>
+                        <div class="form-group" id="cumpleHoraNoSlots" style="display: none; color: var(--orange);">
+                            No hay horarios disponibles para esta fecha. Por favor elige otra fecha o contáctanos directamente.
+                        </div>
+
                         <div class="form-group" style="margin-top:1.25rem; padding:1rem; background:#f8f9fa; border-radius:8px; border:1px solid #eee;">
                             <h4 style="margin:0 0 0.75rem 0; font-size:1rem;">¿No ves la fecha que buscas?</h4>
                             <p style="color:#666; font-size:0.9rem; margin-bottom:0.75rem;">Solicita una fecha para celebración y nos pondremos en contacto contigo. (Si eliges una fecha del calendario de arriba, se hará la reserva; si solo rellenas esta fecha, se enviará una solicitud de fecha.)</p>
@@ -619,17 +631,6 @@
                                 <textarea id="requestDateMensaje" rows="2" placeholder="Ej: preferencia de horario, tipo de celebración..."></textarea>
                             </div>
                         </div>
-                        </div>
-
-                        <div class="form-group" id="cumpleHoraGroup" style="display: none;">
-                            <label>Horario:</label>
-                            <select id="cumpleHoraSlot">
-                                <option value="">Selecciona un horario disponible</option>
-                            </select>
-                            <small style="display:block; margin-top:0.25rem; color:#666;">Basado en la disponibilidad del centro para esa fecha.</small>
-                        </div>
-                        <div class="form-group" id="cumpleHoraNoSlots" style="display: none; color: var(--orange);">
-                            No hay horarios disponibles para esta fecha. Por favor elige otra fecha o contáctanos directamente.
                         </div>
 
                         <div class="form-group" id="numNinosGroup" style="display: none;">
