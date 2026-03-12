@@ -32,6 +32,18 @@ function htmlActividad(p: { nombre_nino: string; nombre_actividad: string; total
   `.trim();
 }
 
+function htmlCumple(p: { nombre_nino: string; total: string; mensaje_pago: string }) {
+  return `
+    <p>Hola,</p>
+    <p>Confirmamos la reserva de cumpleaños para ${escapeHtml(p.nombre_nino || '')} en You&amp;Me Development Center.</p>
+    <p>Total a pagar: <strong>${escapeHtml(p.total || '$0')}</strong></p>
+    <p><strong>Para completar tu reserva:</strong> ${escapeHtml(p.mensaje_pago || '')}</p>
+    <p>Teléfono del centro: ${TELEFONO}</p>
+    <p>Cualquier duda, contáctanos al ${TELEFONO} o a centroyouandme@gmail.com.</p>
+    <p>Saludos,<br>You&amp;Me Development Center<br>510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>Mayagüez, Puerto Rico 00682</p>
+  `.trim();
+}
+
 function htmlSolicitudFechaDecision(p: { nombre_contacto: string; fecha_solicitada: string; estado: string; decision_mensaje?: string }) {
   const nombre = escapeHtml(p.nombre_contacto || '');
   const fecha = escapeHtml(p.fecha_solicitada || '');
@@ -145,15 +157,25 @@ Deno.serve(async (req) => {
         decision_mensaje: body.decision_mensaje,
       });
     } else if (type === 'actividad' || type === 'cumple') {
-      subject = type === 'cumple'
-        ? 'Confirmación - Reserva de cumpleaños - You&Me Development Center'
-        : `Confirmación de reserva - ${body.nombre_actividad || 'Actividad'} - You&Me Development Center`;
-      html = htmlActividad({
-        nombre_nino: body.nombre_nino,
-        nombre_actividad: body.nombre_actividad || 'Actividad',
-        total: body.total || '$0',
-        mensaje_pago: body.mensaje_pago || 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter',
-      });
+      const totalTexto = body.total || '$0';
+      const mensajePago = body.mensaje_pago || 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
+
+      if (type === 'cumple') {
+        subject = 'Confirmación - Reserva de cumpleaños - You&Me Development Center';
+        html = htmlCumple({
+          nombre_nino: body.nombre_nino,
+          total: totalTexto,
+          mensaje_pago: mensajePago,
+        });
+      } else {
+        subject = `Confirmación de reserva - ${body.nombre_actividad || 'Actividad'} - You&Me Development Center`;
+        html = htmlActividad({
+          nombre_nino: body.nombre_nino,
+          nombre_actividad: body.nombre_actividad || 'Actividad',
+          total: totalTexto,
+          mensaje_pago: mensajePago,
+        });
+      }
     } else {
       return new Response(
         JSON.stringify({ error: 'Tipo de email no válido' }),
