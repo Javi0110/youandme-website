@@ -1338,11 +1338,7 @@ function inicializarFormularios() {
                     .insert([{ fecha_solicitada: requestDateFecha, nombre_contacto: nombre, email, telefono, mensaje: requestDateMensaje || null }]);
                 if (error) throw error;
             }
-            const successEl = document.getElementById('requestDateSuccess');
-            if (successEl) successEl.style.display = 'block';
-            if (document.getElementById('requestDateFecha')) document.getElementById('requestDateFecha').value = '';
-            if (document.getElementById('requestDateMensaje')) document.getElementById('requestDateMensaje').value = '';
-            setTimeout(function() { if (successEl) successEl.style.display = 'none'; }, 6000);
+            mostrarExitoSolicitudFecha();
         } catch (e) {
             console.error(e);
             alert('No se pudo enviar la solicitud. Intenta de nuevo.');
@@ -1445,10 +1441,16 @@ function inicializarFormularios() {
         });
     }
 
-    function mostrarExitoReservaCumple(total, nombre) {
+    function mostrarExitoCumpleBox(titulo, mensaje, mostrarLineaPago) {
         const form = document.getElementById('cumpleForm');
         const successEl = document.getElementById('cumpleReservaSuccess');
         const otraReservaBtn = document.getElementById('cumpleOtraReservaBtn');
+        const titleEl = document.getElementById('cumpleSuccessTitle');
+        const messageEl = document.getElementById('cumpleSuccessMessage');
+        const pagoEl = document.getElementById('cumpleSuccessPago');
+        if (titleEl) titleEl.textContent = titulo;
+        if (messageEl) messageEl.textContent = mensaje;
+        if (pagoEl) pagoEl.style.display = mostrarLineaPago ? '' : 'none';
         if (form) form.reset();
         if (document.getElementById('cumpleFecha')) document.getElementById('cumpleFecha').removeAttribute('value');
         if (document.getElementById('cumpleDecoracion') && document.getElementById('cumpleFecha')) {
@@ -1466,10 +1468,27 @@ function inicializarFormularios() {
             otraReservaBtn.addEventListener('click', function() {
                 if (successEl) successEl.style.display = 'none';
                 if (form) form.style.display = '';
+                if (pagoEl) pagoEl.style.display = '';
                 renderizarCalendarioCumple();
                 if (typeof calcularTotalCumpleanos === 'function') calcularTotalCumpleanos();
             });
         }
+    }
+
+    function mostrarExitoReservaCumple(total, nombre) {
+        mostrarExitoCumpleBox(
+            '¡Reserva enviada!',
+            'Gracias por reservar. Te hemos enviado un correo de confirmación y nos comunicaremos contigo para confirmar la fecha.',
+            true
+        );
+    }
+
+    function mostrarExitoSolicitudFecha() {
+        mostrarExitoCumpleBox(
+            '¡Solicitud enviada!',
+            'Solicitud de fecha enviada. Nos comunicaremos contigo pronto.',
+            false
+        );
     }
     
     // Fecha mínima para "solicitar fecha" (parte del form completo)
