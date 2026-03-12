@@ -2103,9 +2103,10 @@ async function cargarReservasAdmin() {
 
         await syncReservasLocalesASupabase();
 
-        const [resEventos, resCumple, eventosData] = await Promise.all([
+        const [resEventos, resCumple, resSolicitudesFecha, eventosData] = await Promise.all([
             supabaseClient.from('reservas_eventos').select('*').order('created_at', { ascending: false }),
             supabaseClient.from('reservas_cumple').select('*').order('created_at', { ascending: false }),
+            supabaseClient.from('solicitudes_fecha_celebracion').select('*').order('created_at', { ascending: false }),
             supabaseClient.from('eventos').select('id, nombre')
         ]);
 
@@ -2165,7 +2166,9 @@ async function cargarReservasAdmin() {
         }
 
         const reservasCumple = (resCumple.data || []);
-        if (reservasCumple.length > 0) {
+        const solicitudesFecha = (resSolicitudesFecha.data || []);
+        const hayCumpleOSolicitudes = reservasCumple.length > 0 || solicitudesFecha.length > 0;
+        if (hayCumpleOSolicitudes) {
             html += '<h4 style="margin: 2rem 0 1rem; color: var(--orange);">Reservas de cumpleaños</h4>';
             reservasCumple.forEach(r => {
                 const decorTexto = r.decoracion || 'Llevaré mi propia decoración';
@@ -2197,6 +2200,22 @@ async function cargarReservasAdmin() {
                                 Pagado
                             </label>
                             <button type="button" class="btn-delete" onclick="eliminarReservaCumple('${r.id}')" style="background: #dc3545; color: white; padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer;">Eliminar</button>
+                        </div>
+                    </div>
+                `;
+            });
+            solicitudesFecha.forEach(s => {
+                const fechaStr = s.fecha_solicitada ? String(s.fecha_solicitada).split('T')[0] : '-';
+                const created = s.created_at ? new Date(s.created_at).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+                const msgHtml = (s.mensaje || '').trim() ? `<p><strong>Mensaje:</strong> ${escapeHtml(String(s.mensaje))}</p>` : '';
+                html += `
+                    <div class="evento-admin-item" style="margin-bottom: 1rem; border-left: 4px solid #0ea5e9;">
+                        <div class="evento-admin-info">
+                            <p><strong>Solicitud de fecha</strong> <span style="background:#e0f2fe; color:#0369a1; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.85rem;">Requesting this date</span></p>
+                            <p><strong>Fecha solicitada:</strong> ${fechaStr}</p>
+                            <p>Contacto: ${escapeHtml(s.nombre_contacto || '-')} | Tel: ${escapeHtml(s.telefono || '-')} | Email: ${escapeHtml(s.email || '-')}</p>
+                            ${msgHtml}
+                            <p style="font-size:0.8rem; color:#666;">Enviado: ${created}</p>
                         </div>
                     </div>
                 `;
