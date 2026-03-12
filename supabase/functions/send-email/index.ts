@@ -10,12 +10,23 @@ const NOTIFICATION_EMAILS = ['centroyouandme@gmail.com', 'magaribyelena@gmail.co
 const REPLY_TO = 'centroyouandme@gmail.com';
 const TELEFONO = '(787) 204-9041';
 
+function firmaHtml() {
+  return `
+    <p>Saludos,<br>
+    You&amp;Me Development Center<br>
+    510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>
+    Mayagüez, Puerto Rico 00682<br>
+    ${TELEFONO}<br>
+    centroyouandme@gmail.com</p>
+  `;
+}
+
 function htmlSolicitud(p: { nombre_paciente: string; servicio: string; tutor: string }) {
   return `
     <p>Hola ${escapeHtml(p.nombre_paciente || '')},</p>
     <p>Gracias por contactarnos. Hemos recibido tu solicitud de ${escapeHtml(p.servicio || '')}.</p>
     <p><strong>Nos pondremos en contacto contigo pronto.</strong> Si tienes alguna pregunta, llámanos al ${TELEFONO} o responde a este correo.</p>
-    <p>Saludos,<br>You&amp;Me Development Center<br>510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>Mayagüez, Puerto Rico 00682<br>${TELEFONO}<br>centroyouandme@gmail.com</p>
+    ${firmaHtml()}
   `.trim();
 }
 
@@ -28,7 +39,7 @@ function htmlActividad(p: { nombre_nino: string; nombre_actividad: string; total
     <p>Para completar tu reserva: ${escapeHtml(p.mensaje_pago || '')}</p>
     <p>Teléfono del centro: ${TELEFONO}</p>
     <p>Cualquier duda, contáctanos al ${TELEFONO} o a centroyouandme@gmail.com.</p>
-    <p>Saludos,<br>You&amp;Me Development Center<br>510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>Mayagüez, Puerto Rico 00682</p>
+    ${firmaHtml()}
   `.trim();
 }
 
@@ -40,7 +51,7 @@ function htmlCumple(p: { nombre_nino: string; total: string; mensaje_pago: strin
     <p><strong>Para completar tu reserva:</strong> ${escapeHtml(p.mensaje_pago || '')}</p>
     <p>Teléfono del centro: ${TELEFONO}</p>
     <p>Cualquier duda, contáctanos al ${TELEFONO} o a centroyouandme@gmail.com.</p>
-    <p>Saludos,<br>You&amp;Me Development Center<br>510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>Mayagüez, Puerto Rico 00682</p>
+    ${firmaHtml()}
   `.trim();
 }
 
@@ -58,7 +69,7 @@ function htmlSolicitudFechaDecision(p: { nombre_contacto: string; fecha_solicita
       <p>Nos comunicaremos contigo para coordinar los detalles de la reserva y confirmar horario, decoración y demás.</p>
       ${comentario}
       <p>Si tienes preguntas, puedes escribirnos o llamar al ${TELEFONO}.</p>
-      <p>Saludos,<br>You&amp;Me Development Center<br>510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>Mayagüez, Puerto Rico 00682<br>${TELEFONO}<br>centroyouandme@gmail.com</p>
+      ${firmaHtml()}
     `.trim();
   }
 
@@ -67,7 +78,7 @@ function htmlSolicitudFechaDecision(p: { nombre_contacto: string; fecha_solicita
     <p>Hemos revisado tu solicitud de fecha para celebración con fecha deseada <strong>${fecha}</strong>, pero lamentablemente en esta ocasión <strong>no podemos ofrecer esa fecha</strong>.</p>
     ${comentario || '<p>Te invitamos a escribirnos o llamarnos para explorar otras fechas y alternativas.</p>'}
     <p>Si deseas, podemos ayudarte a buscar otra fecha disponible que se ajuste a tus necesidades.</p>
-    <p>Saludos,<br>You&amp;Me Development Center<br>510 Ave Hostos, Vista Verde Shopping Center, Suite 112<br>Mayagüez, Puerto Rico 00682<br>${TELEFONO}<br>centroyouandme@gmail.com</p>
+    ${firmaHtml()}
   `.trim();
 }
 
