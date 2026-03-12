@@ -2238,6 +2238,7 @@ async function cargarReservasAdmin() {
                     ? `<p style="font-size:0.8rem; color:#666;">Resuelta: ${new Date(s.resuelta_en).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' })}</p>`
                     : '';
                 const decisionComentario = (s.decision_comentario || '').trim();
+                const esPendiente = estado === 'pendiente';
                 html += `
                     <div class="evento-admin-item" style="margin-bottom: 1rem; border-left: 4px solid #0ea5e9;">
                         <div class="evento-admin-info">
@@ -2254,8 +2255,14 @@ async function cargarReservasAdmin() {
                             ${decisionInfo}
                         </div>
                         <div class="evento-admin-actions" style="align-items:flex-start; gap:0.5rem; display:flex; flex-wrap:wrap; margin-top:0.5rem;">
-                            <button type="button" class="btn-edit" onclick="aprobarSolicitudFecha('${s.id}')" ${estado === 'aprobada' ? 'disabled' : ''}>Aprobar y crear reserva</button>
-                            <button type="button" class="btn-edit" onclick="rechazarSolicitudFecha('${s.id}')" ${estado === 'rechazada' ? 'disabled' : ''} style="background:#fee2e2; color:#b91c1c; border-color:#fecaca;">Rechazar</button>
+                            ${esPendiente ? `
+                                <button type="button" class="btn-edit" onclick="aprobarSolicitudFecha('${s.id}')">Aprobar y crear reserva</button>
+                                <button type="button" class="btn-edit" onclick="rechazarSolicitudFecha('${s.id}')" style="background:#fee2e2; color:#b91c1c; border-color:#fecaca;">Rechazar</button>
+                            ` : `
+                                <span style="padding:0.35rem 0.75rem; border-radius:999px; font-size:0.8rem; background:${estadoBg}; color:${estadoColor}; border:1px solid ${estadoColor};">
+                                    ${estadoText}
+                                </span>
+                            `}
                             <button type="button" class="btn-delete" onclick="eliminarSolicitudFecha('${s.id}')">Borrar</button>
                         </div>
                     </div>
