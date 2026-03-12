@@ -43,66 +43,46 @@ if (document.readyState === 'loading') {
     setTimeout(inicializarSupabase, 100);
 }
 
-// ==================== EMAIL DE CONFIRMACIÓN (EmailJS) ====================
-// Emails que reciben una copia de cada solicitud/reserva (notificación)
-const EMAIL_NOTIFICACIONES = ['centroyouandme@gmail.com', 'magaribyelena@gmail.com'];
+// ==================== EMAIL DE CONFIRMACIÓN (Gmail relay) ====================
+// Envío solo con Gmail vía api/send-email (Vercel). Cliente + copia a centroyouandme y magaribyelena.
 
-async function enviarCopiaNotificacion(serviceId, templateId, params) {
-    if (typeof emailjs === 'undefined' || !serviceId || !templateId) return;
-    for (const to of EMAIL_NOTIFICACIONES) {
-        try {
-            await emailjs.send(serviceId, templateId, { ...params, to_email: to });
-        } catch (e) {
-            console.error('Error enviando notificación a', to, e);
-        }
+async function enviarEmailRelay(payload) {
+    const cfg = window.SEND_EMAIL_CONFIG;
+    const apiUrl = cfg?.apiUrl?.trim();
+    if (!apiUrl) {
+        console.warn('SEND_EMAIL_CONFIG.apiUrl no configurado. Ver GMAIL_RELAY_SETUP.md');
+        return;
     }
-}
-
-function initEmailJS() {
     try {
-        if (window.EMAILJS_CONFIG && window.EMAILJS_CONFIG.publicKey && typeof emailjs !== 'undefined') {
-            emailjs.init({ publicKey: window.EMAILJS_CONFIG.publicKey });
-            return true;
+        const body = { ...payload };
+        if (cfg?.apiKey?.trim()) body.api_key = cfg.apiKey.trim();
+        const res = await fetch(apiUrl.replace(/\/$/, ''), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            console.error('Error enviando email:', data?.error || res.statusText);
         }
     } catch (e) {
-        console.log('EmailJS no configurado o no disponible:', e);
+        console.error('Error enviando email:', e?.message || e);
     }
-    return false;
 }
 
 async function enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio, tutor) {
-    const cfg = window.EMAILJS_CONFIG;
-    if (!cfg || !cfg.publicKey || !cfg.serviceId || !cfg.templateIdSolicitud || !email) {
-        if (!cfg?.publicKey || !cfg?.serviceId || !cfg?.templateIdSolicitud) {
-            console.log('EmailJS no configurado: rellena publicKey, serviceId y templateIdSolicitud en index.html. Ver EMAILJS_SETUP.md');
-        }
-        return;
-    }
-    const params = {
+    if (!email) return;
+    await enviarEmailRelay({
+        type: 'solicitud',
         to_email: email,
-        reply_to: 'centroyouandme@gmail.com',
         nombre_paciente: nombrePaciente || '',
         servicio: servicio || '',
         tutor: tutor || '',
-        telefono_centro: '(787) 204-9041'
-    };
-    try {
-        if (typeof emailjs === 'undefined') return;
-        await emailjs.send(cfg.serviceId, cfg.templateIdSolicitud, params);
-        await enviarCopiaNotificacion(cfg.serviceId, cfg.templateIdSolicitud, params);
-    } catch (e) {
-        console.error('Error enviando email de confirmación (solicitud):', e);
-    }
+    });
 }
 
 async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActividad, total) {
-    const cfg = window.EMAILJS_CONFIG;
-    if (!cfg || !cfg.publicKey || !cfg.serviceId || !cfg.templateIdActividad || !email) {
-        if (!cfg?.publicKey || !cfg?.serviceId || !cfg?.templateIdActividad) {
-            console.log('EmailJS no configurado: rellena publicKey, serviceId y templateIdActividad en index.html. Ver EMAILJS_SETUP.md');
-        }
-        return;
-    }
+    if (!email) return;
     let totalNum = total;
     if (total !== null && total !== undefined && total !== '') {
         totalNum = Number(total);
@@ -111,34 +91,20 @@ async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActivid
     }
     const totalFormato = totalNum > 0 ? '$' + totalNum : (total != null ? '$' + total : '$0');
     const instruccionesAth = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
-    const params = {
+    await enviarEmailRelay({
+        type: 'actividad',
         to_email: email,
-        reply_to: 'centroyouandme@gmail.com',
         nombre_nino: nombreNino || '',
-        nombre_actividad: nombreActividad || '',
+        nombre_actividad: nombreActividad || 'Actividad',
         total: totalFormato,
-        telefono_centro: '(787) 204-9041',
         mensaje_pago: instruccionesAth,
-        instrucciones_ath: instruccionesAth
-    };
-    try {
-        if (typeof emailjs === 'undefined') return;
-        await emailjs.send(cfg.serviceId, cfg.templateIdActividad, params);
-        await enviarCopiaNotificacion(cfg.serviceId, cfg.templateIdActividad, params);
-    } catch (e) {
-        console.error('Error enviando email de confirmación (actividad):', e);
-    }
+    });
 }
 
 async function enviarEmailConfirmacionCumple(detalles) {
-    const cfg = window.EMAILJS_CONFIG;
     const email = detalles?.email;
-    if (!cfg || !cfg.publicKey || !cfg.serviceId || !cfg.templateIdActividad || !email) {
-        console.warn('EmailJS cumple: falta config o templateIdActividad. No se envía email.');
-        return;
-    }
-    if (typeof emailjs === 'undefined') {
-        console.warn('EmailJS cumple: emailjs no está cargado.');
+    if (!email) {
+        console.warn('Falta email en detalles de cumpleaños. No se envía email.');
         return;
     }
     let totalReserva = detalles.total;
@@ -150,25 +116,14 @@ async function enviarEmailConfirmacionCumple(detalles) {
     const totalFormato = totalReserva > 0 ? '$' + totalReserva : (detalles.total != null ? '$' + detalles.total : '$0');
     const instruccionesAth = 'Realiza el pago a través de ATH Móvil: Pay a business → YouandMeCenter';
     const nombreActividad = 'Celebración / Cumpleaños - ' + (detalles.nombreNino || '');
-    const params = {
+    await enviarEmailRelay({
+        type: 'cumple',
         to_email: email,
-        reply_to: 'centroyouandme@gmail.com',
         nombre_nino: detalles.nombreNino || '',
         nombre_actividad: nombreActividad,
         total: totalFormato,
-        telefono_centro: '(787) 204-9041',
         mensaje_pago: instruccionesAth,
-        instrucciones_ath: instruccionesAth
-    };
-    try {
-        await emailjs.send(cfg.serviceId, cfg.templateIdActividad, params);
-        await enviarCopiaNotificacion(cfg.serviceId, cfg.templateIdActividad, params);
-    } catch (e) {
-        console.error('Error enviando email de confirmación (cumpleaños):', e);
-        if (e?.text || e?.message) {
-            console.warn('EmailJS error detail:', e.text || e.message);
-        }
-    }
+    });
 }
 
 // Cargar bloques de disponibilidad para un servicio concreto
@@ -1057,6 +1012,8 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
                     fecha_registro: new Date().toISOString()
                 });
                 localStorage.setItem('youme_reservas_eventos', JSON.stringify(reservasLocales));
+                // Enviar email de confirmación al cliente y notificaciones aunque Supabase falle
+                await enviarEmailConfirmacionActividad(email, nombreNino, nombreActividad || 'Actividad', precioTotal);
                 alert(
                     '¡Reservación exitosa!\n\n' +
                     'Para completarla, por favor envía el monto de $' + precioTotal + ' a través de ATH Móvil: Pay a business → YouandMeCenter\n\n' +
@@ -3140,9 +3097,6 @@ function inicializarTodo() {
         
         // Asegurar que Supabase esté inicializado ANTES de cargar eventos
         inicializarSupabase();
-        
-        // Inicializar EmailJS si está configurado (emails de confirmación)
-        initEmailJS();
         
         // Cargar eventos (usa Supabase si está configurado, si no eventos.json)
         cargarEventos();
