@@ -733,7 +733,189 @@
                 </div>
             </div>
         </section>
+        <section id="staff" class="page-content">
+            <div class="container">
+              <h2 class="section-title">Staff portal</h2>
+          
+              <div id="staffLoggedOut">
+                <p>Inicie sesión con su cuenta de staff para continuar.</p>
+                <form id="staffLoginForm" class="admin-login-form" style="max-width:400px;">
+                  <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="staffEmail" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Contraseña:</label>
+                    <input type="password" id="staffPassword" required>
+                  </div>
+                  <div id="staffLoginError" style="color: var(--orange); display:none; margin-top:0.5rem;"></div>
+                  <button type="submit" class="btn btn-primary btn-large">Iniciar sesión</button>
+                </form>
+              </div>
+          
+              <div id="staffLoggedIn" style="display:none;">
+                <div class="staff-layout">
+                  <aside class="staff-sidebar">
+                    <div class="staff-sidebar-header">
+                      <div class="staff-logo-mark"></div>
+                      <div class="staff-logo-text">
+                        <span class="staff-logo-title">You&Me Staff</span>
+                        <span id="staffWelcome" class="staff-logo-subtitle"></span>
+                      </div>
+                    </div>
+                    <nav class="staff-nav">
+                      <button class="staff-nav-item active" data-section="dashboard">Dashboard</button>
+                      <button class="staff-nav-item" data-section="tasks">Tasks</button>
+                      <button class="staff-nav-item" data-section="calendar">Calendar</button>
+                      <button class="staff-nav-item" data-section="messages">Messages</button>
+                      <button class="staff-nav-item" data-section="patients">Patients</button>
+                      <button class="staff-nav-item" data-section="appointments">Appointments</button>
+                      <button class="staff-nav-item" data-section="events">Events</button>
+                      <button class="staff-nav-item" data-section="settings">Settings</button>
+                    </nav>
+                    <button type="button" class="staff-logout-btn" id="staffLogoutBtn">Cerrar sesión</button>
+                  </aside>
 
+                  <section class="staff-main">
+                    <header class="staff-main-header">
+                      <h3 id="staffSectionTitle">Dashboard</h3>
+                      <p class="staff-section-subtitle">Resumen rápido de lo que está ocurriendo hoy.</p>
+                    </header>
+
+                    <div class="staff-section" data-staff-section="dashboard">
+                      <div id="staffAdminOnly" class="staff-grid" style="display:none;">
+                        <div class="staff-card">
+                          <h4>Overview</h4>
+                          <p>KPIs del día: reservas, solicitudes, pagos pendientes.</p>
+                        </div>
+                        <div class="staff-card">
+                          <h4>Próximas citas</h4>
+                          <p>Lista rápida de las próximas citas agendadas.</p>
+                        </div>
+                        <div class="staff-card">
+                          <h4>Tareas del equipo</h4>
+                          <p>Resumen de tareas abiertas asignadas al staff.</p>
+                        </div>
+                      </div>
+
+                      <div id="staffSecretaryArea" class="staff-grid" style="display:none;">
+                        <div class="staff-card">
+                          <h4>Tareas de hoy</h4>
+                          <p>Verifique llamadas, seguimientos y confirmaciones de citas.</p>
+                        </div>
+                        <div class="staff-card">
+                          <h4>Mensajes recientes</h4>
+                          <p>Resumen de mensajes de familias y nuevos leads.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="staff-section" data-staff-section="tasks" style="display:none;">
+                      <div class="staff-card">
+                        <h4>Tasks</h4>
+                        <p>Aquí podrá gestionar tareas internas del equipo.</p>
+                      </div>
+                    </div>
+
+                    <div class="staff-section" data-staff-section="calendar" style="display:none;">
+                      <div class="staff-card">
+                        <h4>Calendar</h4>
+                        <p>Vista de calendario para citas, actividades y celebraciones.</p>
+                      </div>
+                    </div>
+
+                    <div class="staff-section" data-staff-section="messages" style="display:none;">
+                      <div class="staff-card">
+                        <h4>Messages</h4>
+                        <p>Panel para revisar y responder mensajes de familias.</p>
+                      </div>
+                    </div>
+
+                    <div class="staff-section" data-staff-section="patients" style="display:none;">
+                      <div class="staff-card">
+                        <h4>Patients</h4>
+                        <p>Listado de pacientes y acceso rápido a sus datos.</p>
+                      </div>
+                    </div>
+
+                    <div class="staff-section" data-staff-section="appointments" style="display:none;">
+                      <div class="staff-grid">
+                        <div class="staff-card">
+                          <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem;">
+                            <div>
+                              <h4>Citas</h4>
+                              <p style="font-size:0.85rem; color:#6b7280;">Listado de citas por paciente, tipo de terapia y estado.</p>
+                            </div>
+                            <input type="text" id="appointmentsSearch" placeholder="Buscar..." style="max-width:200px; font-size:0.85rem; padding:0.35rem 0.6rem; border-radius:8px; border:1px solid #e5e7eb;">
+                          </div>
+                          <div id="appointmentsList" style="margin-top:0.75rem; max-height:420px; overflow-y:auto;">
+                          </div>
+                        </div>
+
+                        <div class="staff-card">
+                          <h4>Agregar / editar cita</h4>
+                          <form id="appointmentForm" style="margin-top:0.5rem;">
+                            <input type="hidden" id="appointmentId">
+                            <div class="form-group">
+                              <label>Paciente (ID o nombre para referencia)</label>
+                              <input type="text" id="appointmentPatientId" placeholder="Opcional: pegue el ID de paciente de Supabase">
+                            </div>
+                            <div class="form-row">
+                              <div class="form-group">
+                                <label>Tipo de terapia</label>
+                                <input type="text" id="appointmentTherapyType" placeholder="Ej. TO, Disfagia, grupo...">
+                              </div>
+                              <div class="form-group">
+                                <label>Fecha y hora</label>
+                                <input type="datetime-local" id="appointmentDate" required>
+                              </div>
+                            </div>
+                            <div class="form-row">
+                              <div class="form-group">
+                                <label>Terapeuta</label>
+                                <input type="text" id="appointmentTherapist" placeholder="Nombre del terapeuta">
+                              </div>
+                              <div class="form-group">
+                                <label>Estado</label>
+                                <select id="appointmentStatus">
+                                  <option value="scheduled">Programada</option>
+                                  <option value="completed">Completada</option>
+                                  <option value="cancelled">Cancelada</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div class="form-group">
+                              <label>Notas</label>
+                              <textarea id="appointmentNotes" rows="3" placeholder="Información adicional de la cita."></textarea>
+                            </div>
+                            <div style="display:flex; gap:0.75rem; margin-top:0.75rem;">
+                              <button type="submit" class="btn btn-primary">Guardar cita</button>
+                              <button type="button" class="btn btn-secondary" id="appointmentFormClearBtn">Limpiar</button>
+                            </div>
+                            <p id="appointmentFormStatus" style="margin-top:0.5rem; font-size:0.85rem; color:#6b7280;"></p>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="staff-section" data-staff-section="events" style="display:none;">
+                      <div class="staff-card">
+                        <h4>Events</h4>
+                        <p>Panel para manejar actividades, camps y celebraciones especiales.</p>
+                      </div>
+                    </div>
+
+                    <div class="staff-section" data-staff-section="settings" style="display:none;">
+                      <div class="staff-card">
+                        <h4>Settings</h4>
+                        <p>Configuraciones del portal de staff.</p>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </section>
         <!-- Admin Page -->
         <section id="admin" class="page-content">
             <div class="container">

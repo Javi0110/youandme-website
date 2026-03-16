@@ -14,6 +14,9 @@ try {
 // Nota: la librería de Supabase expone un objeto global llamado `supabase`.
 // Para evitar conflicto, nuestro cliente se llama `supabaseClient`.
 let supabaseClient;
+let currentStaffSession = null;
+let currentStaffRole = null;
+
 function inicializarSupabase() {
     try {
         if (typeof window.supabase === 'undefined' || !window.SUPABASE_CONFIG) {
@@ -29,18 +32,31 @@ function inicializarSupabase() {
             SUPABASE_ANON_KEY !== 'TU_SUPABASE_ANON_KEY_AQUI') {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             console.log('✅ Supabase inicializado correctamente');
+
+            // Cargar sesión de staff si existe
+            supabaseClient.auth.getSession().then(({ data }) => {
+                currentStaffSession = data.session || null;
+                if (currentStaffSession) {
+                    cargarRolStaffYActualizarUI();
+                } else {
+                    actualizarUIStaff();
+                }
+            });
+
+            supabaseClient.auth.onAuthStateChange((_event, session) => {
+                currentStaffSession = session;
+                if (session) {
+                    cargarRolStaffYActualizarUI();
+                } else {
+                    currentStaffRole = null;
+                    actualizarUIStaff();
+                }
+            });
         }
     } catch (error) {
         console.log('⚠️ Supabase no disponible (continuando sin él):', error);
         // No bloquear la ejecución si Supabase falla
     }
-}
-
-// Intentar inicializar Supabase cuando el DOM esté listo
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', inicializarSupabase);
-} else {
-    setTimeout(inicializarSupabase, 100);
 }
 
 // ==================== EMAIL DE CONFIRMACIÓN (Brevo vía Edge Function de Supabase) ====================
@@ -137,6 +153,342 @@ async function enviarEmailDecisionSolicitudFecha(email, nombreContacto, fechaStr
         estado: estado === 'aprobada' ? 'aprobada' : 'rechazada',
         decision_mensaje: comentario || ''
     });
+}
+
+// ==================== PACIENTES ==================== (ya añadidos anteriormente)
+// ... (se asume que las funciones de pacientes están aquí) ...
+
+// ==================== APPOINTMENTS (CITAS) ====================
+
+async function cargarCitasStaff() {
+    if (!supabaseClient || !currentStaffSession) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('appointments')
+            .select('*')
+            .order('date', { ascending: true });
+        if (error) throw error;
+        window.__appointmentsCache = data || [];
+        renderizarCitasStaff();
+    } catch (e) {
+        console.error('Error cargando citas:', e);
+        const cont = document.getElementById('appointmentsList');
+        if (cont) cont.innerHTML = '<p style="color:#b91c1c; font-size:0.9rem;">No se pudieron cargar las citas.</p>';
+    }
+}
+
+function renderizarCitasStaff() {
+    const cont = document.getElementById('appointmentsList');
+    if (!cont) return;
+    const searchEl = document.getElementById('appointmentsSearch');
+    const term = (searchEl?.value || '').toLowerCase();
+
+    const lista = (window.__appointmentsCache || []).filter(a => {
+        if (!term) return true;
+        const txt = `${a.therapy_type || ''} ${a.therapist || ''} ${a.notes || ''}`.toLowerCase();
+        return txt.includes(term);
+    });
+
+    if (!lista.length) {
+        cont.innerHTML = '<p style="font-size:0.9rem; color:#6b7280;">No hay citas registradas.</p>';
+        return;
+    }
+
+    cont.innerHTML = lista.map(a => {
+        const fecha = a.date ? new Date(a.date).toLocaleString('es-PR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+        const status =
+            a.status === 'completed' ? 'Completada' :
+            a.status === 'cancelled' ? 'Cancelada' : 'Programada';
+        return `
+        <div class="staff-card" style="margin-bottom:0.5rem; cursor:pointer;" data-appointment-id="${a.id}">
+          <h4 style="margin-bottom:0.25rem;">${a.therapy_type || 'Cita'}</h4>
+          <p style="font-size:0.85rem; color:#4b5563;"><strong>Terapeuta:</strong> ${a.therapist || '—'}</p>
+          <p style="font-size:0.8rem; color:#6b7280; margin-top:0.15rem;">
+            <strong>Fecha:</strong> ${fecha} · <strong>Estado:</strong> ${status}
+          </p>
+        </div>`;
+    }).join('');
+
+    cont.querySelectorAll('[data-appointment-id]').forEach(el => {
+        el.addEventListener('click', () => {
+            const id = el.getAttribute('data-appointment-id');
+            const a = (window.__appointmentsCache || []).find(x => x.id === id);
+            if (a) cargarCitaEnFormulario(a);
+        });
+    });
+}
+
+function cargarCitaEnFormulario(a) {
+    document.getElementById('appointmentId').value = a.id;
+    document.getElementById('appointmentPatientId').value = a.patient_id || '';
+    document.getElementById('appointmentTherapyType').value = a.therapy_type || '';
+    document.getElementById('appointmentDate').value = a.date ? a.date.substring(0,16) : '';
+    document.getElementById('appointmentTherapist').value = a.therapist || '';
+    document.getElementById('appointmentStatus').value = a.status || 'scheduled';
+    document.getElementById('appointmentNotes').value = a.notes || '';
+    const statusEl = document.getElementById('appointmentFormStatus');
+    if (statusEl) {
+        statusEl.textContent = 'Editando cita existente.';
+        statusEl.style.color = '#6b7280';
+    }
+}
+
+async function guardarCitaDesdeFormulario(e) {
+    e.preventDefault();
+    if (!supabaseClient || !currentStaffSession) return;
+
+    const id = document.getElementById('appointmentId').value || null;
+    const patientId = document.getElementById('appointmentPatientId').value.trim() || null;
+    const therapyType = document.getElementById('appointmentTherapyType').value.trim();
+    const dateVal = document.getElementById('appointmentDate').value;
+    const therapist = document.getElementById('appointmentTherapist').value.trim();
+    const status = document.getElementById('appointmentStatus').value || 'scheduled';
+    const notes = document.getElementById('appointmentNotes').value.trim();
+    const statusEl = document.getElementById('appointmentFormStatus');
+
+    if (!dateVal) {
+        if (statusEl) {
+            statusEl.textContent = 'La fecha y hora son obligatorias.';
+            statusEl.style.color = '#b91c1c';
+        }
+        return;
+    }
+
+    const payload = {
+        patient_id: patientId || null,
+        therapy_type: therapyType || null,
+        date: new Date(dateVal).toISOString(),
+        therapist: therapist || null,
+        status,
+        notes: notes || null,
+        updated_at: new Date().toISOString()
+    };
+
+    try {
+        if (!id) {
+            const { error } = await supabaseClient.from('appointments').insert([payload]);
+            if (error) throw error;
+        } else {
+            const { error } = await supabaseClient.from('appointments').update(payload).eq('id', id);
+            if (error) throw error;
+        }
+        if (statusEl) {
+            statusEl.textContent = 'Cita guardada correctamente.';
+            statusEl.style.color = '#16a34a';
+        }
+        document.getElementById('appointmentForm').reset();
+        document.getElementById('appointmentId').value = '';
+        await cargarCitasStaff();
+        if (typeof staffCalendar !== 'undefined' && staffCalendar) {
+            staffCalendar.refetchEvents();
+        }
+    } catch (e) {
+        console.error('Error guardando cita:', e);
+        if (statusEl) {
+            statusEl.textContent = 'No se pudo guardar la cita.';
+            statusEl.style.color = '#b91c1c';
+        }
+    }
+}
+
+async function eliminarCita(id) {
+    if (!supabaseClient || !id) return;
+    try {
+        const { error } = await supabaseClient.from('appointments').delete().eq('id', id);
+        if (error) throw error;
+        await cargarCitasStaff();
+        if (typeof staffCalendar !== 'undefined' && staffCalendar) {
+            staffCalendar.refetchEvents();
+        }
+    } catch (e) {
+        console.error('Error eliminando cita:', e);
+        alert('No se pudo eliminar la cita.');
+    }
+}
+
+async function cargarRolStaffYActualizarUI() {
+    if (!supabaseClient || !currentStaffSession) {
+        return;
+    }
+    try {
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('role')
+            .eq('id', currentStaffSession.user.id)
+            .maybeSingle();
+        if (error) throw error;
+        currentStaffRole = data?.role || null;
+    } catch (e) {
+        console.error('Error cargando rol de staff:', e);
+        currentStaffRole = null;
+    }
+    actualizarUIStaff();
+}
+
+function actualizarUIStaff() {
+    const loggedOut = document.getElementById('staffLoggedOut');
+    const loggedIn = document.getElementById('staffLoggedIn');
+    const welcome = document.getElementById('staffWelcome');
+    const adminArea = document.getElementById('staffAdminOnly');
+    const secArea = document.getElementById('staffSecretaryArea');
+
+    if (!loggedOut || !loggedIn) return;
+
+    if (!currentStaffSession) {
+        loggedOut.style.display = '';
+        loggedIn.style.display = 'none';
+        return;
+    }
+
+    loggedOut.style.display = 'none';
+    loggedIn.style.display = '';
+
+    const email = currentStaffSession.user.email || '';
+    const rol = currentStaffRole || 'secretary';
+    if (welcome) {
+        welcome.textContent = `Sesión iniciada como ${email} (${rol}).`;
+    }
+
+    if (adminArea) adminArea.style.display = rol === 'admin' ? '' : 'none';
+    if (secArea) secArea.style.display = (rol === 'admin' || rol === 'secretary') ? '' : 'none';
+}
+
+function requireStaffRole(requiredRoles = []) {
+    if (!currentStaffSession) {
+        alert('Debe iniciar sesión de staff para acceder.');
+        window.location.hash = '#staff';
+        return false;
+    }
+    if (requiredRoles.length > 0 && !requiredRoles.includes(currentStaffRole)) {
+        alert('No tiene permisos para acceder a esta sección.');
+        window.location.hash = '#staff';
+        return false;
+    }
+    return true;
+}
+
+function inicializarStaffPortal() {
+    const form = document.getElementById('staffLoginForm');
+    const logoutBtn = document.getElementById('staffLogoutBtn');
+    const errorEl = document.getElementById('staffLoginError');
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!supabaseClient) return;
+            const emailInput = document.getElementById('staffEmail');
+            const passwordInput = document.getElementById('staffPassword');
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+            try {
+                if (errorEl) errorEl.style.display = 'none';
+                const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) {
+                    if (errorEl) {
+                        errorEl.textContent = 'No se pudo iniciar sesión. Verifique sus credenciales.';
+                        errorEl.style.display = 'block';
+                    }
+                    return;
+                }
+                window.location.hash = '#staff-dashboard';
+            } catch (err) {
+                console.error('Error login staff:', err);
+                if (errorEl) {
+                    errorEl.textContent = 'Ocurrió un error al iniciar sesión.';
+                    errorEl.style.display = 'block';
+                }
+            }
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            if (!supabaseClient) return;
+            await supabaseClient.auth.signOut();
+            window.location.hash = '#inicio';
+        });
+    }
+
+    // Navegación lateral del dashboard
+    const navItems = document.querySelectorAll('.staff-nav-item');
+    navItems.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const section = btn.getAttribute('data-section');
+            if (!section) return;
+            navItems.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            mostrarSeccionStaff(section);
+        });
+    });
+
+    window.addEventListener('hashchange', manejarRutasStaff);
+    manejarRutasStaff();
+}
+
+function mostrarSeccionStaff(section) {
+    const allSections = document.querySelectorAll('.staff-section');
+    allSections.forEach(s => {
+        if (s.getAttribute('data-staff-section') === section) {
+            s.style.display = '';
+        } else {
+            s.style.display = 'none';
+        }
+    });
+
+    const titleEl = document.getElementById('staffSectionTitle');
+    const subtitleEl = document.querySelector('.staff-section-subtitle');
+    if (!titleEl || !subtitleEl) return;
+
+    const map = {
+        dashboard: {
+            title: 'Dashboard',
+            subtitle: 'Resumen rápido de lo que está ocurriendo hoy.'
+        },
+        tasks: {
+            title: 'Tasks',
+            subtitle: 'Organice y asigne tareas internas del equipo.'
+        },
+        calendar: {
+            title: 'Calendar',
+            subtitle: 'Calendario de citas, actividades y celebraciones.'
+        },
+        messages: {
+            title: 'Messages',
+            subtitle: 'Revise y responda mensajes de familias y nuevos leads.'
+        },
+        patients: {
+            title: 'Patients',
+            subtitle: 'Gestione la lista de pacientes y sus datos principales.'
+        },
+        appointments: {
+            title: 'Appointments',
+            subtitle: 'Controle y organice las citas programadas.'
+        },
+        events: {
+            title: 'Events',
+            subtitle: 'Administre actividades, camps y otros eventos especiales.'
+        },
+        settings: {
+            title: 'Settings',
+            subtitle: 'Preferencias del portal de staff.'
+        }
+    };
+
+    const info = map[section] || map.dashboard;
+    titleEl.textContent = info.title;
+    subtitleEl.textContent = info.subtitle;
+
+    if (section === 'appointments') {
+        cargarCitasStaff();
+    }
+}
+
+function manejarRutasStaff() {
+    const hash = window.location.hash || '#inicio';
+
+    if (hash === '#staff' || hash === '#staff-dashboard') {
+        if (!requireStaffRole([])) return;
+    }
 }
 
 // Cargar bloques de disponibilidad para un servicio concreto
@@ -3314,6 +3666,10 @@ function inicializarTodo() {
             if (link.dataset.page === paginaInicial) link.classList.add('active');
         });
         
+        // Inicializar Supabase y portal de staff
+        inicializarSupabase();
+        inicializarStaffPortal();
+
         // Inicializar modales
         inicializarModales();
         inicializarModalServicios();
@@ -3330,9 +3686,6 @@ function inicializarTodo() {
         inicializarMiniCarouseles();
         // Inicializar calendario personalizado de cumpleaños
         renderizarCalendarioCumple();
-        
-        // Asegurar que Supabase esté inicializado ANTES de cargar eventos
-        inicializarSupabase();
         
         // Cargar eventos (usa Supabase si está configurado, si no eventos.json)
         cargarEventos();
