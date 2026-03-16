@@ -351,6 +351,11 @@ function actualizarUIStaff() {
 
     if (adminArea) adminArea.style.display = rol === 'admin' ? '' : 'none';
     if (secArea) secArea.style.display = (rol === 'admin' || rol === 'secretary') ? '' : 'none';
+
+    // Cargar resumen del dashboard al iniciar sesión
+    cargarResumenDashboardStaff().catch((e) => {
+        console.error('Error cargando resumen de dashboard:', e);
+    });
 }
 
 function requireStaffRole(requiredRoles = []) {
@@ -365,6 +370,114 @@ function requireStaffRole(requiredRoles = []) {
         return false;
     }
     return true;
+}
+
+async function cargarResumenDashboardStaff() {
+    if (!supabaseClient || !currentStaffSession) return;
+
+    const uid = currentStaffSession.user.id;
+
+    const hoy = new Date();
+    const hoyInicio = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const hoyFin = new Date(hoyInicio);
+    hoyFin.setDate(hoyFin.getDate() + 1);
+
+    const ahora = new Date();
+    const enSieteDias = new Date(ahora);
+    enSieteDias.setDate(enSieteDias.getDate() + 7);
+
+    // Semana actual (lunes a domingo)
+    const semanaInicio = new Date(hoyInicio);
+    const day = semanaInicio.getDay(); // 0 domingo, 1 lunes...
+    const diffToMonday = (day === 0 ? -6 : 1 - day);
+    semanaInicio.setDate(semanaInicio.getDate() + diffToMonday);
+    const semanaFin = new Date(semanaInicio);
+    semanaFin.setDate(semanaFin.getDate() + 7);
+
+    const hoyInicioISO = hoyInicio.toISOString();
+    const hoyFinISO = hoyFin.toISOString();
+    const ahoraISO = ahora.toISOString();
+    const enSieteDiasISO = enSieteDias.toISOString();
+    const semanaInicioISO = semanaInicio.toISOString();
+    const semanaFinISO = semanaFin.toISOString();
+
+    let tareasHoy = 0;
+    let proximasCitas = 0;
+    let nuevosPacientes = 0;
+    let mensajesSinLeer = 0;
+    let eventosSemana = 0;
+
+    try {
+        const [
+            tareasRes,
+            citasRes,
+            pacientesRes,
+            mensajesRes,
+            eventosRes
+        ] = await Promise.all([
+            supabaseClient
+                .from('tasks')
+                .select('id')
+                .eq('assigned_to', uid)
+                .in('status', ['pending', 'in_progress'])
+                .gte('due_date', hoyInicioISO)
+                .lt('due_date', hoyFinISO),
+            supabaseClient
+                .from('appointments')
+                .select('id')
+                .gte('date', ahoraISO)
+                .lt('date', enSieteDiasISO),
+            supabaseClient
+                .from('patients')
+                .select('id')
+                .gte('created_at', semanaInicioISO),
+            supabaseClient
+                .from('messages')
+                .select('id')
+                .eq('receiver_id', uid)
+                .eq('read_status', false),
+            supabaseClient
+                .from('events')
+                .select('id')
+                .gte('date', semanaInicioISO)
+                .lt('date', semanaFinISO)
+        ]);
+
+        if (!tareasRes.error && Array.isArray(tareasRes.data)) {
+            tareasHoy = tareasRes.data.length;
+        }
+        if (!citasRes.error && Array.isArray(citasRes.data)) {
+            proximasCitas = citasRes.data.length;
+        }
+        if (!pacientesRes.error && Array.isArray(pacientesRes.data)) {
+            nuevosPacientes = pacientesRes.data.length;
+        }
+        if (!mensajesRes.error && Array.isArray(mensajesRes.data)) {
+            mensajesSinLeer = mensajesRes.data.length;
+        }
+        if (!eventosRes.error && Array.isArray(eventosRes.data)) {
+            eventosSemana = eventosRes.data.length;
+        }
+    } catch (e) {
+        console.error('Error consultando resumen de dashboard:', e);
+    }
+
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(value);
+    };
+
+    // Cards de admin
+    setText('dashTasksTodayCount', tareasHoy);
+    setText('dashUpcomingAppointmentsCount', proximasCitas);
+    setText('dashEventsThisWeekCount', eventosSemana);
+
+    // Cards de secretaria (visibles para admin y secretaria)
+    setText('dashTasksTodayCountSec', tareasHoy);
+    setText('dashUpcomingAppointmentsCountSec', proximasCitas);
+    setText('dashNewPatientsCountSec', nuevosPacientes);
+    setText('dashUnreadMessagesCountSec', mensajesSinLeer);
+    setText('dashEventsThisWeekCountSec', eventosSemana);
 }
 
 function inicializarStaffPortal() {

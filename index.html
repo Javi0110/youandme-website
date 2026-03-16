@@ -785,27 +785,63 @@
                     <div class="staff-section" data-staff-section="dashboard">
                       <div id="staffAdminOnly" class="staff-grid" style="display:none;">
                         <div class="staff-card">
-                          <h4>Overview</h4>
-                          <p>KPIs del día: reservas, solicitudes, pagos pendientes.</p>
+                          <h4>Tareas para hoy</h4>
+                          <p style="font-size:0.85rem; color:#6b7280;">Tareas asignadas con fecha límite hoy.</p>
+                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
+                            <span id="dashTasksTodayCount">0</span>
+                          </div>
                         </div>
                         <div class="staff-card">
                           <h4>Próximas citas</h4>
-                          <p>Lista rápida de las próximas citas agendadas.</p>
+                          <p style="font-size:0.85rem; color:#6b7280;">Citas programadas para los próximos 7 días.</p>
+                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
+                            <span id="dashUpcomingAppointmentsCount">0</span>
+                          </div>
                         </div>
                         <div class="staff-card">
-                          <h4>Tareas del equipo</h4>
-                          <p>Resumen de tareas abiertas asignadas al staff.</p>
+                          <h4>Eventos esta semana</h4>
+                          <p style="font-size:0.85rem; color:#6b7280;">Eventos internos programados en la semana actual.</p>
+                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
+                            <span id="dashEventsThisWeekCount">0</span>
+                          </div>
                         </div>
                       </div>
 
                       <div id="staffSecretaryArea" class="staff-grid" style="display:none;">
                         <div class="staff-card">
                           <h4>Tareas de hoy</h4>
-                          <p>Verifique llamadas, seguimientos y confirmaciones de citas.</p>
+                          <p style="font-size:0.85rem; color:#6b7280;">Tareas asignadas a usted con fecha límite hoy.</p>
+                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
+                            <span id="dashTasksTodayCountSec">0</span>
+                          </div>
                         </div>
                         <div class="staff-card">
-                          <h4>Mensajes recientes</h4>
-                          <p>Resumen de mensajes de familias y nuevos leads.</p>
+                          <h4>Próximas citas</h4>
+                          <p style="font-size:0.85rem; color:#6b7280;">Citas programadas para los próximos 7 días.</p>
+                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
+                            <span id="dashUpcomingAppointmentsCountSec">0</span>
+                          </div>
+                        </div>
+                        <div class="staff-card">
+                          <h4>Nuevos pacientes</h4>
+                          <p style="font-size:0.85rem; color:#6b7280;">Pacientes creados en los últimos 7 días.</p>
+                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
+                            <span id="dashNewPatientsCountSec">0</span>
+                          </div>
+                        </div>
+                        <div class="staff-card">
+                          <h4>Mensajes sin leer</h4>
+                          <p style="font-size:0.85rem; color:#6b7280;">Mensajes internos pendientes de leer.</p>
+                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
+                            <span id="dashUnreadMessagesCountSec">0</span>
+                          </div>
+                        </div>
+                        <div class="staff-card">
+                          <h4>Eventos esta semana</h4>
+                          <p style="font-size:0.85rem; color:#6b7280;">Eventos internos programados en la semana actual.</p>
+                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
+                            <span id="dashEventsThisWeekCountSec">0</span>
+                          </div>
                         </div>
                       </div>
                     </div>
