@@ -534,6 +534,94 @@ function inicializarStaffPortal() {
         });
     });
 
+    // Botones de acción rápida en el dashboard
+    const qaAddPatientBtn = document.getElementById('qaAddPatientBtn');
+    const qaCreateTaskBtn = document.getElementById('qaCreateTaskBtn');
+    const qaNewAppointmentBtn = document.getElementById('qaNewAppointmentBtn');
+    const qaNewEventBtn = document.getElementById('qaNewEventBtn');
+    const qaSendMessageBtn = document.getElementById('qaSendMessageBtn');
+
+    const activarNavSection = (section) => {
+        const navItems = document.querySelectorAll('.staff-nav-item');
+        navItems.forEach(b => {
+            if (b.getAttribute('data-section') === section) {
+                b.classList.add('active');
+            } else {
+                b.classList.remove('active');
+            }
+        });
+        mostrarSeccionStaff(section);
+    };
+
+    if (qaAddPatientBtn) {
+        qaAddPatientBtn.addEventListener('click', () => {
+            if (!requireStaffRole(['admin', 'secretary'])) return;
+            activarNavSection('patients');
+            const form = document.getElementById('patientForm');
+            if (form) {
+                form.reset();
+                const idInput = document.getElementById('patientId');
+                if (idInput) idInput.value = '';
+                const first = form.querySelector('input, textarea, select');
+                if (first) first.focus();
+            }
+        });
+    }
+
+    if (qaCreateTaskBtn) {
+        qaCreateTaskBtn.addEventListener('click', () => {
+            if (!requireStaffRole(['admin'])) return;
+            activarNavSection('tasks');
+            const form = document.getElementById('staffTaskForm');
+            if (form) {
+                form.reset();
+                const idInput = document.getElementById('taskId');
+                if (idInput) idInput.value = '';
+                const first = form.querySelector('input, textarea, select');
+                if (first) first.focus();
+            }
+        });
+    }
+
+    if (qaNewAppointmentBtn) {
+        qaNewAppointmentBtn.addEventListener('click', () => {
+            if (!requireStaffRole(['admin', 'secretary'])) return;
+            activarNavSection('appointments');
+            const form = document.getElementById('appointmentForm');
+            if (form) {
+                form.reset();
+                const idInput = document.getElementById('appointmentId');
+                if (idInput) idInput.value = '';
+                const first = form.querySelector('input, textarea, select');
+                if (first) first.focus();
+            }
+        });
+    }
+
+    if (qaNewEventBtn) {
+        qaNewEventBtn.addEventListener('click', () => {
+            if (!requireStaffRole(['admin', 'secretary'])) return;
+            activarNavSection('events');
+            const form = document.getElementById('eventForm');
+            if (form) {
+                form.reset();
+                const idInput = document.getElementById('eventId');
+                if (idInput) idInput.value = '';
+                const first = form.querySelector('input, textarea, select');
+                if (first) first.focus();
+            }
+        });
+    }
+
+    if (qaSendMessageBtn) {
+        qaSendMessageBtn.addEventListener('click', () => {
+            if (!requireStaffRole(['admin', 'secretary'])) return;
+            activarNavSection('messages');
+            const textarea = document.getElementById('staffMessageInput');
+            if (textarea) textarea.focus();
+        });
+    }
+
     window.addEventListener('hashchange', manejarRutasStaff);
     manejarRutasStaff();
 }
