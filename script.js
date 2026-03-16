@@ -1038,6 +1038,20 @@ function inicializarNavegacion() {
         });
     });
 
+    // Botones dentro de la página "login" para elegir tipo de acceso
+    const goToStaffBtn = document.getElementById('goToStaffBtn');
+    const goToAdminBtn = document.getElementById('goToAdminBtn');
+    if (goToStaffBtn) {
+        goToStaffBtn.addEventListener('click', () => {
+            navigateToPage('staff');
+        });
+    }
+    if (goToAdminBtn) {
+        goToAdminBtn.addEventListener('click', () => {
+            navigateToPage('admin');
+        });
+    }
+
     // Button navigation handlers - Solo se agrega UNA VEZ
     document.addEventListener('click', function botonClickHandler(e) {
         // Buscar el botón o elemento con data-page en el target o sus padres

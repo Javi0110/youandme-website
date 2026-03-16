@@ -206,8 +206,7 @@
                     <li><a href="#eventos" class="nav-link" data-page="eventos">Actividades</a></li>
                     <li><a href="#cumpleanos" class="nav-link" data-page="cumpleanos">Celebra en You&Me</a></li>
                     <li><a href="#contacto" class="nav-link" data-page="contacto">Contáctanos</a></li>
-                    <li><a href="#staff" class="nav-link" data-page="staff">Staff</a></li>
-                    <li><a href="#admin" class="nav-link" data-page="admin">Admin Login</a></li>
+                    <li><a href="#login" class="nav-link" data-page="login" id="loginMenuLink">Login</a></li>
                 </ul>
                 <div class="hamburger" id="hamburger">
                     <span></span>
@@ -229,6 +228,28 @@
 
     <!-- Main Content Container -->
     <div class="page-container">
+        <!-- Selector de tipo de login -->
+        <section id="login" class="page-content">
+            <div class="container">
+                <h2 class="section-title">Selecciona el tipo de acceso</h2>
+                <div class="staff-grid" style="margin-top:1.5rem;">
+                    <div class="staff-card">
+                        <h3>Staff portal</h3>
+                        <p style="font-size:0.9rem; color:#6b7280; margin-bottom:0.75rem;">
+                            Acceso para secretaria y admin con Supabase (tareas, citas, mensajes, pacientes, eventos).
+                        </p>
+                        <button type="button" class="btn btn-primary" id="goToStaffBtn">Entrar al portal de staff</button>
+                    </div>
+                    <div class="staff-card">
+                        <h3>Admin clásico</h3>
+                        <p style="font-size:0.9rem; color:#6b7280; margin-bottom:0.75rem;">
+                            Panel de administración original para manejar reservas y disponibilidades.
+                        </p>
+                        <button type="button" class="btn btn-secondary" id="goToAdminBtn">Entrar al panel de administración</button>
+                    </div>
+                </div>
+            </div>
+        </section>
         <!-- Inicio Page -->
         <section id="inicio" class="page-content active">
             <div class="container">
