@@ -522,8 +522,15 @@ h1, h2, h3, h4 {
     color: var(--gray-dark);
     background: var(--gray-light);
     border-radius: 16px;
-    padding: 1.25rem 1.5rem;
+    padding: 1.25rem 1.5rem 1.5rem;
     border: 1px solid #e5e7eb;
+}
+
+.staff-main-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
 }
 
 .staff-main-header h3 {
@@ -570,7 +577,7 @@ h1, h2, h3, h4 {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-top: 0.75rem;
+    margin-top: 0.25rem;
 }
 
 .staff-dash-card {
@@ -736,6 +743,23 @@ h1, h2, h3, h4 {
 
     .staff-layout-messages {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 900px) {
+    .staff-main-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .staff-section-subtitle {
+        flex: 1;
+        max-width: 420px;
+    }
+
+    .staff-quick-actions {
+        justify-content: flex-end;
     }
 }
 
