@@ -165,6 +165,21 @@ h1, h2, h3, h4 {
         height: 80px;
         max-width: 260px;
     }
+
+    /* Asegurar que el staff portal nunca sea más ancho que la pantalla en móvil */
+    .page-container,
+    .container,
+    .staff-layout,
+    .staff-sidebar,
+    .staff-main {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .staff-main {
+        border-radius: 16px 16px 0 0;
+    }
 }
 
 .page-content.active {
