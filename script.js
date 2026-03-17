@@ -2642,12 +2642,6 @@ if (document.readyState === 'loading') {
 
 // ==================== PANEL DE ADMINISTRACIÓN ====================
 
-// Credenciales de administrador (fallback si Supabase no está configurado)
-const ADMIN_CREDENTIALS = {
-    email: 'centroyouandme@gmail.com',
-    password: 'You@2023!'
-};
-
 // Verificar si hay sesión activa
 async function verificarSesionAdmin() {
     if (supabaseClient) {
@@ -2674,18 +2668,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (supabaseClient) {
                     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                     if (error) throw error;
-                    if (data.user.email !== ADMIN_CREDENTIALS.email) {
-                        await supabaseClient.auth.signOut();
-                        throw new Error('Acceso no autorizado');
-                    }
                     currentStaffSession = data.session;
-                    currentStaffRole = 'admin';
+                    // Determinar rol según email (admin o secretary) pero ambos pueden entrar al panel
+                    const normalized = (data.user.email || '').toLowerCase().trim();
+                    if (normalized === 'centroyouandme@gmail.com') {
+                        currentStaffRole = 'admin';
+                    } else if (normalized === 'asistenteyouandme@gmail.com') {
+                        currentStaffRole = 'secretary';
+                    } else {
+                        currentStaffRole = 'staff';
+                    }
                 } else {
-                    if (email !== ADMIN_CREDENTIALS.email || password !== ADMIN_CREDENTIALS.password) {
-                        errorDiv.style.display = 'block';
+                    // Fallback muy simple sin Supabase: permitir ambos correos conocidos
+                    const okAdmin = email === 'centroyouandme@gmail.com' && password === 'You@2023!';
+                    const okSecretary = email === 'asistenteyouandme@gmail.com' && password === 'You@2023!';
+                    if (!okAdmin && !okSecretary) {
+                        if (errorDiv) errorDiv.style.display = 'block';
                         return;
                     }
                     localStorage.setItem('youme_admin_sesion', 'activa');
+                    currentStaffRole = okAdmin ? 'admin' : 'secretary';
                 }
                 document.getElementById('adminLogin').style.display = 'none';
                 document.getElementById('adminDashboard').style.display = 'block';
