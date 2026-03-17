@@ -150,11 +150,15 @@ h1, h2, h3, h4 {
 }
 
 @media (max-width: 768px) {
-    /* En móvil, deja que el contenido crezca libremente y añade más espacio inferior */
-    #staff.page-content {
+    /* En móvil, deja que TODAS las páginas crezcan libremente y añade margen inferior seguro */
+    .page-content {
         min-height: auto;
-        padding-top: 64px;
-        padding-bottom: 160px;
+        padding-top: 72px;
+        padding-bottom: 110px;
+    }
+
+    #staff.page-content {
+        padding-bottom: 140px;
     }
 
     .logo {
