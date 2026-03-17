@@ -206,7 +206,7 @@
                     <li><a href="#eventos" class="nav-link" data-page="eventos">Actividades</a></li>
                     <li><a href="#cumpleanos" class="nav-link" data-page="cumpleanos">Celebra en You&Me</a></li>
                     <li><a href="#contacto" class="nav-link" data-page="contacto">Contáctanos</a></li>
-                    <li><a href="#staff" class="nav-link" data-page="staff" id="loginMenuLink">Login</a></li>
+                    <li><a href="#login" class="nav-link" data-page="login" id="loginMenuLink">Login</a></li>
                 </ul>
                 <div class="hamburger" id="hamburger">
                     <span></span>
@@ -228,6 +228,28 @@
 
     <!-- Main Content Container -->
     <div class="page-container">
+        <!-- Elección de tipo de login -->
+        <section id="login" class="page-content">
+            <div class="container">
+                <h2 class="section-title">Selecciona el tipo de acceso</h2>
+                <div class="staff-grid" style="margin-top:1.5rem;">
+                    <div class="staff-card">
+                        <h3>Admin</h3>
+                        <p style="font-size:0.9rem; color:#6b7280; margin-bottom:0.75rem;">
+                            Reservas, solicitudes, actividades, disponibilidad y enlace al portal de equipo (tareas, mensajes, calendario).
+                        </p>
+                        <button type="button" class="btn btn-primary" id="goToAdminBtn">Entrar al panel de administración</button>
+                    </div>
+                    <div class="staff-card">
+                        <h3>Staff (secretaria)</h3>
+                        <p style="font-size:0.9rem; color:#6b7280; margin-bottom:0.75rem;">
+                            Tareas, mensajes, calendario, pacientes, citas y eventos.
+                        </p>
+                        <button type="button" class="btn btn-secondary" id="goToStaffBtn">Entrar al portal de staff</button>
+                    </div>
+                </div>
+            </div>
+        </section>
         <!-- Inicio Page -->
         <section id="inicio" class="page-content active">
             <div class="container">
@@ -771,7 +793,6 @@
                       <button class="staff-nav-item" data-section="patients">Patients</button>
                       <button class="staff-nav-item" data-section="appointments">Appointments</button>
                       <button class="staff-nav-item" data-section="events">Events</button>
-                      <button class="staff-nav-item staff-nav-admin" data-section="admin" style="display:none;">Administración</button>
                       <button class="staff-nav-item" data-section="settings">Settings</button>
                     </nav>
                     <button type="button" class="staff-logout-btn" id="staffLogoutBtn">Cerrar sesión</button>
@@ -949,129 +970,6 @@
                       </div>
                     </div>
 
-                    <!-- Administración (solo admin): reservas, solicitudes, actividades, disponibilidad -->
-                    <div class="staff-section" data-staff-section="admin" style="display:none;">
-                      <div class="admin-tabs">
-                        <button class="admin-tab-btn active" data-tab="reservas" onclick="mostrarTabAdmin('reservas')">Reservas</button>
-                        <button class="admin-tab-btn" data-tab="solicitudes" onclick="mostrarTabAdmin('solicitudes')">Solicitudes de servicios</button>
-                        <button class="admin-tab-btn" data-tab="actividades" onclick="mostrarTabAdmin('actividades')">Manejar actividades</button>
-                        <button class="admin-tab-btn" data-tab="disponibilidad" onclick="mostrarTabAdmin('disponibilidad')">Manejar disponibilidades</button>
-                      </div>
-                      <div id="tabReservas" class="admin-tab-content active">
-                        <div class="admin-section">
-                          <h3>Reservas</h3>
-                          <p style="color: #666; margin-bottom: 1rem;">Marca el checkbox cuando la persona haya pagado (vía ATH Móvil: Pay a business → YouandMeCenter).</p>
-                          <div id="listaReservasAdmin"></div>
-                        </div>
-                      </div>
-                      <div id="tabActividades" class="admin-tab-content">
-                        <div class="admin-section">
-                          <h3>Manejar actividades</h3>
-                          <button onclick="mostrarFormularioEvento()" class="btn btn-primary" style="margin-bottom: 2rem;">+ Agregar Nueva Actividad</button>
-                          <div id="formularioEvento" class="admin-form-container" style="display: none;">
-                            <h4 id="tituloFormularioEvento">Agregar Nueva Actividad</h4>
-                            <form id="eventoAdminForm">
-                              <input type="hidden" id="eventoEditId">
-                              <div class="form-row">
-                                <div class="form-group">
-                                  <label>Nombre de la actividad:</label>
-                                  <input type="text" id="eventoNombreAdmin" required>
-                                </div>
-                                <div class="form-group">
-                                  <label>Fecha:</label>
-                                  <input type="text" id="eventoFechaAdmin" placeholder="ej: 15-20 de julio, 2025" required>
-                                </div>
-                              </div>
-                              <div class="form-group">
-                                <label>Descripción:</label>
-                                <textarea id="eventoDescripcionAdmin" rows="3" required></textarea>
-                              </div>
-                              <div class="form-row">
-                                <div class="form-group">
-                                  <label>Horario:</label>
-                                  <input type="text" id="eventoHorarioAdmin" placeholder="ej: 9:00 AM - 3:00 PM">
-                                </div>
-                                <div class="form-group">
-                                  <label>Edad:</label>
-                                  <input type="text" id="eventoEdadAdmin" placeholder="ej: 5-12 años">
-                                </div>
-                              </div>
-                              <div class="form-row">
-                                <div class="form-group">
-                                  <label>Precio:</label>
-                                  <input type="number" id="eventoPrecioAdmin" required>
-                                </div>
-                                <div class="form-group">
-                                  <label>Cupos disponibles:</label>
-                                  <input type="number" id="eventoCuposAdmin" required>
-                                </div>
-                              </div>
-                              <div class="form-group">
-                                <label>URL de imagen (opcional):</label>
-                                <input type="text" id="eventoImagenAdmin" placeholder="https://...">
-                              </div>
-                              <div style="display: flex; gap: 1rem;">
-                                <button type="submit" class="btn btn-primary">Guardar Actividad</button>
-                                <button type="button" onclick="cancelarFormularioEvento()" class="btn btn-secondary">Cancelar</button>
-                              </div>
-                            </form>
-                          </div>
-                          <div id="listaEventosAdmin"></div>
-                        </div>
-                      </div>
-                      <div id="tabDisponibilidad" class="admin-tab-content">
-                        <div class="admin-section">
-                          <h3>Manejar disponibilidades</h3>
-                          <div class="admin-form-container" style="margin-top:2rem;">
-                            <h4>Disponibilidad de actividades / celebraciones</h4>
-                            <form id="formDisponibilidadCumple">
-                              <div class="form-row">
-                                <div class="form-group">
-                                  <label>Fecha:</label>
-                                  <input type="date" id="dispFechaCumple">
-                                  <small style="display:block; margin-top:0.25rem; color:#666;">Selecciona una o varias fechas en el calendario. Si tocas de nuevo una fecha que ya está seleccionada, se eliminará.</small>
-                                </div>
-                              </div>
-                              <div class="form-group">
-                                <label>Fechas seleccionadas:</label>
-                                <div id="dispFechasSeleccionadas" style="font-size:0.9rem; color:#333;"></div>
-                              </div>
-                              <div class="form-row">
-                                <div class="form-group">
-                                  <label>Hora:</label>
-                                  <input type="time" id="dispHoraCumple1" step="1800" required>
-                                </div>
-                                <div class="form-group">
-                                  <label>Duración (horas):</label>
-                                  <input type="number" id="dispDuracionCumple1" value="1" min="0.5" step="0.5" required>
-                                </div>
-                              </div>
-                              <button type="submit" class="btn btn-primary">Añadir bloque(s)</button>
-                            </form>
-                            <div id="listaDisponibilidadCumple" style="margin-top:1.5rem;"></div>
-                          </div>
-                          <div class="admin-section" style="margin-top:2rem;">
-                            <h4>Solicitudes de fecha (celebraciones)</h4>
-                            <p style="color:#666; font-size:0.9rem; margin-bottom:1rem;">Fechas que los clientes solicitaron porque no aparecían disponibles.</p>
-                            <div id="listaSolicitudesFechaAdmin"></div>
-                          </div>
-                        </div>
-                      </div>
-                      <div id="tabSolicitudes" class="admin-tab-content">
-                        <div class="admin-section">
-                          <h3>Solicitudes de servicios</h3>
-                          <p style="color: #666; margin-bottom: 1rem;">Las solicitudes también se envían a tu email: centroyouandme@gmail.com</p>
-                          <div style="margin-bottom: 2rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <button onclick="filtrarSolicitudes('todas')" class="filtro-btn active" id="filtroTodas">Todas</button>
-                            <button onclick="filtrarSolicitudes('pendientes')" class="filtro-btn" id="filtroPendientes">Pendientes</button>
-                            <button onclick="filtrarSolicitudes('contactadas')" class="filtro-btn" id="filtroContactadas">Contactadas</button>
-                            <button onclick="filtrarSolicitudes('agendadas')" class="filtro-btn" id="filtroAgendadas">Agendadas</button>
-                          </div>
-                          <div id="listaSolicitudesAdmin"></div>
-                        </div>
-                      </div>
-                    </div>
-
                     <div class="staff-section" data-staff-section="settings" style="display:none;">
                       <div class="staff-card">
                         <h4>Settings</h4>
@@ -1083,6 +981,166 @@
               </div>
             </div>
           </section>
+
+        <!-- Admin Page: dashboard clásico (reservas, solicitudes, actividades, disponibilidad) + enlace al portal de equipo -->
+        <section id="admin" class="page-content">
+            <div class="container">
+                <div id="adminLogin" class="admin-login-container">
+                    <div class="admin-login-box">
+                        <h2 class="section-title">Panel de Administración</h2>
+                        <p class="section-subtitle">Ingresa tus credenciales para acceder</p>
+                        <form id="adminLoginForm" class="admin-login-form">
+                            <div class="form-group">
+                                <label>Email:</label>
+                                <input type="email" id="adminEmail" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Contraseña:</label>
+                                <input type="password" id="adminPassword" required>
+                            </div>
+                            <div id="loginError" style="color: var(--orange); display: none; margin: 1rem 0;">Credenciales incorrectas. Intenta de nuevo.</div>
+                            <button type="submit" class="btn btn-primary btn-large">Iniciar Sesión</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="adminDashboard" style="display: none;">
+                    <div class="admin-header">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                            <h2 style="color: white; margin: 0;">Panel de Administración</h2>
+                            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                <a href="#staff" class="btn btn-primary" id="adminGoToStaffBtn" style="text-decoration:none;">Portal de equipo (tareas, mensajes, calendario…)</a>
+                                <button onclick="cerrarSesionAdmin()" class="btn btn-secondary">Cerrar Sesión</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="admin-tabs">
+                        <button class="admin-tab-btn active" data-tab="reservas" onclick="mostrarTabAdmin('reservas')">Reservas</button>
+                        <button class="admin-tab-btn" data-tab="solicitudes" onclick="mostrarTabAdmin('solicitudes')">Solicitudes de servicios</button>
+                        <button class="admin-tab-btn" data-tab="actividades" onclick="mostrarTabAdmin('actividades')">Manejar actividades</button>
+                        <button class="admin-tab-btn" data-tab="disponibilidad" onclick="mostrarTabAdmin('disponibilidad')">Manejar disponibilidades</button>
+                    </div>
+
+                    <div id="tabReservas" class="admin-tab-content active">
+                        <div class="admin-section">
+                            <h3>Reservas</h3>
+                            <p style="color: #666; margin-bottom: 1rem;">Marca el checkbox cuando la persona haya pagado (vía ATH Móvil: Pay a business → YouandMeCenter).</p>
+                            <div id="listaReservasAdmin"></div>
+                        </div>
+                    </div>
+
+                    <div id="tabActividades" class="admin-tab-content">
+                        <div class="admin-section">
+                            <h3>Manejar actividades</h3>
+                            <button onclick="mostrarFormularioEvento()" class="btn btn-primary" style="margin-bottom: 2rem;">+ Agregar Nueva Actividad</button>
+                            <div id="formularioEvento" class="admin-form-container" style="display: none;">
+                                <h4 id="tituloFormularioEvento">Agregar Nueva Actividad</h4>
+                                <form id="eventoAdminForm">
+                                    <input type="hidden" id="eventoEditId">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Nombre de la actividad:</label>
+                                            <input type="text" id="eventoNombreAdmin" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Fecha:</label>
+                                            <input type="text" id="eventoFechaAdmin" placeholder="ej: 15-20 de julio, 2025" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Descripción:</label>
+                                        <textarea id="eventoDescripcionAdmin" rows="3" required></textarea>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Horario:</label>
+                                            <input type="text" id="eventoHorarioAdmin" placeholder="ej: 9:00 AM - 3:00 PM">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Edad:</label>
+                                            <input type="text" id="eventoEdadAdmin" placeholder="ej: 5-12 años">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Precio:</label>
+                                            <input type="number" id="eventoPrecioAdmin" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Cupos disponibles:</label>
+                                            <input type="number" id="eventoCuposAdmin" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>URL de imagen (opcional):</label>
+                                        <input type="text" id="eventoImagenAdmin" placeholder="https://...">
+                                    </div>
+                                    <div style="display: flex; gap: 1rem;">
+                                        <button type="submit" class="btn btn-primary">Guardar Actividad</button>
+                                        <button type="button" onclick="cancelarFormularioEvento()" class="btn btn-secondary">Cancelar</button>
+                                    </div>
+                                </form>
+                            </div>
+                            <div id="listaEventosAdmin"></div>
+                        </div>
+                    </div>
+
+                    <div id="tabDisponibilidad" class="admin-tab-content">
+                        <div class="admin-section">
+                            <h3>Manejar disponibilidades</h3>
+                            <div class="admin-form-container" style="margin-top:2rem;">
+                                <h4>Disponibilidad de actividades / celebraciones</h4>
+                                <form id="formDisponibilidadCumple">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Fecha:</label>
+                                            <input type="date" id="dispFechaCumple">
+                                            <small style="display:block; margin-top:0.25rem; color:#666;">Selecciona una o varias fechas. Si tocas de nuevo una fecha ya seleccionada, se eliminará.</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Fechas seleccionadas:</label>
+                                        <div id="dispFechasSeleccionadas" style="font-size:0.9rem; color:#333;"></div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Hora:</label>
+                                            <input type="time" id="dispHoraCumple1" step="1800" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Duración (horas):</label>
+                                            <input type="number" id="dispDuracionCumple1" value="1" min="0.5" step="0.5" required>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Añadir bloque(s)</button>
+                                </form>
+                                <div id="listaDisponibilidadCumple" style="margin-top:1.5rem;"></div>
+                            </div>
+                            <div class="admin-section" style="margin-top:2rem;">
+                                <h4>Solicitudes de fecha (celebraciones)</h4>
+                                <p style="color:#666; font-size:0.9rem; margin-bottom:1rem;">Fechas que los clientes solicitaron porque no aparecían disponibles.</p>
+                                <div id="listaSolicitudesFechaAdmin"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tabSolicitudes" class="admin-tab-content">
+                        <div class="admin-section">
+                            <h3>Solicitudes de servicios</h3>
+                            <p style="color: #666; margin-bottom: 1rem;">Las solicitudes también se envían a tu email: centroyouandme@gmail.com</p>
+                            <div style="margin-bottom: 2rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button onclick="filtrarSolicitudes('todas')" class="filtro-btn active" id="filtroTodas">Todas</button>
+                                <button onclick="filtrarSolicitudes('pendientes')" class="filtro-btn" id="filtroPendientes">Pendientes</button>
+                                <button onclick="filtrarSolicitudes('contactadas')" class="filtro-btn" id="filtroContactadas">Contactadas</button>
+                                <button onclick="filtrarSolicitudes('agendadas')" class="filtro-btn" id="filtroAgendadas">Agendadas</button>
+                            </div>
+                            <div id="listaSolicitudesAdmin"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 
     <!-- Footer -->

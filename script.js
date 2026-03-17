@@ -352,11 +352,6 @@ function actualizarUIStaff() {
     if (adminArea) adminArea.style.display = rol === 'admin' ? '' : 'none';
     if (secArea) secArea.style.display = (rol === 'admin' || rol === 'secretary') ? '' : 'none';
 
-    // Mostrar u ocultar enlace "Administración" en el menú lateral (solo admin)
-    document.querySelectorAll('.staff-nav-admin').forEach(el => {
-        el.style.display = currentStaffRole === 'admin' ? '' : 'none';
-    });
-
     // Cargar resumen del dashboard al iniciar sesión
     cargarResumenDashboardStaff().catch((e) => {
         console.error('Error cargando resumen de dashboard:', e);
@@ -650,10 +645,6 @@ function mostrarSeccionStaff(section) {
             title: 'Dashboard',
             subtitle: 'Resumen rápido de lo que está ocurriendo hoy.'
         },
-        admin: {
-            title: 'Administración',
-            subtitle: 'Reservas, solicitudes de servicios, actividades y disponibilidades.'
-        },
         tasks: {
             title: 'Tasks',
             subtitle: 'Organice y asigne tareas internas del equipo.'
@@ -690,9 +681,6 @@ function mostrarSeccionStaff(section) {
 
     if (section === 'appointments') {
         cargarCitasStaff();
-    }
-    if (section === 'admin') {
-        mostrarTabAdmin('reservas');
     }
 }
 
@@ -1005,10 +993,6 @@ function leerUrlActual() {
 // Aplicar URL al cargar: ir a la página del hash y, si aplica, marcar reserva pendiente
 function aplicarUrlInicial() {
     const { pageName, reservar } = leerUrlActual();
-    if (pageName === 'admin') {
-        if (typeof navigateToPage === 'function') navigateToPage('staff');
-        return;
-    }
     if (pageName && document.getElementById(pageName) && typeof navigateToPage === 'function') {
         navigateToPage(pageName);
     }
@@ -1054,6 +1038,10 @@ function inicializarNavegacion() {
         });
     });
 
+    const goToAdminBtn = document.getElementById('goToAdminBtn');
+    const goToStaffBtn = document.getElementById('goToStaffBtn');
+    if (goToAdminBtn) goToAdminBtn.addEventListener('click', () => navigateToPage('admin'));
+    if (goToStaffBtn) goToStaffBtn.addEventListener('click', () => navigateToPage('staff'));
 
     // Button navigation handlers - Solo se agrega UNA VEZ
     document.addEventListener('click', function botonClickHandler(e) {
@@ -2355,13 +2343,79 @@ async function verificarSesionAdmin() {
     }
 }
 
-// Todo el acceso es por el portal staff; #admin redirige a #staff
+// Login de administrador: mismo usuario Supabase que staff, así puede ir al portal de equipo sin volver a loguearse
+document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('adminLoginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('adminEmail').value;
+            const password = document.getElementById('adminPassword').value;
+            const errorDiv = document.getElementById('loginError');
+            try {
+                if (supabaseClient) {
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                    if (data.user.email !== ADMIN_CREDENTIALS.email) {
+                        await supabaseClient.auth.signOut();
+                        throw new Error('Acceso no autorizado');
+                    }
+                    currentStaffSession = data.session;
+                    currentStaffRole = 'admin';
+                } else {
+                    if (email !== ADMIN_CREDENTIALS.email || password !== ADMIN_CREDENTIALS.password) {
+                        errorDiv.style.display = 'block';
+                        return;
+                    }
+                    localStorage.setItem('youme_admin_sesion', 'activa');
+                }
+                document.getElementById('adminLogin').style.display = 'none';
+                document.getElementById('adminDashboard').style.display = 'block';
+                cargarEventosAdmin();
+                cargarSolicitudesAdmin();
+                mostrarTabAdmin('reservas');
+            } catch (err) {
+                console.error('Error en login admin:', err);
+                errorDiv.style.display = 'block';
+            }
+        });
+    }
+});
+
+async function cerrarSesionAdmin() {
+    if (supabaseClient) await supabaseClient.auth.signOut();
+    else localStorage.removeItem('youme_admin_sesion');
+    currentStaffSession = null;
+    currentStaffRole = null;
+    document.getElementById('adminLogin').style.display = 'block';
+    document.getElementById('adminDashboard').style.display = 'none';
+    const form = document.getElementById('adminLoginForm');
+    if (form) form.reset();
+    const err = document.getElementById('loginError');
+    if (err) err.style.display = 'none';
+}
+
 const originalNavigateToPage = navigateToPage;
 window.navigateToPage = async function(pageName) {
-    if (pageName === 'admin') {
-        pageName = 'staff';
-    }
     originalNavigateToPage(pageName);
+    if (pageName === 'admin') {
+        const tieneSesion = await verificarSesionAdmin();
+        if (tieneSesion) {
+            if (supabaseClient) {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session) {
+                    currentStaffSession = session;
+                    currentStaffRole = 'admin';
+                }
+            }
+            document.getElementById('adminLogin').style.display = 'none';
+            document.getElementById('adminDashboard').style.display = 'block';
+            mostrarTabAdmin('reservas');
+        } else {
+            document.getElementById('adminLogin').style.display = 'block';
+            document.getElementById('adminDashboard').style.display = 'none';
+        }
+    }
 };
 
 // Cambiar entre tabs del admin
@@ -3878,9 +3932,7 @@ function inicializarTodo() {
         // Si el usuario cambia el hash (p. ej. al tocar un enlace o volver atrás), navegar
         window.addEventListener('hashchange', function() {
             const { pageName } = leerUrlActual();
-            if (pageName === 'admin') {
-                navigateToPage('staff');
-            } else if (pageName && document.getElementById(pageName)) {
+            if (pageName && document.getElementById(pageName)) {
                 navigateToPage(pageName);
             }
         });
