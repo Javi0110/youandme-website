@@ -149,6 +149,20 @@ h1, h2, h3, h4 {
     padding-bottom: 120px;
 }
 
+@media (max-width: 768px) {
+    /* En móvil, deja que el contenido crezca libremente y añade más espacio inferior */
+    #staff.page-content {
+        min-height: auto;
+        padding-top: 64px;
+        padding-bottom: 160px;
+    }
+
+    .logo {
+        height: 80px;
+        max-width: 260px;
+    }
+}
+
 .page-content.active {
     display: block;
 }
