@@ -435,8 +435,8 @@ h1, h2, h3, h4 {
 }
 
 .staff-sidebar {
-    background: var(--gray-dark);
-    color: var(--white);
+    background: linear-gradient(180deg, #00CCC0 0%, #0f766e 100%);
+    color: #ecfeff;
     border-radius: 16px;
     padding: 1.5rem 1.25rem;
     display: flex;
@@ -462,12 +462,12 @@ h1, h2, h3, h4 {
 .staff-logo-title {
     font-family: var(--font-heading);
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 1rem;
 }
 
 .staff-logo-subtitle {
     font-size: 0.8rem;
-    color: var(--gray-light);
+    color: #e0fbff;
     opacity: 0.9;
 }
 
@@ -481,7 +481,7 @@ h1, h2, h3, h4 {
 .staff-nav-item {
     border: none;
     background: transparent;
-    color: var(--gray-light);
+    color: #e0fbff;
     text-align: left;
     padding: 0.5rem 0.75rem;
     border-radius: 8px;
@@ -492,20 +492,21 @@ h1, h2, h3, h4 {
 }
 
 .staff-nav-item:hover {
-    background: rgba(0, 204, 192, 0.15);
-    color: var(--white);
+    background: rgba(15, 23, 42, 0.12);
+    color: #ffffff;
 }
 
 .staff-nav-item.active {
-    background: var(--turquoise);
+    background: #f9fafb;
     color: var(--white);
+    color: #0f172a;
 }
 
 .staff-logout-btn {
     margin-top: auto;
     border: none;
-    background: var(--orange);
-    color: var(--white);
+    background: #f97316;
+    color: #ffffff;
     border-radius: 8px;
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
@@ -602,13 +603,15 @@ h1, h2, h3, h4 {
 }
 
 .staff-tasks-column {
-    background: #f3f4f6;
-    border-radius: 10px;
-    padding: 0.9rem;
-    min-height: 160px;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 0.9rem 0.9rem 1rem;
+    min-height: 180px;
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e5e7eb;
 }
 
 .staff-tasks-column h5 {
@@ -618,6 +621,14 @@ h1, h2, h3, h4 {
     display: flex;
     align-items: center;
     justify-content: space-between;
+}
+
+.staff-tasks-column h5::after {
+    content: '';
+    flex: 1;
+    margin-left: 0.5rem;
+    height: 1px;
+    background: #e5e7eb;
 }
 
 .staff-task-card {
@@ -649,8 +660,8 @@ h1, h2, h3, h4 {
 }
 
 .staff-task-priority-low {
-    background: rgba(99, 102, 241, 0.08);
-    color: #4f46e5;
+    background: rgba(59, 130, 246, 0.08);
+    color: #2563eb;
 }
 
 .staff-task-priority-medium {
