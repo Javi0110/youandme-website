@@ -639,6 +639,30 @@ h1, h2, h3, h4 {
     font-size: 0.92rem;
 }
 
+.staff-task-priority-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.staff-task-priority-low {
+    background: rgba(99, 102, 241, 0.08);
+    color: #4f46e5;
+}
+
+.staff-task-priority-medium {
+    background: rgba(0, 204, 192, 0.1);
+    color: #0f766e;
+}
+
+.staff-task-priority-high {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+}
+
 .staff-layout-messages {
     display: grid;
     grid-template-columns: 220px 1fr;

@@ -598,11 +598,17 @@ function renderizarTareasStaff(tareas) {
                   <div style="flex:1;">
                     <strong>${escapeHtml(t.title || '')}</strong>
                     ${t.description ? `<p style="font-size:0.85rem; color:#6b7280; margin:0.25rem 0 0 0;">${escapeHtml(t.description)}</p>` : ''}
-                    <p style="font-size:0.8rem; color:#6b7280; margin-top:0.35rem;">Prioridad: ${prioridadTexto(t.priority || 'medium')} · Fecha: ${due}</p>
+                    <p style="font-size:0.8rem; color:#6b7280; margin-top:0.35rem;">
+                      <span class="staff-task-priority-badge staff-task-priority-${t.priority || 'medium'}">
+                        ${prioridadTexto(t.priority || 'medium')}
+                      </span>
+                      · Fecha: ${due}
+                    </p>
                   </div>
                 </label>
                 <div style="margin-top:0.35rem; display:flex; gap:0.35rem; flex-wrap:wrap;">
                   <button type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.5rem;" data-edit-task="${t.id}">Editar</button>
+                  <button type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.5rem; background:#f97373; border-color:#f97373; color:#fff;" data-delete-task="${t.id}">Eliminar</button>
                   ${status === 'pending' ? `<button type="button" class="btn btn-primary" style="font-size:0.8rem; padding:0.25rem 0.5rem;" data-status-task="${t.id}" data-status-value="in_progress">En progreso</button>` : ''}
                   ${status === 'in_progress' ? `<button type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.5rem;" data-status-task="${t.id}" data-status-value="completed">Marcar completada</button>` : ''}
                 </div>
@@ -630,6 +636,12 @@ function renderizarTareasStaff(tareas) {
             const id = this.getAttribute('data-edit-task');
             const t = staffTasksCache.find(x => x.id === id);
             if (t) cargarTareaEnFormulario(t);
+        });
+    });
+    listEl.querySelectorAll('[data-delete-task]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-delete-task');
+            if (id) eliminarTareaStaff(id);
         });
     });
     listEl.querySelectorAll('[data-status-task]').forEach(btn => {
@@ -666,6 +678,24 @@ async function actualizarEstadoTarea(id, status) {
         if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
     } catch (e) {
         console.error('Error actualizando tarea:', e);
+    }
+}
+
+async function eliminarTareaStaff(id) {
+    if (!supabaseClient || !id) return;
+    const confirmar = window.confirm('¿Eliminar esta tarea? Esta acción no se puede deshacer.');
+    if (!confirmar) return;
+    try {
+        const { error } = await supabaseClient.from('tasks').delete().eq('id', id);
+        if (error) throw error;
+        await cargarTareasStaff();
+        await cargarResumenDashboardStaff();
+        if (typeof staffCalendar !== 'undefined' && staffCalendar) {
+            staffCalendar.refetchEvents();
+        }
+    } catch (e) {
+        console.error('Error eliminando tarea:', e);
+        alert('No se pudo eliminar la tarea. Inténtalo de nuevo.');
     }
 }
 
