@@ -429,15 +429,16 @@ h1, h2, h3, h4 {
 .staff-layout {
     display: grid;
     grid-template-columns: 260px minmax(0, 1fr);
-    gap: 1.5rem;
-    align-items: stretch;
+    gap: 2rem;
+    align-items: flex-start;
+    padding: 1.5rem 0;
 }
 
 .staff-sidebar {
     background: var(--gray-dark);
     color: var(--white);
     border-radius: 16px;
-    padding: 1.25rem 1rem;
+    padding: 1.5rem 1.25rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -520,10 +521,11 @@ h1, h2, h3, h4 {
 .staff-main {
     font-family: var(--font-body);
     color: var(--gray-dark);
-    background: var(--gray-light);
+    background: var(--white);
     border-radius: 16px;
-    padding: 1.25rem 1.5rem;
+    padding: 1.5rem 1.75rem 1.75rem;
     border: 1px solid #e5e7eb;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 }
 
 .staff-main-header {
@@ -548,8 +550,8 @@ h1, h2, h3, h4 {
 
 .staff-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
 }
 
 .staff-card {
@@ -590,33 +592,51 @@ h1, h2, h3, h4 {
 }
 
 .staff-tasks-list {
-    min-height: 200px;
+    min-height: 220px;
 }
 
 .staff-tasks-columns {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.25rem;
 }
 
 .staff-tasks-column {
-    background: var(--gray-light);
+    background: #f3f4f6;
     border-radius: 10px;
-    padding: 0.75rem;
-    min-height: 120px;
+    padding: 0.9rem;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
 }
 
 .staff-tasks-column h5 {
     font-family: var(--font-heading);
     color: var(--gray-dark);
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .staff-task-card {
     background: var(--white);
     border-radius: 8px;
-    padding: 0.6rem 0.75rem;
-    margin-bottom: 0.5rem;
+    padding: 0.7rem 0.8rem;
+    margin-bottom: 0.35rem;
     border: 1px solid rgba(0, 204, 192, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.staff-task-card label {
+    gap: 0.55rem !important;
+}
+
+.staff-task-card strong {
+    font-size: 0.92rem;
 }
 
 .staff-layout-messages {
@@ -739,10 +759,16 @@ h1, h2, h3, h4 {
 
     .staff-tasks-columns {
         grid-template-columns: 1fr;
+        gap: 0.75rem;
     }
 
     .staff-layout-messages {
         grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .staff-main {
+        padding: 1.25rem 1.1rem 1.4rem;
     }
 }
 
