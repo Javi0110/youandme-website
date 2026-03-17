@@ -233,24 +233,22 @@
 
     <!-- Main Content Container -->
     <div class="page-container">
-        <!-- Elección de tipo de login -->
+        <!-- Staff Portal: acceso unificado -->
         <section id="login" class="page-content">
             <div class="container">
-                <h2 class="section-title">Selecciona el tipo de acceso</h2>
-                <div class="staff-grid" style="margin-top:1.5rem;">
-                    <div class="staff-card">
-                        <h3>Admin</h3>
+                <h2 class="section-title">Staff Portal</h2>
+                <p class="section-subtitle" style="text-align:center; max-width:620px; margin:0 auto;">
+                    Inicia sesión con tu cuenta de staff para acceder al panel completo (tareas, calendario, mensajes y administración de reservas, actividades y solicitudes).
+                </p>
+                <div class="staff-grid" style="margin-top:1.5rem; justify-content:center;">
+                    <div class="staff-card" style="max-width:420px; margin:0 auto;">
+                        <h3>Iniciar sesión</h3>
                         <p style="font-size:0.9rem; color:#6b7280; margin-bottom:0.75rem;">
-                            Reservas, solicitudes, actividades, disponibilidad y enlace al portal de equipo (tareas, mensajes, calendario).
+                            Usa tu usuario de staff (admin o secretaria). Ambos perfiles pueden ver y editar todo; cada uno mantiene su propio calendario y tareas personales.
                         </p>
-                        <button type="button" class="btn btn-primary" id="goToAdminBtn">Entrar al panel de administración</button>
-                    </div>
-                    <div class="staff-card">
-                        <h3>Staff (secretaria)</h3>
-                        <p style="font-size:0.9rem; color:#6b7280; margin-bottom:0.75rem;">
-                            Tareas, mensajes, calendario, pacientes, citas y eventos.
-                        </p>
-                        <button type="button" class="btn btn-secondary" id="goToStaffBtn">Entrar al portal de staff</button>
+                        <button type="button" class="btn btn-primary btn-large" id="goToStaffBtn">
+                            Entrar al Staff Portal
+                        </button>
                     </div>
                 </div>
             </div>
