@@ -179,6 +179,13 @@ h1, h2, h3, h4 {
     min-width: 0;
 }
 
+.logo a {
+    display: block;
+    height: 100%;
+    width: 100%;
+    line-height: 0; /* evita que el enlace agregue espacio extra alrededor de la imagen */
+}
+
 .logo img {
     width: 100%;
     max-width: 100%;
