@@ -317,22 +317,23 @@ async function cargarRolStaffYActualizarUI() {
         if (roleFromLib) currentStaffRole = roleFromLib;
     }
     if (!currentStaffRole) {
-    if (email === 'centroyouandme@gmail.com') {
-        currentStaffRole = 'admin';
-    } else if (email === 'asistenteyouandme@gmail.com') {
-        currentStaffRole = 'secretary';
-    } else {
-        try {
-            const { data, error } = await supabaseClient
-                .from('profiles')
-                .select('role')
-                .eq('id', currentStaffSession.user.id)
-                .maybeSingle();
-            if (error) throw error;
-            currentStaffRole = data?.role || null;
-        } catch (e) {
-            console.error('Error cargando rol de staff:', e);
-            currentStaffRole = null;
+        if (email === 'centroyouandme@gmail.com') {
+            currentStaffRole = 'admin';
+        } else if (email === 'asistenteyouandme@gmail.com') {
+            currentStaffRole = 'secretary';
+        } else {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', currentStaffSession.user.id)
+                    .maybeSingle();
+                if (error) throw error;
+                currentStaffRole = data?.role || null;
+            } catch (e) {
+                console.error('Error cargando rol de staff:', e);
+                currentStaffRole = null;
+            }
         }
     }
     actualizarUIStaff();
@@ -487,10 +488,6 @@ function inicializarStaffPortal() {
         });
     });
 
-    // Botones de acción rápida en el dashboard
-    const qaCreateTaskBtn = document.getElementById('qaCreateTaskBtn');
-    const qaSendMessageBtn = document.getElementById('qaSendMessageBtn');
-
     const activarNavSection = (section) => {
         const navItems = document.querySelectorAll('.staff-nav-item');
         navItems.forEach(b => {
@@ -498,28 +495,6 @@ function inicializarStaffPortal() {
         });
         mostrarSeccionStaff(section);
     };
-
-    if (qaCreateTaskBtn) {
-        qaCreateTaskBtn.addEventListener('click', () => {
-            if (!requireStaffRole(['admin', 'secretary'])) return;
-            activarNavSection('tasks');
-            const form = document.getElementById('staffTaskForm');
-            if (form) {
-                form.reset();
-                const idInput = document.getElementById('taskId');
-                if (idInput) idInput.value = '';
-                document.getElementById('taskTitle')?.focus();
-            }
-        });
-    }
-
-    if (qaSendMessageBtn) {
-        qaSendMessageBtn.addEventListener('click', () => {
-            if (!requireStaffRole(['admin', 'secretary'])) return;
-            activarNavSection('messages');
-            document.getElementById('staffMessageInput')?.focus();
-        });
-    }
 
     document.querySelectorAll('.staff-dash-card[data-click]').forEach(card => {
         card.addEventListener('click', () => {
@@ -789,27 +764,115 @@ function inicializarStaffCalendar() {
     staffCalendar.render();
 }
 
+// Configuración escalable para contactos de staff (admin ↔ secretaria)
+const STAFF_COUNTERPART_LABELS = { admin: 'Admin', secretary: 'Secretaria' };
+
+async function obtenerContraparteStaff(uid) {
+    const role = currentStaffRole || 'secretary';
+    const counterpartRole = role === 'admin' ? 'secretary' : 'admin';
+    const label = STAFF_COUNTERPART_LABELS[counterpartRole] || counterpartRole;
+
+    // 1. Intentar staff_members (tabla escalable para múltiples staff)
+    try {
+        const { data: staff } = await supabaseClient
+            .from('staff_members')
+            .select('id, role, display_name')
+            .eq('role', counterpartRole)
+            .neq('id', uid)
+            .limit(1);
+        if (staff && staff.length > 0) {
+            return { id: staff[0].id, label: staff[0].display_name || label };
+        }
+    } catch (_) { /* staff_members puede no existir */ }
+
+    // 2. Intentar profiles (id, role)
+    try {
+        const { data: profiles } = await supabaseClient
+            .from('profiles')
+            .select('id, role')
+            .eq('role', counterpartRole)
+            .neq('id', uid)
+            .limit(1);
+        if (profiles && profiles.length > 0) {
+            return { id: profiles[0].id, label };
+        }
+    } catch (_) { /* fallback */ }
+
+    // 3. Config manual (window.STAFF_COUNTERPART_IDS = { admin: 'uuid', secretary: 'uuid' })
+    const manual = typeof window.STAFF_COUNTERPART_IDS === 'object' && window.STAFF_COUNTERPART_IDS[counterpartRole];
+    if (manual) return { id: manual, label };
+
+    return null;
+}
+
+async function enriquecerContactosConStaff(contactMap, uid) {
+    if (!supabaseClient || !contactMap || contactMap.size === 0) return;
+    const ids = Array.from(contactMap.keys());
+
+    // 1) staff_members con display_name / role
+    try {
+        const { data: staff } = await supabaseClient
+            .from('staff_members')
+            .select('id, role, display_name')
+            .in('id', ids);
+        (staff || []).forEach(row => {
+            const baseLabel =
+                row.display_name ||
+                STAFF_COUNTERPART_LABELS[row.role] ||
+                ('Usuario ' + String(row.id).slice(0, 8));
+            contactMap.set(row.id, { label: baseLabel });
+        });
+        if (staff && staff.length) return;
+    } catch (_) { /* si falla, seguimos con profiles */ }
+
+    // 2) profiles con role, por si aún no existe staff_members
+    try {
+        const { data: profiles } = await supabaseClient
+            .from('profiles')
+            .select('id, role')
+            .in('id', ids);
+        (profiles || []).forEach(row => {
+            const baseLabel =
+                STAFF_COUNTERPART_LABELS[row.role] ||
+                ('Usuario ' + String(row.id).slice(0, 8));
+            contactMap.set(row.id, { label: baseLabel });
+        });
+    } catch (_) { /* último fallback: dejar labels existentes */ }
+}
+
 async function cargarConversacionesStaff() {
     const listEl = document.getElementById('staffConversationsList');
     if (!listEl || !supabaseClient || !currentStaffSession) return;
     const uid = currentStaffSession.user.id;
     try {
         const { data: messages } = await supabaseClient.from('messages').select('*').or(`sender_id.eq.${uid},receiver_id.eq.${uid}`).order('created_at', { ascending: false });
-        const otherIds = new Set();
+        const contactMap = new Map(); // id -> { label }
         (messages || []).forEach(m => {
-            if (m.sender_id !== uid) otherIds.add(m.sender_id);
-            if (m.receiver_id !== uid) otherIds.add(m.receiver_id);
+            const otherId = m.sender_id === uid ? m.receiver_id : m.sender_id;
+            if (otherId && !contactMap.has(otherId)) {
+                contactMap.set(otherId, { label: 'Usuario ' + String(otherId).slice(0, 8) });
+            }
         });
-        const others = Array.from(otherIds);
-        if (others.length === 0) {
-            listEl.innerHTML = '<p style="font-size:0.9rem; color:#6b7280;">No hay conversaciones aún.</p>';
+
+        // Si no hay conversaciones, cargar contraparte (admin ↔ secretaria)
+        if (contactMap.size === 0) {
+            const counterpart = await obtenerContraparteStaff(uid);
+            if (counterpart) {
+                contactMap.set(counterpart.id, { label: counterpart.label });
+            }
+        }
+
+        // Enriquecer labels con información de staff (display_name / role)
+        await enriquecerContactosConStaff(contactMap, uid);
+
+        if (contactMap.size === 0) {
+            listEl.innerHTML = '<p style="font-size:0.9rem; color:#6b7280;">No hay contactos de staff configurados. Crea la tabla staff_members o profiles con role.</p>';
             return;
         }
-        const unread = (messages || []).filter(m => m.receiver_id === uid && !m.read_status).length;
-        listEl.innerHTML = others.map(o => {
-            const unreadCount = (messages || []).filter(m => m.sender_id === o && m.receiver_id === uid && !m.read_status).length;
-            const label = 'Usuario ' + String(o).slice(0, 8);
-            return `<div class="staff-conv-item" data-receiver-id="${o}" data-receiver-label="${escapeHtml(label)}">${label}${unreadCount ? ` <span class="staff-unread-badge">${unreadCount}</span>` : ''}</div>`;
+
+        listEl.innerHTML = Array.from(contactMap.entries()).map(([id, { label }]) => {
+            const unreadCount = (messages || []).filter(m => m.sender_id === id && m.receiver_id === uid && !m.read_status).length;
+            return `<div class="staff-conv-item" data-receiver-id="${escapeHtml(id)}" data-receiver-label="${escapeHtml(label)}">${escapeHtml(label)}${unreadCount ? ` <span class="staff-unread-badge">${unreadCount}</span>` : ''}</div>`;
         }).join('');
         listEl.querySelectorAll('.staff-conv-item').forEach(item => {
             item.addEventListener('click', () => seleccionarConversacionStaff(item.getAttribute('data-receiver-id'), item.getAttribute('data-receiver-label') || item.getAttribute('data-receiver-id')));
@@ -4141,5 +4204,3 @@ if (document.readyState === 'loading') {
     // DOM ya está listo
     inicializarTodo();
 }
-
-
