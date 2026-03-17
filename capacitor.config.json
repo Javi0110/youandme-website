@@ -1,0 +1,6 @@
+{
+  "appId": "com.youme.staff",
+  "appName": "You&Me Staff",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

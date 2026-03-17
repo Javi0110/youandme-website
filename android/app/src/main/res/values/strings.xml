@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">You&amp;Me Staff</string>
+    <string name="title_activity_main">You&amp;Me Staff</string>
+    <string name="package_name">com.youme.staff</string>
+    <string name="custom_url_scheme">com.youme.staff</string>
+</resources>
