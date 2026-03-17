@@ -548,6 +548,37 @@ function manejarRutasStaff() {
 let staffCalendar = null;
 let staffTasksCache = [];
 
+// Resolver ID de staff a partir de email (admin / secretaria u otros miembros)
+async function resolverStaffIdPorEmail(email) {
+    if (!supabaseClient || !email) return null;
+    const emailNorm = email.toLowerCase().trim();
+    try {
+        // 1) staff_members: fuente principal
+        const { data: staff, error: staffError } = await supabaseClient
+            .from('staff_members')
+            .select('id, email')
+            .ilike('email', emailNorm)
+            .limit(1);
+        if (!staffError && staff && staff.length > 0) {
+            return staff[0].id;
+        }
+    } catch (_) { /* tabla puede no existir; seguimos */ }
+
+    try {
+        // 2) profiles: fallback
+        const { data: profiles, error: profError } = await supabaseClient
+            .from('profiles')
+            .select('id, email')
+            .ilike('email', emailNorm)
+            .limit(1);
+        if (!profError && profiles && profiles.length > 0) {
+            return profiles[0].id;
+        }
+    } catch (_) { /* ignorar */ }
+
+    return null;
+}
+
 async function cargarTareasStaff() {
     const listEl = document.getElementById('staffTasksList');
     if (!listEl || !supabaseClient || !currentStaffSession) return;
@@ -556,6 +587,7 @@ async function cargarTareasStaff() {
         const { data, error } = await supabaseClient
             .from('tasks')
             .select('*')
+            .or(`created_by.eq.${uid},assigned_to.eq.${uid}`)
             .order('due_date', { ascending: true, nullsFirst: false })
             .order('created_at', { ascending: false });
         if (error) throw error;
@@ -711,6 +743,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const description = document.getElementById('taskDescription').value.trim();
             const priority = document.getElementById('taskPriority').value || 'medium';
             const dueDate = document.getElementById('taskDueDate').value || null;
+            const assignedEmail = document.getElementById('taskAssignedEmail').value.trim().toLowerCase() || null;
             const statusEl = document.getElementById('taskFormStatus');
             const payload = {
                 title,
@@ -722,6 +755,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!id) {
                 payload.created_by = currentStaffSession.user.id;
                 payload.status = 'pending';
+            }
+            // Asignación opcional: si se pone un email, resolver ID de staff y guardar assigned_to
+            if (assignedEmail) {
+                const resolvedId = await resolverStaffIdPorEmail(assignedEmail);
+                if (resolvedId) {
+                    payload.assigned_to = resolvedId;
+                }
+                payload.assigned_email = assignedEmail;
+            } else {
+                payload.assigned_email = null;
+                payload.assigned_to = null;
             }
             try {
                 if (id) {
