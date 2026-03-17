@@ -352,6 +352,11 @@ function actualizarUIStaff() {
     if (adminArea) adminArea.style.display = rol === 'admin' ? '' : 'none';
     if (secArea) secArea.style.display = (rol === 'admin' || rol === 'secretary') ? '' : 'none';
 
+    // Mostrar u ocultar enlace "Administración" en el menú lateral (solo admin)
+    document.querySelectorAll('.staff-nav-admin').forEach(el => {
+        el.style.display = currentStaffRole === 'admin' ? '' : 'none';
+    });
+
     // Cargar resumen del dashboard al iniciar sesión
     cargarResumenDashboardStaff().catch((e) => {
         console.error('Error cargando resumen de dashboard:', e);
@@ -645,6 +650,10 @@ function mostrarSeccionStaff(section) {
             title: 'Dashboard',
             subtitle: 'Resumen rápido de lo que está ocurriendo hoy.'
         },
+        admin: {
+            title: 'Administración',
+            subtitle: 'Reservas, solicitudes de servicios, actividades y disponibilidades.'
+        },
         tasks: {
             title: 'Tasks',
             subtitle: 'Organice y asigne tareas internas del equipo.'
@@ -681,6 +690,9 @@ function mostrarSeccionStaff(section) {
 
     if (section === 'appointments') {
         cargarCitasStaff();
+    }
+    if (section === 'admin') {
+        mostrarTabAdmin('reservas');
     }
 }
 
@@ -976,7 +988,7 @@ function navigateToPage(pageName) {
     }
     
     // Actualizar URL para poder compartir enlaces (ej. sitio.com/#eventos)
-    if (pageName && pageName !== 'admin') {
+    if (pageName) {
         history.replaceState(null, '', '#' + pageName);
     }
 }
@@ -993,7 +1005,11 @@ function leerUrlActual() {
 // Aplicar URL al cargar: ir a la página del hash y, si aplica, marcar reserva pendiente
 function aplicarUrlInicial() {
     const { pageName, reservar } = leerUrlActual();
-    if (pageName && document.getElementById(pageName) && pageName !== 'admin' && typeof navigateToPage === 'function') {
+    if (pageName === 'admin') {
+        if (typeof navigateToPage === 'function') navigateToPage('staff');
+        return;
+    }
+    if (pageName && document.getElementById(pageName) && typeof navigateToPage === 'function') {
         navigateToPage(pageName);
     }
     if (pageName === 'eventos' && reservar) {
@@ -1038,19 +1054,6 @@ function inicializarNavegacion() {
         });
     });
 
-    // Botones dentro de la página "login" para elegir tipo de acceso
-    const goToStaffBtn = document.getElementById('goToStaffBtn');
-    const goToAdminBtn = document.getElementById('goToAdminBtn');
-    if (goToStaffBtn) {
-        goToStaffBtn.addEventListener('click', () => {
-            navigateToPage('staff');
-        });
-    }
-    if (goToAdminBtn) {
-        goToAdminBtn.addEventListener('click', () => {
-            navigateToPage('admin');
-        });
-    }
 
     // Button navigation handlers - Solo se agrega UNA VEZ
     document.addEventListener('click', function botonClickHandler(e) {
@@ -2352,83 +2355,13 @@ async function verificarSesionAdmin() {
     }
 }
 
-// Login de administrador
-document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('adminLoginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const email = document.getElementById('adminEmail').value;
-            const password = document.getElementById('adminPassword').value;
-            const errorDiv = document.getElementById('loginError');
-            
-            try {
-                if (supabaseClient) {
-                    // Login con Supabase
-                    const { data, error } = await supabaseClient.auth.signInWithPassword({
-                        email: email,
-                        password: password
-                    });
-                    
-                    if (error) throw error;
-                    
-                    // Verificar que el email sea el correcto
-                    if (data.user.email !== ADMIN_CREDENTIALS.email) {
-                        await supabaseClient.auth.signOut();
-                        throw new Error('Acceso no autorizado');
-                    }
-                } else {
-                    // Fallback a credenciales locales
-                    if (email !== ADMIN_CREDENTIALS.email || password !== ADMIN_CREDENTIALS.password) {
-                        errorDiv.style.display = 'block';
-                        return;
-                    }
-                    localStorage.setItem('youme_admin_sesion', 'activa');
-                }
-                
-                document.getElementById('adminLogin').style.display = 'none';
-                document.getElementById('adminDashboard').style.display = 'block';
-                cargarEventosAdmin();
-                cargarSolicitudesAdmin();
-            } catch (error) {
-                console.error('Error en login:', error);
-                errorDiv.style.display = 'block';
-            }
-        });
-    }
-});
-
-// Cerrar sesión
-async function cerrarSesionAdmin() {
-    if (supabaseClient) {
-        await supabaseClient.auth.signOut();
-    } else {
-        localStorage.removeItem('youme_admin_sesion');
-    }
-    document.getElementById('adminLogin').style.display = 'block';
-    document.getElementById('adminDashboard').style.display = 'none';
-    document.getElementById('adminLoginForm').reset();
-    document.getElementById('loginError').style.display = 'none';
-}
-
-// Verificar sesión al cambiar a página admin
+// Todo el acceso es por el portal staff; #admin redirige a #staff
 const originalNavigateToPage = navigateToPage;
 window.navigateToPage = async function(pageName) {
-    originalNavigateToPage(pageName);
-    
     if (pageName === 'admin') {
-        const tieneSesion = await verificarSesionAdmin();
-        if (tieneSesion) {
-            document.getElementById('adminLogin').style.display = 'none';
-            document.getElementById('adminDashboard').style.display = 'block';
-            // Por defecto, mostrar pestaña de Reservas
-            mostrarTabAdmin('reservas');
-        } else {
-            document.getElementById('adminLogin').style.display = 'block';
-            document.getElementById('adminDashboard').style.display = 'none';
-        }
+        pageName = 'staff';
     }
+    originalNavigateToPage(pageName);
 };
 
 // Cambiar entre tabs del admin
@@ -3945,7 +3878,9 @@ function inicializarTodo() {
         // Si el usuario cambia el hash (p. ej. al tocar un enlace o volver atrás), navegar
         window.addEventListener('hashchange', function() {
             const { pageName } = leerUrlActual();
-            if (pageName && pageName !== 'admin' && document.getElementById(pageName)) {
+            if (pageName === 'admin') {
+                navigateToPage('staff');
+            } else if (pageName && document.getElementById(pageName)) {
                 navigateToPage(pageName);
             }
         });
