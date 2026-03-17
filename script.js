@@ -343,12 +343,14 @@ function actualizarUIStaff() {
     const loggedOut = document.getElementById('staffLoggedOut');
     const loggedIn = document.getElementById('staffLoggedIn');
     const welcome = document.getElementById('staffWelcome');
+    const backToAdminBtn = document.getElementById('backToAdminBtn');
 
     if (!loggedOut || !loggedIn) return;
 
     if (!currentStaffSession) {
         loggedOut.style.display = '';
         loggedIn.style.display = 'none';
+        if (backToAdminBtn) backToAdminBtn.style.display = 'none';
         return;
     }
 
@@ -359,6 +361,17 @@ function actualizarUIStaff() {
     const rol = currentStaffRole || 'secretary';
     if (welcome) {
         welcome.textContent = email ? `Sesión: ${email} (${rol})` : `Sesión (${rol})`;
+    }
+
+    // Mostrar acceso rápido al panel de administración solo para admin
+    if (backToAdminBtn) {
+        if (currentStaffRole === 'admin') {
+            backToAdminBtn.style.display = '';
+            backToAdminBtn.onclick = () => navigateToPage('admin');
+        } else {
+            backToAdminBtn.style.display = 'none';
+            backToAdminBtn.onclick = null;
+        }
     }
 
     cargarResumenDashboardStaff().catch((e) => {

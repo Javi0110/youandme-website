@@ -548,6 +548,12 @@ h1, h2, h3, h4 {
     color: #0f172a;
 }
 
+.staff-nav-item-admin {
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
 .staff-logout-btn {
     margin-top: auto;
     border: none;
