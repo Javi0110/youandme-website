@@ -167,16 +167,6 @@ h1, h2, h3, h4 {
     }
 
     /* Asegurar que nada sea más ancho que la pantalla en móvil */
-    .page-container,
-    .container,
-    .staff-layout,
-    .staff-sidebar,
-    .staff-main {
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-    }
-
     html,
     body {
         overflow-x: hidden;
@@ -244,6 +234,19 @@ h1, h2, h3, h4 {
     }
 
     /* Staff layout en columna, sin overflow horizontal */
+    /* Contenedores principales 100% ancho sin overflow horizontal */
+    .page-container,
+    section#staff,
+    section#staff .container,
+    .staff-layout,
+    .staff-sidebar,
+    .staff-main {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
     .staff-main {
         border-radius: 16px 16px 0 0;
         padding: 1.25rem 1.05rem 1.4rem;
