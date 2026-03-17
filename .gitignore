@@ -5,3 +5,4 @@ admin.js
 package.json
 youme-eventos-*.json
 deploy/
+node_modules/

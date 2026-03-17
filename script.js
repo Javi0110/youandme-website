@@ -310,17 +310,30 @@ async function cargarRolStaffYActualizarUI() {
     if (!supabaseClient || !currentStaffSession) {
         return;
     }
-    try {
-        const { data, error } = await supabaseClient
-            .from('profiles')
-            .select('role')
-            .eq('id', currentStaffSession.user.id)
-            .maybeSingle();
-        if (error) throw error;
-        currentStaffRole = data?.role || null;
-    } catch (e) {
-        console.error('Error cargando rol de staff:', e);
-        currentStaffRole = null;
+    const email = (currentStaffSession.user.email || '').toLowerCase().trim();
+    // Roles correctos por email (centro = admin, asistente = secretary) - usa lib/roles.js si está cargado
+    if (typeof window.getRoleFromEmail === 'function') {
+        const roleFromLib = window.getRoleFromEmail(currentStaffSession.user.email);
+        if (roleFromLib) currentStaffRole = roleFromLib;
+    }
+    if (!currentStaffRole) {
+    if (email === 'centroyouandme@gmail.com') {
+        currentStaffRole = 'admin';
+    } else if (email === 'asistenteyouandme@gmail.com') {
+        currentStaffRole = 'secretary';
+    } else {
+        try {
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('role')
+                .eq('id', currentStaffSession.user.id)
+                .maybeSingle();
+            if (error) throw error;
+            currentStaffRole = data?.role || null;
+        } catch (e) {
+            console.error('Error cargando rol de staff:', e);
+            currentStaffRole = null;
+        }
     }
     actualizarUIStaff();
 }
@@ -353,6 +366,16 @@ function actualizarUIStaff() {
 }
 
 function requireStaffRole(requiredRoles = []) {
+    if (typeof window.requireStaffRoleCheck === 'function') {
+        const r = window.requireStaffRoleCheck(currentStaffSession, currentStaffRole, requiredRoles);
+        if (!r.allowed) {
+            if (r.reason === 'no_session') alert('Debe iniciar sesión de staff para acceder.');
+            else alert('No tiene permisos para acceder a esta sección.');
+            window.location.hash = '#staff';
+            return false;
+        }
+        return true;
+    }
     if (!currentStaffSession) {
         alert('Debe iniciar sesión de staff para acceder.');
         window.location.hash = '#staff';
@@ -2549,12 +2572,19 @@ window.navigateToPage = async function(pageName) {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 if (session) {
                     currentStaffSession = session;
-                    currentStaffRole = 'admin';
+                    const email = (session.user.email || '').toLowerCase().trim();
+                    currentStaffRole = email === 'centroyouandme@gmail.com' ? 'admin' : (email === 'asistenteyouandme@gmail.com' ? 'secretary' : currentStaffRole);
                 }
             }
-            document.getElementById('adminLogin').style.display = 'none';
-            document.getElementById('adminDashboard').style.display = 'block';
-            mostrarTabAdmin('reservas');
+            const email = currentStaffSession?.user?.email?.toLowerCase?.() || '';
+            if (email === 'centroyouandme@gmail.com') {
+                document.getElementById('adminLogin').style.display = 'none';
+                document.getElementById('adminDashboard').style.display = 'block';
+                mostrarTabAdmin('reservas');
+            } else {
+                document.getElementById('adminLogin').style.display = 'block';
+                document.getElementById('adminDashboard').style.display = 'none';
+            }
         } else {
             document.getElementById('adminLogin').style.display = 'block';
             document.getElementById('adminDashboard').style.display = 'none';
