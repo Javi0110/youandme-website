@@ -1182,6 +1182,28 @@ h1, h2, h3, h4 {
     transition: color 0.3s;
 }
 
+/* Botón de cerrar específico del modal de servicio: más grande y con mejor área táctil */
+.close-servicio {
+    position: absolute;
+    top: 0.75rem;
+    right: 1rem;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--gray-medium);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    background: transparent;
+    transition: background 0.2s, color 0.2s, transform 0.1s;
+}
+
+.close-servicio:hover {
+    background: rgba(0, 204, 192, 0.08);
+    color: var(--turquoise);
+    transform: scale(1.05);
+}
+
 .close:hover {
     color: var(--turquoise);
 }
