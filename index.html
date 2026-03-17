@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fredoka:wght@400;500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
     <script>
         // Configuración de Supabase (también se usa para enviar emails vía Brevo en la Edge Function send-email)
         window.SUPABASE_CONFIG = {
@@ -787,13 +788,9 @@
                     </div>
                     <nav class="staff-nav">
                       <button class="staff-nav-item active" data-section="dashboard">Dashboard</button>
-                      <button class="staff-nav-item" data-section="tasks">Tasks</button>
-                      <button class="staff-nav-item" data-section="calendar">Calendar</button>
-                      <button class="staff-nav-item" data-section="messages">Messages</button>
-                      <button class="staff-nav-item" data-section="patients">Patients</button>
-                      <button class="staff-nav-item" data-section="appointments">Appointments</button>
-                      <button class="staff-nav-item" data-section="events">Events</button>
-                      <button class="staff-nav-item" data-section="settings">Settings</button>
+                      <button class="staff-nav-item" data-section="tasks">Tareas</button>
+                      <button class="staff-nav-item" data-section="calendar">Calendario</button>
+                      <button class="staff-nav-item" data-section="messages">Mensajes</button>
                     </nav>
                     <button type="button" class="staff-logout-btn" id="staffLogoutBtn">Cerrar sesión</button>
                   </aside>
@@ -801,179 +798,105 @@
                   <section class="staff-main">
                     <header class="staff-main-header">
                       <h3 id="staffSectionTitle">Dashboard</h3>
-                      <p class="staff-section-subtitle">Resumen rápido de lo que está ocurriendo hoy.</p>
+                      <p class="staff-section-subtitle" id="staffSectionSubtitle">Resumen rápido: tareas y mensajes.</p>
                       <div class="staff-quick-actions">
-                        <button type="button" class="btn btn-primary btn-small" id="qaAddPatientBtn">Add Patient</button>
-                        <button type="button" class="btn btn-primary btn-small" id="qaCreateTaskBtn">Create Task</button>
-                        <button type="button" class="btn btn-primary btn-small" id="qaNewAppointmentBtn">New Appointment</button>
-                        <button type="button" class="btn btn-primary btn-small" id="qaNewEventBtn">New Event</button>
-                        <button type="button" class="btn btn-primary btn-small" id="qaSendMessageBtn">Send Message</button>
+                        <button type="button" class="btn btn-primary btn-small" id="qaCreateTaskBtn">Crear tarea</button>
+                        <button type="button" class="btn btn-primary btn-small" id="qaSendMessageBtn">Enviar mensaje</button>
                       </div>
                     </header>
 
                     <div class="staff-section" data-staff-section="dashboard">
-                      <div id="staffAdminOnly" class="staff-grid" style="display:none;">
-                        <div class="staff-card">
+                      <div class="staff-grid">
+                        <div class="staff-card staff-dash-card" data-click="tasks" style="cursor:pointer;">
                           <h4>Tareas para hoy</h4>
-                          <p style="font-size:0.85rem; color:#6b7280;">Tareas asignadas con fecha límite hoy.</p>
-                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
+                          <p style="font-size:0.85rem; color:#6b7280;">Con fecha límite hoy (pendientes o en progreso).</p>
+                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem; color:var(--turquoise);">
                             <span id="dashTasksTodayCount">0</span>
                           </div>
                         </div>
-                        <div class="staff-card">
-                          <h4>Próximas citas</h4>
-                          <p style="font-size:0.85rem; color:#6b7280;">Citas programadas para los próximos 7 días.</p>
-                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
-                            <span id="dashUpcomingAppointmentsCount">0</span>
-                          </div>
-                        </div>
-                        <div class="staff-card">
-                          <h4>Eventos esta semana</h4>
-                          <p style="font-size:0.85rem; color:#6b7280;">Eventos internos programados en la semana actual.</p>
-                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
-                            <span id="dashEventsThisWeekCount">0</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div id="staffSecretaryArea" class="staff-grid" style="display:none;">
-                        <div class="staff-card">
-                          <h4>Tareas de hoy</h4>
-                          <p style="font-size:0.85rem; color:#6b7280;">Tareas asignadas a usted con fecha límite hoy.</p>
-                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
-                            <span id="dashTasksTodayCountSec">0</span>
-                          </div>
-                        </div>
-                        <div class="staff-card">
-                          <h4>Próximas citas</h4>
-                          <p style="font-size:0.85rem; color:#6b7280;">Citas programadas para los próximos 7 días.</p>
-                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
-                            <span id="dashUpcomingAppointmentsCountSec">0</span>
-                          </div>
-                        </div>
-                        <div class="staff-card">
-                          <h4>Nuevos pacientes</h4>
-                          <p style="font-size:0.85rem; color:#6b7280;">Pacientes creados en los últimos 7 días.</p>
-                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
-                            <span id="dashNewPatientsCountSec">0</span>
-                          </div>
-                        </div>
-                        <div class="staff-card">
+                        <div class="staff-card staff-dash-card" data-click="messages" style="cursor:pointer;">
                           <h4>Mensajes sin leer</h4>
                           <p style="font-size:0.85rem; color:#6b7280;">Mensajes internos pendientes de leer.</p>
-                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
-                            <span id="dashUnreadMessagesCountSec">0</span>
-                          </div>
-                        </div>
-                        <div class="staff-card">
-                          <h4>Eventos esta semana</h4>
-                          <p style="font-size:0.85rem; color:#6b7280;">Eventos internos programados en la semana actual.</p>
-                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem;">
-                            <span id="dashEventsThisWeekCountSec">0</span>
+                          <div style="font-size:2rem; font-weight:700; margin-top:0.25rem; color:var(--turquoise);">
+                            <span id="dashUnreadMessagesCount">0</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     <div class="staff-section" data-staff-section="tasks" style="display:none;">
-                      <div class="staff-card">
-                        <h4>Tasks</h4>
-                        <p>Aquí podrá gestionar tareas internas del equipo.</p>
-                      </div>
-                    </div>
-
-                    <div class="staff-section" data-staff-section="calendar" style="display:none;">
-                      <div class="staff-card">
-                        <h4>Calendar</h4>
-                        <p>Vista de calendario para citas, actividades y celebraciones.</p>
-                      </div>
-                    </div>
-
-                    <div class="staff-section" data-staff-section="messages" style="display:none;">
-                      <div class="staff-card">
-                        <h4>Messages</h4>
-                        <p>Panel para revisar y responder mensajes de familias.</p>
-                      </div>
-                    </div>
-
-                    <div class="staff-section" data-staff-section="patients" style="display:none;">
-                      <div class="staff-card">
-                        <h4>Patients</h4>
-                        <p>Listado de pacientes y acceso rápido a sus datos.</p>
-                      </div>
-                    </div>
-
-                    <div class="staff-section" data-staff-section="appointments" style="display:none;">
                       <div class="staff-grid">
-                        <div class="staff-card">
-                          <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem;">
-                            <div>
-                              <h4>Citas</h4>
-                              <p style="font-size:0.85rem; color:#6b7280;">Listado de citas por paciente, tipo de terapia y estado.</p>
-                            </div>
-                            <input type="text" id="appointmentsSearch" placeholder="Buscar..." style="max-width:200px; font-size:0.85rem; padding:0.35rem 0.6rem; border-radius:8px; border:1px solid #e5e7eb;">
-                          </div>
-                          <div id="appointmentsList" style="margin-top:0.75rem; max-height:420px; overflow-y:auto;">
-                          </div>
+                        <div class="staff-card" style="flex:1;">
+                          <h4>Lista de tareas</h4>
+                          <p style="font-size:0.85rem; color:#6b7280; margin-bottom:0.75rem;">Arrastre por prioridad y fecha. Marque cuando esté completada.</p>
+                          <div id="staffTasksList" class="staff-tasks-list"></div>
                         </div>
-
-                        <div class="staff-card">
-                          <h4>Agregar / editar cita</h4>
-                          <form id="appointmentForm" style="margin-top:0.5rem;">
-                            <input type="hidden" id="appointmentId">
+                        <div class="staff-card" style="max-width:360px;">
+                          <h4>Crear o editar tarea</h4>
+                          <form id="staffTaskForm" style="margin-top:0.5rem;">
+                            <input type="hidden" id="taskId">
                             <div class="form-group">
-                              <label>Paciente (ID o nombre para referencia)</label>
-                              <input type="text" id="appointmentPatientId" placeholder="Opcional: pegue el ID de paciente de Supabase">
+                              <label>Título</label>
+                              <input type="text" id="taskTitle" required placeholder="Ej: Llamar a familia García">
+                            </div>
+                            <div class="form-group">
+                              <label>Descripción (opcional)</label>
+                              <textarea id="taskDescription" rows="2" placeholder="Detalles..."></textarea>
                             </div>
                             <div class="form-row">
                               <div class="form-group">
-                                <label>Tipo de terapia</label>
-                                <input type="text" id="appointmentTherapyType" placeholder="Ej. TO, Disfagia, grupo...">
-                              </div>
-                              <div class="form-group">
-                                <label>Fecha y hora</label>
-                                <input type="datetime-local" id="appointmentDate" required>
-                              </div>
-                            </div>
-                            <div class="form-row">
-                              <div class="form-group">
-                                <label>Terapeuta</label>
-                                <input type="text" id="appointmentTherapist" placeholder="Nombre del terapeuta">
-                              </div>
-                              <div class="form-group">
-                                <label>Estado</label>
-                                <select id="appointmentStatus">
-                                  <option value="scheduled">Programada</option>
-                                  <option value="completed">Completada</option>
-                                  <option value="cancelled">Cancelada</option>
+                                <label>Prioridad</label>
+                                <select id="taskPriority">
+                                  <option value="low">Baja</option>
+                                  <option value="medium" selected>Media</option>
+                                  <option value="high">Alta</option>
                                 </select>
                               </div>
+                              <div class="form-group">
+                                <label>Fecha límite</label>
+                                <input type="date" id="taskDueDate">
+                              </div>
                             </div>
                             <div class="form-group">
-                              <label>Notas</label>
-                              <textarea id="appointmentNotes" rows="3" placeholder="Información adicional de la cita."></textarea>
+                              <label>Asignar a (opcional)</label>
+                              <input type="email" id="taskAssignedEmail" placeholder="email@staff.com">
                             </div>
-                            <div style="display:flex; gap:0.75rem; margin-top:0.75rem;">
-                              <button type="submit" class="btn btn-primary">Guardar cita</button>
-                              <button type="button" class="btn btn-secondary" id="appointmentFormClearBtn">Limpiar</button>
+                            <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+                              <button type="submit" class="btn btn-primary">Guardar</button>
+                              <button type="button" class="btn btn-secondary" id="taskFormCancelBtn">Cancelar</button>
                             </div>
-                            <p id="appointmentFormStatus" style="margin-top:0.5rem; font-size:0.85rem; color:#6b7280;"></p>
+                            <p id="taskFormStatus" style="margin-top:0.5rem; font-size:0.85rem; color:#6b7280;"></p>
                           </form>
                         </div>
                       </div>
                     </div>
 
-                    <div class="staff-section" data-staff-section="events" style="display:none;">
-                      <div class="staff-card">
-                        <h4>Events</h4>
-                        <p>Panel para manejar actividades, camps y celebraciones especiales.</p>
+                    <div class="staff-section" data-staff-section="calendar" style="display:none;">
+                      <div class="staff-card" style="padding:0.75rem;">
+                        <h4 style="margin-top:0;">Calendario de tareas</h4>
+                        <p style="font-size:0.85rem; color:#6b7280; margin-bottom:0.75rem;">Tareas con fecha límite. Clic en una tarea para editarla.</p>
+                        <div id="staffCalendar" style="min-height:400px; background:#fff; border-radius:12px; border:1px solid #e5e7eb;"></div>
                       </div>
                     </div>
 
-                    <div class="staff-section" data-staff-section="settings" style="display:none;">
-                      <div class="staff-card">
-                        <h4>Settings</h4>
-                        <p>Configuraciones del portal de staff.</p>
+                    <div class="staff-section" data-staff-section="messages" style="display:none;">
+                      <div class="staff-layout-messages">
+                        <aside class="staff-messages-sidebar">
+                          <h4>Conversaciones</h4>
+                          <div id="staffConversationsList" class="staff-conversations-list"></div>
+                        </aside>
+                        <section class="staff-messages-main">
+                          <div class="staff-messages-header">
+                            <h4 id="staffConversationTitle">Seleccione un contacto</h4>
+                            <span id="staffConversationStatus" class="staff-conversation-status"></span>
+                          </div>
+                          <div id="staffMessagesHistory" class="staff-messages-history"></div>
+                          <form id="staffMessageForm" class="staff-messages-form">
+                            <input type="hidden" id="staffCurrentReceiverId">
+                            <textarea id="staffMessageInput" rows="2" placeholder="Escriba un mensaje..." required></textarea>
+                            <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;">Enviar</button>
+                          </form>
+                        </section>
                       </div>
                     </div>
                   </section>
@@ -1244,6 +1167,7 @@
     </div>
     <script src="https://js.stripe.com/v3/"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

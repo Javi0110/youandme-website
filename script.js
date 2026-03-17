@@ -329,8 +329,6 @@ function actualizarUIStaff() {
     const loggedOut = document.getElementById('staffLoggedOut');
     const loggedIn = document.getElementById('staffLoggedIn');
     const welcome = document.getElementById('staffWelcome');
-    const adminArea = document.getElementById('staffAdminOnly');
-    const secArea = document.getElementById('staffSecretaryArea');
 
     if (!loggedOut || !loggedIn) return;
 
@@ -346,13 +344,9 @@ function actualizarUIStaff() {
     const email = currentStaffSession.user.email || '';
     const rol = currentStaffRole || 'secretary';
     if (welcome) {
-        welcome.textContent = `Sesión iniciada como ${email} (${rol}).`;
+        welcome.textContent = email ? `Sesión: ${email} (${rol})` : `Sesión (${rol})`;
     }
 
-    if (adminArea) adminArea.style.display = rol === 'admin' ? '' : 'none';
-    if (secArea) secArea.style.display = (rol === 'admin' || rol === 'secretary') ? '' : 'none';
-
-    // Cargar resumen del dashboard al iniciar sesión
     cargarResumenDashboardStaff().catch((e) => {
         console.error('Error cargando resumen de dashboard:', e);
     });
@@ -376,88 +370,34 @@ async function cargarResumenDashboardStaff() {
     if (!supabaseClient || !currentStaffSession) return;
 
     const uid = currentStaffSession.user.id;
-
     const hoy = new Date();
     const hoyInicio = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
     const hoyFin = new Date(hoyInicio);
     hoyFin.setDate(hoyFin.getDate() + 1);
-
-    const ahora = new Date();
-    const enSieteDias = new Date(ahora);
-    enSieteDias.setDate(enSieteDias.getDate() + 7);
-
-    // Semana actual (lunes a domingo)
-    const semanaInicio = new Date(hoyInicio);
-    const day = semanaInicio.getDay(); // 0 domingo, 1 lunes...
-    const diffToMonday = (day === 0 ? -6 : 1 - day);
-    semanaInicio.setDate(semanaInicio.getDate() + diffToMonday);
-    const semanaFin = new Date(semanaInicio);
-    semanaFin.setDate(semanaFin.getDate() + 7);
-
     const hoyInicioISO = hoyInicio.toISOString();
     const hoyFinISO = hoyFin.toISOString();
-    const ahoraISO = ahora.toISOString();
-    const enSieteDiasISO = enSieteDias.toISOString();
-    const semanaInicioISO = semanaInicio.toISOString();
-    const semanaFinISO = semanaFin.toISOString();
 
     let tareasHoy = 0;
-    let proximasCitas = 0;
-    let nuevosPacientes = 0;
     let mensajesSinLeer = 0;
-    let eventosSemana = 0;
 
     try {
-        const [
-            tareasRes,
-            citasRes,
-            pacientesRes,
-            mensajesRes,
-            eventosRes
-        ] = await Promise.all([
+        const [tareasRes, mensajesRes] = await Promise.all([
             supabaseClient
                 .from('tasks')
                 .select('id')
-                .eq('assigned_to', uid)
+                .or(`assigned_to.eq.${uid},created_by.eq.${uid}`)
                 .in('status', ['pending', 'in_progress'])
                 .gte('due_date', hoyInicioISO)
                 .lt('due_date', hoyFinISO),
             supabaseClient
-                .from('appointments')
-                .select('id')
-                .gte('date', ahoraISO)
-                .lt('date', enSieteDiasISO),
-            supabaseClient
-                .from('patients')
-                .select('id')
-                .gte('created_at', semanaInicioISO),
-            supabaseClient
                 .from('messages')
                 .select('id')
                 .eq('receiver_id', uid)
-                .eq('read_status', false),
-            supabaseClient
-                .from('events')
-                .select('id')
-                .gte('date', semanaInicioISO)
-                .lt('date', semanaFinISO)
+                .eq('read_status', false)
         ]);
 
-        if (!tareasRes.error && Array.isArray(tareasRes.data)) {
-            tareasHoy = tareasRes.data.length;
-        }
-        if (!citasRes.error && Array.isArray(citasRes.data)) {
-            proximasCitas = citasRes.data.length;
-        }
-        if (!pacientesRes.error && Array.isArray(pacientesRes.data)) {
-            nuevosPacientes = pacientesRes.data.length;
-        }
-        if (!mensajesRes.error && Array.isArray(mensajesRes.data)) {
-            mensajesSinLeer = mensajesRes.data.length;
-        }
-        if (!eventosRes.error && Array.isArray(eventosRes.data)) {
-            eventosSemana = eventosRes.data.length;
-        }
+        if (!tareasRes.error && Array.isArray(tareasRes.data)) tareasHoy = tareasRes.data.length;
+        if (!mensajesRes.error && Array.isArray(mensajesRes.data)) mensajesSinLeer = mensajesRes.data.length;
     } catch (e) {
         console.error('Error consultando resumen de dashboard:', e);
     }
@@ -466,18 +406,8 @@ async function cargarResumenDashboardStaff() {
         const el = document.getElementById(id);
         if (el) el.textContent = String(value);
     };
-
-    // Cards de admin
     setText('dashTasksTodayCount', tareasHoy);
-    setText('dashUpcomingAppointmentsCount', proximasCitas);
-    setText('dashEventsThisWeekCount', eventosSemana);
-
-    // Cards de secretaria (visibles para admin y secretaria)
-    setText('dashTasksTodayCountSec', tareasHoy);
-    setText('dashUpcomingAppointmentsCountSec', proximasCitas);
-    setText('dashNewPatientsCountSec', nuevosPacientes);
-    setText('dashUnreadMessagesCountSec', mensajesSinLeer);
-    setText('dashEventsThisWeekCountSec', eventosSemana);
+    setText('dashUnreadMessagesCount', mensajesSinLeer);
 }
 
 function inicializarStaffPortal() {
@@ -535,80 +465,27 @@ function inicializarStaffPortal() {
     });
 
     // Botones de acción rápida en el dashboard
-    const qaAddPatientBtn = document.getElementById('qaAddPatientBtn');
     const qaCreateTaskBtn = document.getElementById('qaCreateTaskBtn');
-    const qaNewAppointmentBtn = document.getElementById('qaNewAppointmentBtn');
-    const qaNewEventBtn = document.getElementById('qaNewEventBtn');
     const qaSendMessageBtn = document.getElementById('qaSendMessageBtn');
 
     const activarNavSection = (section) => {
         const navItems = document.querySelectorAll('.staff-nav-item');
         navItems.forEach(b => {
-            if (b.getAttribute('data-section') === section) {
-                b.classList.add('active');
-            } else {
-                b.classList.remove('active');
-            }
+            b.classList.toggle('active', b.getAttribute('data-section') === section);
         });
         mostrarSeccionStaff(section);
     };
 
-    if (qaAddPatientBtn) {
-        qaAddPatientBtn.addEventListener('click', () => {
-            if (!requireStaffRole(['admin', 'secretary'])) return;
-            activarNavSection('patients');
-            const form = document.getElementById('patientForm');
-            if (form) {
-                form.reset();
-                const idInput = document.getElementById('patientId');
-                if (idInput) idInput.value = '';
-                const first = form.querySelector('input, textarea, select');
-                if (first) first.focus();
-            }
-        });
-    }
-
     if (qaCreateTaskBtn) {
         qaCreateTaskBtn.addEventListener('click', () => {
-            if (!requireStaffRole(['admin'])) return;
+            if (!requireStaffRole(['admin', 'secretary'])) return;
             activarNavSection('tasks');
             const form = document.getElementById('staffTaskForm');
             if (form) {
                 form.reset();
                 const idInput = document.getElementById('taskId');
                 if (idInput) idInput.value = '';
-                const first = form.querySelector('input, textarea, select');
-                if (first) first.focus();
-            }
-        });
-    }
-
-    if (qaNewAppointmentBtn) {
-        qaNewAppointmentBtn.addEventListener('click', () => {
-            if (!requireStaffRole(['admin', 'secretary'])) return;
-            activarNavSection('appointments');
-            const form = document.getElementById('appointmentForm');
-            if (form) {
-                form.reset();
-                const idInput = document.getElementById('appointmentId');
-                if (idInput) idInput.value = '';
-                const first = form.querySelector('input, textarea, select');
-                if (first) first.focus();
-            }
-        });
-    }
-
-    if (qaNewEventBtn) {
-        qaNewEventBtn.addEventListener('click', () => {
-            if (!requireStaffRole(['admin', 'secretary'])) return;
-            activarNavSection('events');
-            const form = document.getElementById('eventForm');
-            if (form) {
-                form.reset();
-                const idInput = document.getElementById('eventId');
-                if (idInput) idInput.value = '';
-                const first = form.querySelector('input, textarea, select');
-                if (first) first.focus();
+                document.getElementById('taskTitle')?.focus();
             }
         });
     }
@@ -617,10 +494,16 @@ function inicializarStaffPortal() {
         qaSendMessageBtn.addEventListener('click', () => {
             if (!requireStaffRole(['admin', 'secretary'])) return;
             activarNavSection('messages');
-            const textarea = document.getElementById('staffMessageInput');
-            if (textarea) textarea.focus();
+            document.getElementById('staffMessageInput')?.focus();
         });
     }
+
+    document.querySelectorAll('.staff-dash-card[data-click]').forEach(card => {
+        card.addEventListener('click', () => {
+            const section = card.getAttribute('data-click');
+            if (section) activarNavSection(section);
+        });
+    });
 
     window.addEventListener('hashchange', manejarRutasStaff);
     manejarRutasStaff();
@@ -641,56 +524,317 @@ function mostrarSeccionStaff(section) {
     if (!titleEl || !subtitleEl) return;
 
     const map = {
-        dashboard: {
-            title: 'Dashboard',
-            subtitle: 'Resumen rápido de lo que está ocurriendo hoy.'
-        },
-        tasks: {
-            title: 'Tasks',
-            subtitle: 'Organice y asigne tareas internas del equipo.'
-        },
-        calendar: {
-            title: 'Calendar',
-            subtitle: 'Calendario de citas, actividades y celebraciones.'
-        },
-        messages: {
-            title: 'Messages',
-            subtitle: 'Revise y responda mensajes de familias y nuevos leads.'
-        },
-        patients: {
-            title: 'Patients',
-            subtitle: 'Gestione la lista de pacientes y sus datos principales.'
-        },
-        appointments: {
-            title: 'Appointments',
-            subtitle: 'Controle y organice las citas programadas.'
-        },
-        events: {
-            title: 'Events',
-            subtitle: 'Administre actividades, camps y otros eventos especiales.'
-        },
-        settings: {
-            title: 'Settings',
-            subtitle: 'Preferencias del portal de staff.'
-        }
+        dashboard: { title: 'Dashboard', subtitle: 'Resumen: tareas de hoy y mensajes sin leer.' },
+        tasks: { title: 'Tareas', subtitle: 'Crear, asignar y marcar tareas como completadas.' },
+        calendar: { title: 'Calendario', subtitle: 'Tareas con fecha límite. Clic para editar.' },
+        messages: { title: 'Mensajes', subtitle: 'Comunicación entre admin y secretaria.' }
     };
 
     const info = map[section] || map.dashboard;
     titleEl.textContent = info.title;
-    subtitleEl.textContent = info.subtitle;
+    if (subtitleEl) subtitleEl.textContent = info.subtitle;
 
-    if (section === 'appointments') {
-        cargarCitasStaff();
-    }
+    if (section === 'tasks') cargarTareasStaff();
+    else if (section === 'messages') cargarConversacionesStaff();
+    else if (section === 'calendar') inicializarStaffCalendar();
 }
 
 function manejarRutasStaff() {
     const hash = window.location.hash || '#inicio';
-
     if (hash === '#staff' || hash === '#staff-dashboard') {
         if (!requireStaffRole([])) return;
     }
 }
+
+// ==================== STAFF PORTAL: TAREAS, MENSAJES, CALENDARIO ====================
+let staffCalendar = null;
+let staffTasksCache = [];
+
+async function cargarTareasStaff() {
+    const listEl = document.getElementById('staffTasksList');
+    if (!listEl || !supabaseClient || !currentStaffSession) return;
+    const uid = currentStaffSession.user.id;
+    try {
+        const { data, error } = await supabaseClient
+            .from('tasks')
+            .select('*')
+            .order('due_date', { ascending: true, nullsFirst: false })
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        staffTasksCache = data || [];
+        renderizarTareasStaff(staffTasksCache);
+    } catch (e) {
+        console.error('Error cargando tareas:', e);
+        listEl.innerHTML = '<p style="color:#b91c1c; font-size:0.9rem;">Error al cargar las tareas.</p>';
+    }
+}
+
+function prioridadColor(priority) {
+    if (priority === 'high') return '#FF9B4E';   /* --orange */
+    if (priority === 'medium') return '#00CCC0'; /* --turquoise */
+    return '#5a5a5a';                            /* --gray-medium */
+}
+
+function prioridadTexto(priority) {
+    if (priority === 'high') return 'Alta';
+    if (priority === 'medium') return 'Media';
+    return 'Baja';
+}
+
+function renderizarTareasStaff(tareas) {
+    const listEl = document.getElementById('staffTasksList');
+    if (!listEl) return;
+    const pending = tareas.filter(t => (t.status || 'pending') === 'pending');
+    const inProgress = tareas.filter(t => t.status === 'in_progress');
+    const completed = tareas.filter(t => t.status === 'completed');
+
+    function renderColumn(title, items, status) {
+        const frag = items.map(t => {
+            const due = t.due_date ? new Date(t.due_date).toLocaleDateString('es-PR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+            const color = prioridadColor(t.priority || 'medium');
+            const checked = status === 'completed';
+            return `
+              <div class="staff-task-card" data-task-id="${t.id}" style="border-left:4px solid ${color};">
+                <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer;">
+                  <input type="checkbox" ${checked ? 'checked' : ''} data-status="${status}" data-task-id="${t.id}" class="staff-task-checkbox">
+                  <div style="flex:1;">
+                    <strong>${escapeHtml(t.title || '')}</strong>
+                    ${t.description ? `<p style="font-size:0.85rem; color:#6b7280; margin:0.25rem 0 0 0;">${escapeHtml(t.description)}</p>` : ''}
+                    <p style="font-size:0.8rem; color:#6b7280; margin-top:0.35rem;">Prioridad: ${prioridadTexto(t.priority || 'medium')} · Fecha: ${due}</p>
+                  </div>
+                </label>
+                <div style="margin-top:0.35rem; display:flex; gap:0.35rem; flex-wrap:wrap;">
+                  <button type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.5rem;" data-edit-task="${t.id}">Editar</button>
+                  ${status === 'pending' ? `<button type="button" class="btn btn-primary" style="font-size:0.8rem; padding:0.25rem 0.5rem;" data-status-task="${t.id}" data-status-value="in_progress">En progreso</button>` : ''}
+                  ${status === 'in_progress' ? `<button type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.5rem;" data-status-task="${t.id}" data-status-value="completed">Marcar completada</button>` : ''}
+                </div>
+              </div>`;
+        }).join('');
+        return `<div class="staff-tasks-column"><h5 style="margin:0 0 0.5rem 0; font-size:0.9rem;">${title}</h5>${frag || '<p style="font-size:0.85rem; color:#999;">Ninguna</p>'}</div>`;
+    }
+
+    listEl.innerHTML = `
+      <div class="staff-tasks-columns">
+        ${renderColumn('Pendientes', pending, 'pending')}
+        ${renderColumn('En progreso', inProgress, 'in_progress')}
+        ${renderColumn('Completadas', completed, 'completed')}
+      </div>`;
+
+    listEl.querySelectorAll('.staff-task-checkbox').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const id = this.getAttribute('data-task-id');
+            const status = this.checked ? 'completed' : 'pending';
+            actualizarEstadoTarea(id, status);
+        });
+    });
+    listEl.querySelectorAll('[data-edit-task]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-edit-task');
+            const t = staffTasksCache.find(x => x.id === id);
+            if (t) cargarTareaEnFormulario(t);
+        });
+    });
+    listEl.querySelectorAll('[data-status-task]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-status-task');
+            const status = this.getAttribute('data-status-value');
+            if (id && status) actualizarEstadoTarea(id, status);
+        });
+    });
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function cargarTareaEnFormulario(t) {
+    document.getElementById('taskId').value = t.id || '';
+    document.getElementById('taskTitle').value = t.title || '';
+    document.getElementById('taskDescription').value = t.description || '';
+    document.getElementById('taskPriority').value = t.priority || 'medium';
+    document.getElementById('taskDueDate').value = t.due_date ? t.due_date.slice(0, 10) : '';
+    document.getElementById('taskAssignedEmail').value = '';
+    const statusEl = document.getElementById('taskFormStatus');
+    if (statusEl) statusEl.textContent = 'Editando. Guarde para aplicar cambios.';
+}
+
+async function actualizarEstadoTarea(id, status) {
+    if (!supabaseClient || !id) return;
+    try {
+        const { error } = await supabaseClient.from('tasks').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
+        if (error) throw error;
+        cargarTareasStaff();
+        cargarResumenDashboardStaff();
+        if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+    } catch (e) {
+        console.error('Error actualizando tarea:', e);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const taskForm = document.getElementById('staffTaskForm');
+    const taskCancelBtn = document.getElementById('taskFormCancelBtn');
+    if (taskForm) {
+        taskForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!supabaseClient || !currentStaffSession) return;
+            const id = document.getElementById('taskId').value.trim() || null;
+            const title = document.getElementById('taskTitle').value.trim();
+            const description = document.getElementById('taskDescription').value.trim();
+            const priority = document.getElementById('taskPriority').value || 'medium';
+            const dueDate = document.getElementById('taskDueDate').value || null;
+            const statusEl = document.getElementById('taskFormStatus');
+            const payload = {
+                title,
+                description: description || null,
+                priority,
+                due_date: dueDate ? new Date(dueDate).toISOString() : null,
+                updated_at: new Date().toISOString()
+            };
+            if (!id) {
+                payload.created_by = currentStaffSession.user.id;
+                payload.status = 'pending';
+            }
+            try {
+                if (id) {
+                    const { error } = await supabaseClient.from('tasks').update(payload).eq('id', id);
+                    if (error) throw error;
+                } else {
+                    const { error } = await supabaseClient.from('tasks').insert([payload]);
+                    if (error) throw error;
+                }
+                if (statusEl) statusEl.textContent = 'Guardado.';
+                taskForm.reset();
+                document.getElementById('taskId').value = '';
+                cargarTareasStaff();
+                cargarResumenDashboardStaff();
+                if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+            } catch (err) {
+                console.error('Error guardando tarea:', err);
+                if (statusEl) statusEl.textContent = 'Error al guardar.';
+            }
+        });
+    }
+    if (taskCancelBtn) {
+        taskCancelBtn.addEventListener('click', () => {
+            document.getElementById('staffTaskForm')?.reset();
+            document.getElementById('taskId').value = '';
+            document.getElementById('taskFormStatus').textContent = '';
+        });
+    }
+});
+
+function inicializarStaffCalendar() {
+    const el = document.getElementById('staffCalendar');
+    if (!el || typeof FullCalendar === 'undefined') return;
+    if (staffCalendar) {
+        staffCalendar.refetchEvents();
+        return;
+    }
+    staffCalendar = new FullCalendar.Calendar(el, {
+        initialView: 'dayGridMonth',
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' },
+        locale: 'es',
+        events: async (info, successCallback) => {
+            if (!supabaseClient) return successCallback([]);
+            try {
+                const { data } = await supabaseClient.from('tasks').select('id, title, due_date, priority, status').not('due_date', 'is', null);
+                const events = (data || []).map(t => ({
+                    id: t.id,
+                    title: t.title || 'Tarea',
+                    start: t.due_date,
+                    allDay: true,
+                    backgroundColor: prioridadColor(t.priority || 'medium'),
+                    extendedProps: { taskId: t.id }
+                }));
+                successCallback(events);
+            } catch (e) {
+                successCallback([]);
+            }
+        },
+        eventClick: (arg) => {
+            const taskId = arg.event.extendedProps?.taskId || arg.event.id;
+            const t = staffTasksCache.find(x => x.id === taskId);
+            if (t) {
+                cargarTareaEnFormulario(t);
+                const navItems = document.querySelectorAll('.staff-nav-item');
+                navItems.forEach(b => b.classList.toggle('active', b.getAttribute('data-section') === 'tasks'));
+                mostrarSeccionStaff('tasks');
+            }
+        }
+    });
+    staffCalendar.render();
+}
+
+async function cargarConversacionesStaff() {
+    const listEl = document.getElementById('staffConversationsList');
+    if (!listEl || !supabaseClient || !currentStaffSession) return;
+    const uid = currentStaffSession.user.id;
+    try {
+        const { data: messages } = await supabaseClient.from('messages').select('*').or(`sender_id.eq.${uid},receiver_id.eq.${uid}`).order('created_at', { ascending: false });
+        const otherIds = new Set();
+        (messages || []).forEach(m => {
+            if (m.sender_id !== uid) otherIds.add(m.sender_id);
+            if (m.receiver_id !== uid) otherIds.add(m.receiver_id);
+        });
+        const others = Array.from(otherIds);
+        if (others.length === 0) {
+            listEl.innerHTML = '<p style="font-size:0.9rem; color:#6b7280;">No hay conversaciones aún.</p>';
+            return;
+        }
+        const unread = (messages || []).filter(m => m.receiver_id === uid && !m.read_status).length;
+        listEl.innerHTML = others.map(o => {
+            const unreadCount = (messages || []).filter(m => m.sender_id === o && m.receiver_id === uid && !m.read_status).length;
+            const label = 'Usuario ' + String(o).slice(0, 8);
+            return `<div class="staff-conv-item" data-receiver-id="${o}" data-receiver-label="${escapeHtml(label)}">${label}${unreadCount ? ` <span class="staff-unread-badge">${unreadCount}</span>` : ''}</div>`;
+        }).join('');
+        listEl.querySelectorAll('.staff-conv-item').forEach(item => {
+            item.addEventListener('click', () => seleccionarConversacionStaff(item.getAttribute('data-receiver-id'), item.getAttribute('data-receiver-label') || item.getAttribute('data-receiver-id')));
+        });
+    } catch (e) {
+        console.error('Error cargando conversaciones:', e);
+        listEl.innerHTML = '<p style="color:#b91c1c;">Error al cargar.</p>';
+    }
+}
+
+async function seleccionarConversacionStaff(otherUserId, otherLabel) {
+    const uid = currentStaffSession?.user?.id;
+    if (!uid || !supabaseClient) return;
+    document.getElementById('staffCurrentReceiverId').value = otherUserId;
+    document.getElementById('staffConversationTitle').textContent = otherLabel || otherUserId;
+    const historyEl = document.getElementById('staffMessagesHistory');
+    const { data } = await supabaseClient.from('messages').select('*').or(`and(sender_id.eq.${uid},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${uid})`).order('created_at', { ascending: true });
+    historyEl.innerHTML = (data || []).map(m => {
+        const isMe = m.sender_id === uid;
+        const time = new Date(m.created_at).toLocaleString('es-PR', { timeStyle: 'short', dateStyle: 'short' });
+        return `<div class="staff-msg ${isMe ? 'staff-msg-me' : 'staff-msg-them'}"><div>${escapeHtml(m.message)}</div><small>${time}</small></div>`;
+    }).join('');
+    historyEl.scrollTop = historyEl.scrollHeight;
+    await supabaseClient.from('messages').update({ read_status: true }).eq('receiver_id', uid).eq('sender_id', otherUserId);
+    cargarConversacionesStaff();
+    cargarResumenDashboardStaff();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const msgForm = document.getElementById('staffMessageForm');
+    if (msgForm) {
+        msgForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const receiverId = document.getElementById('staffCurrentReceiverId').value;
+            const input = document.getElementById('staffMessageInput');
+            const text = input?.value?.trim();
+            if (!text || !receiverId || !supabaseClient || !currentStaffSession) return;
+            try {
+                const { error } = await supabaseClient.from('messages').insert([{ sender_id: currentStaffSession.user.id, receiver_id: receiverId, message: text }]);
+                if (error) throw error;
+                input.value = '';
+                seleccionarConversacionStaff(receiverId, document.getElementById('staffConversationTitle').textContent);
+            } catch (err) {
+                console.error('Error enviando mensaje:', err);
+            }
+        });
+    }
+});
 
 // Cargar bloques de disponibilidad para un servicio concreto
 async function cargarSlotsServicio(nombreServicio) {
