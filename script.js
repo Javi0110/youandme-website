@@ -761,10 +761,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const resolvedId = await resolverStaffIdPorEmail(assignedEmail);
                 if (resolvedId) {
                     payload.assigned_to = resolvedId;
+                } else {
+                    // Si no se encontró el email en staff_members/profiles, dejamos la tarea solo para el creador
+                    payload.assigned_to = null;
                 }
-                payload.assigned_email = assignedEmail;
             } else {
-                payload.assigned_email = null;
                 payload.assigned_to = null;
             }
             try {
