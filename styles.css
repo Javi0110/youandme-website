@@ -143,6 +143,12 @@ h1, h2, h3, h4 {
     padding: 80px 0;
 }
 
+/* Staff portal: dar un poco más de espacio al final para evitar que se corte en móvil (barra del navegador) */
+#staff.page-content {
+    padding-top: 72px;
+    padding-bottom: 120px;
+}
+
 .page-content.active {
     display: block;
 }
