@@ -9,9 +9,13 @@ CREATE TABLE IF NOT EXISTS referral_patients (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_name TEXT NOT NULL,
   referral_expires_on DATE NOT NULL,
+  comentarios_admin TEXT,
   created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Si la columna ya existía sin comentarios_admin, agrégala (migración segura)
+ALTER TABLE referral_patients ADD COLUMN IF NOT EXISTS comentarios_admin TEXT;
 
 ALTER TABLE referral_patients ENABLE ROW LEVEL SECURITY;
 

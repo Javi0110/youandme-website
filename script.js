@@ -750,7 +750,7 @@ async function cargarPacientesReferidos() {
     if (!supabaseClient || !currentStaffSession) return [];
     const { data, error } = await supabaseClient
         .from('referral_patients')
-        .select('id, patient_name, referral_expires_on')
+        .select('id, patient_name, referral_expires_on, comentarios_admin')
         .order('referral_expires_on', { ascending: true });
     if (error) throw error;
     staffReferralsCache = data || [];
@@ -779,6 +779,128 @@ function limpiarFormularioReferidos() {
     const idEl = document.getElementById('referralPatientId');
     if (idEl) idEl.value = '';
 }
+
+function asegurarModalDetalleReferido() {
+    let modal = document.getElementById('staffReferralQuickModal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'staffReferralQuickModal';
+    modal.style.cssText = 'display:none; position:fixed; inset:0; z-index:2000; background:rgba(15,23,42,0.45); padding:1rem; overflow:auto;';
+    modal.innerHTML = `
+      <div style="max-width:720px; margin:3rem auto; background:#fff; border-radius:12px; border:1px solid #e5e7eb; padding:0.95rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem; flex-wrap:wrap;">
+          <div>
+            <h4 id="staffReferralModalTitle" style="margin:0; font-size:1.05rem;">Detalle de referido</h4>
+            <p id="staffReferralModalMeta" style="margin:0.25rem 0 0 0; font-size:0.85rem; color:#6b7280;"></p>
+          </div>
+          <button type="button" class="btn btn-secondary" id="staffReferralModalCloseBtn" style="padding:0.35rem 0.7rem;">Cerrar</button>
+        </div>
+
+        <div style="margin-top:0.85rem; display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+          <div>
+            <label style="display:block; font-size:0.82rem; color:#6b7280; margin-bottom:0.25rem;">Paciente</label>
+            <input type="text" id="staffReferralModalPatientName" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #ddd; font-size:0.95rem;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:0.82rem; color:#6b7280; margin-bottom:0.25rem;">Vencimiento</label>
+            <input type="date" id="staffReferralModalExpiresOn" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #ddd; font-size:0.95rem;" />
+          </div>
+        </div>
+
+        <div style="margin-top:0.85rem;">
+          <label style="display:block; font-size:0.82rem; color:#6b7280; margin-bottom:0.25rem;">Comentarios</label>
+          <textarea id="staffReferralModalComments" rows="4" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #ddd; font-size:0.95rem;"></textarea>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.85rem;">
+          <button type="button" class="btn btn-primary" id="staffReferralModalSaveBtn">Guardar</button>
+          <button type="button" class="btn btn-secondary" id="staffReferralModalDeleteBtn" style="background:#f97373; border-color:#f97373; color:#fff;">Borrar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    return modal;
+}
+
+function cerrarModalDetalleReferido() {
+    const modal = document.getElementById('staffReferralQuickModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function abrirModalDetalleReferido(p) {
+    if (!p) return;
+    const modal = asegurarModalDetalleReferido();
+    modal.style.display = 'block';
+    modal.setAttribute('data-referral-id', p.id || '');
+
+    const titleEl = document.getElementById('staffReferralModalTitle');
+    const metaEl = document.getElementById('staffReferralModalMeta');
+    const nameEl = document.getElementById('staffReferralModalPatientName');
+    const expiresEl = document.getElementById('staffReferralModalExpiresOn');
+    const commentsEl = document.getElementById('staffReferralModalComments');
+
+    if (titleEl) titleEl.textContent = `Detalle de referido: ${p.patient_name || ''}`;
+    const fecha = p.referral_expires_on ? formatearFechaCorta(p.referral_expires_on) : '—';
+    if (metaEl) metaEl.textContent = `Vence: ${fecha}`;
+    if (nameEl) nameEl.value = p.patient_name || '';
+    if (expiresEl) expiresEl.value = p.referral_expires_on ? normalizarFechaISO(p.referral_expires_on) : '';
+    if (commentsEl) commentsEl.value = p.comentarios_admin || '';
+}
+
+document.addEventListener('click', async (e) => {
+    const modal = document.getElementById('staffReferralQuickModal');
+    if (!modal || modal.style.display === 'none') return;
+
+    if (e.target === modal || e.target?.closest?.('#staffReferralModalCloseBtn')) {
+        cerrarModalDetalleReferido();
+        return;
+    }
+
+    const referralId = modal.getAttribute('data-referral-id') || '';
+    if (!referralId) return;
+
+    const saveBtn = e.target?.closest?.('#staffReferralModalSaveBtn');
+    if (saveBtn) {
+        const name = document.getElementById('staffReferralModalPatientName')?.value?.trim() || '';
+        const expiresOnRaw = document.getElementById('staffReferralModalExpiresOn')?.value || '';
+        const expiresISO = normalizarFechaISO(expiresOnRaw);
+        const comments = document.getElementById('staffReferralModalComments')?.value?.trim() || null;
+        if (!name || !expiresISO) return;
+
+        try {
+            const { error } = await supabaseClient
+                .from('referral_patients')
+                .update({ patient_name: name, referral_expires_on: expiresISO, comentarios_admin: comments })
+                .eq('id', referralId);
+            if (error) throw error;
+
+            cerrarModalDetalleReferido();
+            await cargarPacientesReferidos();
+            if (staffReferralsCalendar) staffReferralsCalendar.refetchEvents();
+            document.getElementById('referralPatientId') && cargarPacienteReferidoEnFormulario(staffReferralsCache.find(x => x.id === referralId));
+        } catch (err) {
+            console.error('Error guardando referido (modal):', err);
+        }
+        return;
+    }
+
+    const deleteBtn = e.target?.closest?.('#staffReferralModalDeleteBtn');
+    if (deleteBtn) {
+        const ok = window.confirm('¿Borrar este referido? Esta acción no se puede deshacer.');
+        if (!ok) return;
+        try {
+            const { error } = await supabaseClient.from('referral_patients').delete().eq('id', referralId);
+            if (error) throw error;
+            cerrarModalDetalleReferido();
+            await cargarPacientesReferidos();
+            if (staffReferralsCalendar) staffReferralsCalendar.refetchEvents();
+            limpiarFormularioReferidos();
+        } catch (err) {
+            console.error('Error borrando referido (modal):', err);
+        }
+        return;
+    }
+});
 
 async function inicializarStaffReferralsCalendar() {
     const el = document.getElementById('staffReferralsCalendar');
@@ -826,7 +948,10 @@ async function inicializarStaffReferralsCalendar() {
         eventClick: (arg) => {
             const referralId = arg.event.extendedProps?.referralPatientId || arg.event.id;
             const p = (staffReferralsCache || []).find(x => x.id === referralId);
-            if (p) cargarPacienteReferidoEnFormulario(p);
+            if (p) {
+                cargarPacienteReferidoEnFormulario(p);
+                abrirModalDetalleReferido(p);
+            }
         }
     });
 
