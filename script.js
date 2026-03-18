@@ -1158,7 +1158,10 @@ function renderizarDesgloseDia(dateStr, tasks) {
     if (total === 0) {
         contentEl.innerHTML = `
           <div style="padding:0.75rem; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; color:#6b7280; font-size:0.9rem;">
-            Ninguna tarea para este día.
+            <div style="margin-bottom:0.6rem;">Ninguna tarea para este día.</div>
+            <button type="button" class="btn btn-primary" id="staffAddTaskForDayBtn" data-day="${escaparHtml(dateStr)}">
+              Agregar tarea para este día
+            </button>
           </div>
         `;
         return;
@@ -1228,7 +1231,10 @@ async function abrirVistaDetalleDiaCompleta(dateStr) {
     if (total === 0) {
         contentEl.innerHTML = `
           <div style="padding:0.75rem; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; color:#6b7280; font-size:0.9rem;">
-            Ninguna tarea para este día.
+            <div style="margin-bottom:0.6rem;">Ninguna tarea para este día.</div>
+            <button type="button" class="btn btn-primary" id="staffAddTaskForDayBtn" data-day="${escaparHtml(dateStr)}">
+              Agregar tarea para este día
+            </button>
           </div>
         `;
         return;
@@ -1261,6 +1267,20 @@ function cerrarVistaDetalleDiaCompleta() {
     const dayScreen = document.getElementById('staffTodayDetailScreen');
     if (calEl) calEl.style.display = '';
     if (dayScreen) dayScreen.style.display = 'none';
+}
+
+function abrirFormularioTareaParaDia(dateStr) {
+    const day = String(dateStr || '').slice(0, 10);
+    if (!day) return;
+    mostrarSeccionStaff('tasks');
+    const taskForm = document.getElementById('staffTaskForm');
+    if (taskForm) taskForm.reset();
+    const taskIdEl = document.getElementById('taskId');
+    if (taskIdEl) taskIdEl.value = '';
+    const dueInput = document.getElementById('taskDueDate');
+    if (dueInput) dueInput.value = day;
+    const statusEl = document.getElementById('taskFormStatus');
+    if (statusEl) statusEl.textContent = '';
 }
 
 function mostrarDetalleEventoCalendario(t) {
@@ -1880,6 +1900,13 @@ function inicializarStaffCalendar() {
 }
 
 document.addEventListener('click', (e) => {
+    const addTaskForDayBtn = e.target?.closest?.('#staffAddTaskForDayBtn');
+    if (addTaskForDayBtn) {
+        const day = addTaskForDayBtn.getAttribute('data-day') || '';
+        abrirFormularioTareaParaDia(day);
+        return;
+    }
+
     const calTodayBtn = e.target?.closest?.('#staffCalendarTodayBtn');
     const calMonthBtn = e.target?.closest?.('#staffCalendarMonthBtn');
     const calListBtn = e.target?.closest?.('#staffCalendarListBtn');
