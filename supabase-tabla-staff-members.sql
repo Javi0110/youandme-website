@@ -37,3 +37,22 @@ INSERT INTO staff_members (id, email, role, display_name)
 SELECT id, email, 'admin', 'Andrea García'
 FROM auth.users WHERE email = 'andreagarciaot@gmail.com'
 ON CONFLICT (id) DO UPDATE SET role = 'admin', display_name = 'Andrea García', email = EXCLUDED.email;
+
+-- Verificación rápida: estas 2 consultas deben devolver 4 filas.
+SELECT id, email FROM auth.users
+WHERE email IN (
+  'mfadhel.ot@gmail.com',
+  'andreagarciaot@gmail.com',
+  'centroyouandme@gmail.com',
+  'asistenteyouandme@gmail.com'
+)
+ORDER BY email;
+
+SELECT id, email, role, display_name FROM staff_members
+WHERE email IN (
+  'mfadhel.ot@gmail.com',
+  'andreagarciaot@gmail.com',
+  'centroyouandme@gmail.com',
+  'asistenteyouandme@gmail.com'
+)
+ORDER BY email;

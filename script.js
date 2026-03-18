@@ -16,6 +16,18 @@ try {
 let supabaseClient;
 let currentStaffSession = null;
 let currentStaffRole = null;
+const STAFF_PORTAL_CONTACTS = [
+    { email: 'mfadhel.ot@gmail.com', role: 'admin', label: 'Maria Fadhel' },
+    { email: 'andreagarciaot@gmail.com', role: 'admin', label: 'Andrea García' },
+    { email: 'centroyouandme@gmail.com', role: 'admin', label: 'Admin' },
+    { email: 'asistenteyouandme@gmail.com', role: 'secretary', label: 'Secretaria' }
+];
+
+function rolePorEmailStaff(email) {
+    const normalized = String(email || '').toLowerCase().trim();
+    const found = STAFF_PORTAL_CONTACTS.find(c => c.email === normalized);
+    return found?.role || null;
+}
 
 function inicializarSupabase() {
     try {
@@ -306,6 +318,52 @@ async function eliminarCita(id) {
     }
 }
 
+async function cargarContactosStaffPortal() {
+    if (!supabaseClient) return [];
+    const targetEmails = STAFF_PORTAL_CONTACTS.map(c => c.email);
+    const byId = new Map();
+
+    try {
+        const { data: staffRows } = await supabaseClient
+            .from('staff_members')
+            .select('id, email, role, display_name')
+            .in('email', targetEmails);
+        (staffRows || []).forEach(r => {
+            if (!r?.id || !r?.email) return;
+            const normalized = String(r.email).toLowerCase().trim();
+            const base = STAFF_PORTAL_CONTACTS.find(c => c.email === normalized);
+            byId.set(r.id, {
+                id: r.id,
+                email: normalized,
+                role: r.role || base?.role || null,
+                label: r.display_name || base?.label || normalized
+            });
+        });
+    } catch (_) { /* fallback con profiles */ }
+
+    if (byId.size < targetEmails.length) {
+        try {
+            const { data: profileRows } = await supabaseClient
+                .from('profiles')
+                .select('id, email, role')
+                .in('email', targetEmails);
+            (profileRows || []).forEach(r => {
+                if (!r?.id || !r?.email || byId.has(r.id)) return;
+                const normalized = String(r.email).toLowerCase().trim();
+                const base = STAFF_PORTAL_CONTACTS.find(c => c.email === normalized);
+                byId.set(r.id, {
+                    id: r.id,
+                    email: normalized,
+                    role: r.role || base?.role || null,
+                    label: base?.label || normalized
+                });
+            });
+        } catch (_) { /* ignore */ }
+    }
+
+    return Array.from(byId.values());
+}
+
 async function cargarRolStaffYActualizarUI() {
     if (!supabaseClient || !currentStaffSession) {
         return;
@@ -317,22 +375,31 @@ async function cargarRolStaffYActualizarUI() {
         if (roleFromLib) currentStaffRole = roleFromLib;
     }
     if (!currentStaffRole) {
-        if (email === 'centroyouandme@gmail.com') {
-            currentStaffRole = 'admin';
-        } else if (email === 'asistenteyouandme@gmail.com') {
-            currentStaffRole = 'secretary';
+        const roleByEmail = rolePorEmailStaff(email);
+        if (roleByEmail) {
+            currentStaffRole = roleByEmail;
         } else {
             try {
-                const { data, error } = await supabaseClient
-                    .from('profiles')
+                const { data: staffData } = await supabaseClient
+                    .from('staff_members')
                     .select('role')
                     .eq('id', currentStaffSession.user.id)
                     .maybeSingle();
-                if (error) throw error;
-                currentStaffRole = data?.role || null;
-            } catch (e) {
-                console.error('Error cargando rol de staff:', e);
-                currentStaffRole = null;
+                currentStaffRole = staffData?.role || null;
+            } catch (_) { /* fallback a profiles */ }
+            if (!currentStaffRole) {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', currentStaffSession.user.id)
+                        .maybeSingle();
+                    if (error) throw error;
+                    currentStaffRole = data?.role || null;
+                } catch (e) {
+                    console.error('Error cargando rol de staff:', e);
+                    currentStaffRole = null;
+                }
             }
         }
     }
@@ -549,7 +616,7 @@ function mostrarSeccionStaff(section) {
         tasks: { title: 'Tareas', subtitle: 'Crear, asignar y marcar tareas como completadas.' },
         calendar: { title: 'Calendario', subtitle: 'Tareas con fecha límite. Clic para editar.' },
         referrals: { title: 'Referidos', subtitle: 'Vencimientos de referidos + recordatorios automáticos.' },
-        messages: { title: 'Mensajes', subtitle: 'Comunicación entre admin y secretaria.' }
+        messages: { title: 'Mensajes', subtitle: 'Comunicación entre todo el staff.' }
     };
 
     const info = map[section] || map.dashboard;
@@ -662,15 +729,7 @@ async function cargarOpcionesAsignarTareas() {
     const select = document.getElementById('taskAssigneeSelect');
     if (!select || !supabaseClient || !currentStaffSession) return;
 
-    const { data: staffRows, error } = await supabaseClient
-        .from('staff_members')
-        .select('id, email, role, display_name')
-        .order('role', { ascending: true })
-        .order('display_name', { ascending: true });
-    if (error) {
-        console.warn('No se pudieron cargar staff_members para asignar tareas:', error?.message || error);
-        return;
-    }
+    const staffRows = await cargarContactosStaffPortal();
 
     // Mantener el primer option (Sin asignar).
     const currentEmpty = select.querySelector('option[value=""]');
@@ -681,7 +740,7 @@ async function cargarOpcionesAsignarTareas() {
         if (!s?.email) return;
         const opt = document.createElement('option');
         opt.value = s.email.toLowerCase().trim();
-        opt.textContent = s.display_name || opt.value;
+        opt.textContent = s.label || s.display_name || opt.value;
         select.appendChild(opt);
     });
 }
@@ -1257,7 +1316,7 @@ function renderizarTareasStaff(tareas) {
             const checked = status === 'completed';
             return `
               <div class="staff-task-card" data-task-id="${t.id}" style="border-left:4px solid ${color};">
-                <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer;">
+                <div class="staff-task-open-area" data-open-task="${t.id}" style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer;">
                   <input type="checkbox" ${checked ? 'checked' : ''} data-status="${status}" data-task-id="${t.id}" class="staff-task-checkbox">
                   <div style="flex:1;">
                     <strong>${escapeHtml(t.title || '')}</strong>
@@ -1270,7 +1329,7 @@ function renderizarTareasStaff(tareas) {
                       · Fecha: ${due}
                     </p>
                   </div>
-                </label>
+                </div>
                 <div style="margin-top:0.35rem; display:flex; gap:0.35rem; flex-wrap:wrap;">
                   <button type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.5rem;" data-edit-task="${t.id}">Editar</button>
                   <button type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.5rem; background:#f97373; border-color:#f97373; color:#fff;" data-delete-task="${t.id}">Eliminar</button>
@@ -1294,6 +1353,14 @@ function renderizarTareasStaff(tareas) {
             const id = this.getAttribute('data-task-id');
             const status = this.checked ? 'completed' : 'pending';
             actualizarEstadoTarea(id, status);
+        });
+    });
+    listEl.querySelectorAll('[data-open-task]').forEach(el => {
+        el.addEventListener('click', function(ev) {
+            if (ev.target?.closest?.('.staff-task-checkbox')) return;
+            const id = this.getAttribute('data-open-task');
+            const t = staffTasksCache.find(x => x.id === id);
+            if (t) abrirModalDetalleTarea(t);
         });
     });
     listEl.querySelectorAll('[data-edit-task]').forEach(btn => {
@@ -1320,6 +1387,73 @@ function renderizarTareasStaff(tareas) {
 
 function escapeHtml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function asegurarModalDetalleTarea() {
+    let modal = document.getElementById('staffTaskQuickModal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'staffTaskQuickModal';
+    modal.style.cssText = 'display:none; position:fixed; inset:0; z-index:2000; background:rgba(15,23,42,0.45); padding:1rem; overflow:auto;';
+    modal.innerHTML = `
+      <div style="max-width:680px; margin:3rem auto; background:#fff; border-radius:12px; border:1px solid #e5e7eb; padding:0.95rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem; flex-wrap:wrap;">
+          <div>
+            <h4 id="staffTaskModalTitle" style="margin:0; font-size:1.05rem;">Detalle de tarea</h4>
+            <p id="staffTaskModalMeta" style="margin:0.25rem 0 0 0; font-size:0.85rem; color:#6b7280;"></p>
+          </div>
+          <button type="button" class="btn btn-secondary" id="staffTaskModalCloseBtn" style="padding:0.35rem 0.7rem;">Cerrar</button>
+        </div>
+        <div style="margin-top:0.85rem;">
+          <label for="staffTaskModalCommentInput" style="display:block; font-size:0.82rem; color:#6b7280; margin-bottom:0.25rem;">Comentarios / detalles</label>
+          <textarea id="staffTaskModalCommentInput" rows="4" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #ddd; font-size:0.95rem;"></textarea>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.75rem;">
+          <button type="button" class="btn btn-primary" id="staffTaskModalSaveCommentBtn">Guardar comentario</button>
+          <button type="button" class="btn btn-secondary" id="staffTaskModalToggleCompleteBtn">Marcar completada</button>
+          <button type="button" class="btn btn-secondary" id="staffTaskModalInProgressBtn">En progreso</button>
+          <button type="button" class="btn btn-secondary" id="staffTaskModalEditBtn">Editar tarea</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    return modal;
+}
+
+function cerrarModalDetalleTarea() {
+    const modal = document.getElementById('staffTaskQuickModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function abrirModalDetalleTarea(task) {
+    if (!task) return;
+    const modal = asegurarModalDetalleTarea();
+    modal.style.display = 'block';
+    modal.setAttribute('data-task-id', task.id || '');
+    modal.setAttribute('data-current-status', task.status || 'pending');
+
+    const titleEl = document.getElementById('staffTaskModalTitle');
+    const metaEl = document.getElementById('staffTaskModalMeta');
+    const commentEl = document.getElementById('staffTaskModalCommentInput');
+    const toggleBtn = document.getElementById('staffTaskModalToggleCompleteBtn');
+    const progressBtn = document.getElementById('staffTaskModalInProgressBtn');
+    if (titleEl) titleEl.textContent = task.title || 'Detalle de tarea';
+    if (metaEl) {
+        const due = task.due_date ? formatearFechaCorta(task.due_date) : 'Sin fecha';
+        const statusLabel = task.status === 'completed' ? 'Completada' : task.status === 'in_progress' ? 'En progreso' : 'Pendiente';
+        metaEl.textContent = `${statusLabel} · Fecha: ${due}`;
+    }
+    if (commentEl) commentEl.value = task.description || '';
+    if (toggleBtn) toggleBtn.textContent = task.status === 'completed' ? 'Marcar pendiente' : 'Marcar completada';
+    if (progressBtn) progressBtn.style.display = task.status === 'pending' ? '' : 'none';
+}
+
+async function refrescarTareaYReabrirModal(taskId) {
+    await cargarTareasStaff();
+    await cargarResumenDashboardStaff();
+    if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+    const t = staffTasksCache.find(x => x.id === taskId);
+    if (t) abrirModalDetalleTarea(t);
 }
 
 function cargarTareaEnFormulario(t) {
@@ -1713,6 +1847,75 @@ document.addEventListener('click', async (e) => {
     }
 });
 
+document.addEventListener('click', async (e) => {
+    const modal = document.getElementById('staffTaskQuickModal');
+    if (!modal || modal.style.display === 'none') return;
+
+    if (e.target === modal || e.target?.closest?.('#staffTaskModalCloseBtn')) {
+        cerrarModalDetalleTarea();
+        return;
+    }
+
+    const taskId = modal.getAttribute('data-task-id');
+    if (!taskId) return;
+
+    const saveBtn = e.target?.closest?.('#staffTaskModalSaveCommentBtn');
+    if (saveBtn) {
+        const txt = document.getElementById('staffTaskModalCommentInput')?.value?.trim() ?? '';
+        try {
+            const { error } = await supabaseClient
+                .from('tasks')
+                .update({ description: txt, updated_at: new Date().toISOString() })
+                .eq('id', taskId);
+            if (error) throw error;
+            await refrescarTareaYReabrirModal(taskId);
+        } catch (err) {
+            console.error('Error guardando comentario de tarea:', err);
+        }
+        return;
+    }
+
+    const toggleBtn = e.target?.closest?.('#staffTaskModalToggleCompleteBtn');
+    if (toggleBtn) {
+        const current = modal.getAttribute('data-current-status') || 'pending';
+        const next = current === 'completed' ? 'pending' : 'completed';
+        try {
+            const { error } = await supabaseClient
+                .from('tasks')
+                .update({ status: next, updated_at: new Date().toISOString() })
+                .eq('id', taskId);
+            if (error) throw error;
+            await refrescarTareaYReabrirModal(taskId);
+        } catch (err) {
+            console.error('Error cambiando estado de tarea:', err);
+        }
+        return;
+    }
+
+    const progressBtn = e.target?.closest?.('#staffTaskModalInProgressBtn');
+    if (progressBtn) {
+        try {
+            const { error } = await supabaseClient
+                .from('tasks')
+                .update({ status: 'in_progress', updated_at: new Date().toISOString() })
+                .eq('id', taskId);
+            if (error) throw error;
+            await refrescarTareaYReabrirModal(taskId);
+        } catch (err) {
+            console.error('Error marcando tarea en progreso:', err);
+        }
+        return;
+    }
+
+    const editBtn = e.target?.closest?.('#staffTaskModalEditBtn');
+    if (editBtn) {
+        const t = staffTasksCache.find(x => x.id === taskId);
+        if (t) cargarTareaEnFormulario(t);
+        cerrarModalDetalleTarea();
+        return;
+    }
+});
+
 // Configuración escalable para contactos de staff (admin ↔ secretaria)
 const STAFF_COUNTERPART_LABELS = { admin: 'Admin', secretary: 'Secretaria' };
 
@@ -1808,17 +2011,14 @@ async function cargarConversacionesStaff() {
         const { data: messages } = await supabaseClient.from('messages').select('*').or(`sender_id.eq.${uid},receiver_id.eq.${uid}`).order('created_at', { ascending: false });
         const contactMap = new Map(); // id -> { label }
 
-        // 1) Mostrar TODAS las cuentas de staff (menos la actual), aunque no haya historial de mensajes.
+        // 1) Mostrar TODAS las cuentas del staff portal (menos la actual), aunque no haya historial.
         try {
-            const { data: staffRows } = await supabaseClient
-                .from('staff_members')
-                .select('id, display_name, role')
-                .neq('id', uid);
+            const staffRows = await cargarContactosStaffPortal();
             (staffRows || []).forEach(s => {
-                if (!s?.id) return;
-                contactMap.set(s.id, { label: s.display_name || String(s.id).slice(0, 8) });
+                if (!s?.id || s.id === uid) return;
+                contactMap.set(s.id, { label: s.label || String(s.id).slice(0, 8) });
             });
-        } catch (_) { /* si no existe staff_members, seguimos con fallback */ }
+        } catch (_) { /* fallback */ }
 
         // 2) Asegurar que cualquier ID presente en mensajes también aparezca
         (messages || []).forEach(m => {
@@ -3555,25 +3755,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                     if (error) throw error;
                     currentStaffSession = data.session;
-                    // Determinar rol según email (admin o secretary) pero ambos pueden entrar al panel
                     const normalized = (data.user.email || '').toLowerCase().trim();
-                    if (normalized === 'centroyouandme@gmail.com') {
-                        currentStaffRole = 'admin';
-                    } else if (normalized === 'asistenteyouandme@gmail.com') {
-                        currentStaffRole = 'secretary';
-                    } else {
-                        currentStaffRole = 'staff';
-                    }
+                    currentStaffRole = rolePorEmailStaff(normalized) || 'staff';
                 } else {
-                    // Fallback muy simple sin Supabase: permitir ambos correos conocidos
-                    const okAdmin = email === 'centroyouandme@gmail.com' && password === 'You@2023!';
-                    const okSecretary = email === 'asistenteyouandme@gmail.com' && password === 'You@2023!';
-                    if (!okAdmin && !okSecretary) {
+                    // Fallback sin Supabase: permitir solo contactos de staff portal con clave temporal.
+                    const normalized = (email || '').toLowerCase().trim();
+                    const isKnownStaff = STAFF_PORTAL_CONTACTS.some(c => c.email === normalized);
+                    if (!isKnownStaff || password !== 'You@2023!') {
                         if (errorDiv) errorDiv.style.display = 'block';
                         return;
                     }
                     localStorage.setItem('youme_admin_sesion', 'activa');
-                    currentStaffRole = okAdmin ? 'admin' : 'secretary';
+                    currentStaffRole = rolePorEmailStaff(normalized) || 'staff';
                 }
                 document.getElementById('adminLogin').style.display = 'none';
                 document.getElementById('adminDashboard').style.display = 'block';
@@ -3612,7 +3805,7 @@ window.navigateToPage = async function(pageName) {
                 if (session) {
                     currentStaffSession = session;
                     const email = (session.user.email || '').toLowerCase().trim();
-                    currentStaffRole = email === 'centroyouandme@gmail.com' ? 'admin' : (email === 'asistenteyouandme@gmail.com' ? 'secretary' : currentStaffRole);
+                    currentStaffRole = rolePorEmailStaff(email) || currentStaffRole;
                 }
             }
             const email = currentStaffSession?.user?.email?.toLowerCase?.() || '';
