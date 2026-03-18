@@ -1326,19 +1326,7 @@ function renderizarDesgloseDia(dateStr, tasks) {
     const total = tasks.length;
     subtitleEl.textContent = total === 0 ? 'No hay tareas con fecha límite para este día.' : `${total} tarea(s) con fecha límite.`;
 
-    if (total === 0) {
-        contentEl.innerHTML = `
-          <div style="padding:0.75rem; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; color:#6b7280; font-size:0.9rem;">
-            <div style="margin-bottom:0.6rem;">Ninguna tarea para este día.</div>
-            <button type="button" class="btn btn-primary" id="staffAddTaskForDayBtn" data-day="${escaparHtml(dateStr)}">
-              Agregar tarea para este día
-            </button>
-          </div>
-        `;
-        return;
-    }
-
-    contentEl.innerHTML = tasks.map(t => {
+    const tasksHtml = total === 0 ? '' : tasks.map(t => {
         const priority = t.priority || 'medium';
         const status = t.status || 'pending';
         const badgeColor = prioridadColor(priority);
@@ -1362,6 +1350,17 @@ function renderizarDesgloseDia(dateStr, tasks) {
           </div>
         `;
     }).join('');
+
+    const addTaskBtnEl = `
+      <div style="margin-top:0.75rem; padding:0.75rem; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; color:#6b7280; font-size:0.9rem;">
+        ${total === 0 ? `<div style="margin-bottom:0.6rem;">Ninguna tarea para este día.</div>` : ''}
+        <button type="button" class="btn btn-primary" id="staffAddTaskForDayBtn" data-day="${escaparHtml(dateStr)}">
+          Agregar tarea para este día
+        </button>
+      </div>
+    `;
+
+    contentEl.innerHTML = (tasksHtml || '') + addTaskBtnEl;
 }
 
 async function mostrarDesgloseParaFecha(dateStr) {
@@ -1430,7 +1429,13 @@ async function abrirVistaDetalleDiaCompleta(dateStr) {
             </div>
           </div>
         `;
-    }).join('');
+    }).join('') + `
+      <div style="margin-top:0.75rem; padding:0.75rem; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; color:#6b7280; font-size:0.9rem;">
+        <button type="button" class="btn btn-primary" id="staffAddTaskForDayBtn" data-day="${escaparHtml(dateStr)}">
+          Agregar tarea para este día
+        </button>
+      </div>
+    `;
 }
 
 function cerrarVistaDetalleDiaCompleta() {
