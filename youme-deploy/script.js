@@ -2335,13 +2335,13 @@ function inicializarStaffCalendar() {
                         const { data: reservasCumpleRows, error: reservasCumpleErr } = await supabaseClient
                             .from('reservas_cumple')
                             .select('id, nombre_nino, fecha, contacto, telefono, email, horas, actividad, total, pagado, comentarios_admin')
-                            .gte('fecha', startISO)
-                            .lt('fecha', endISOExclusive);
+                            .order('fecha', { ascending: true });
 
                         if (!reservasCumpleErr && Array.isArray(reservasCumpleRows)) {
                             reservasCumpleRows.forEach(r => {
                                 const fechaISO = normalizarFechaISO(r.fecha);
                                 if (!fechaISO) return;
+                                if (fechaISO < startISO || fechaISO >= endISOExclusive) return;
                                 const paidColor = r.pagado ? '#16a34a' : '#f59e0b';
                                 events.push({
                                     id: `reservaCumple:${r.id}`,
