@@ -667,6 +667,37 @@ function renderizarDesgloseDia(dateStr, tasks) {
     }).join('');
 }
 
+function mostrarDetalleEventoCalendario(t) {
+    const box = document.getElementById('staffCalendarEventDetail');
+    const titleEl = document.getElementById('staffCalendarEventTitle');
+    const metaEl = document.getElementById('staffCalendarEventMeta');
+    const descEl = document.getElementById('staffCalendarEventDescription');
+    if (!box || !titleEl || !metaEl || !descEl) return;
+
+    const priority = t.priority || 'medium';
+    const status = t.status || 'pending';
+    const badgeColor = prioridadColor(priority);
+    const statusLabel = status === 'completed' ? 'Completada' : status === 'in_progress' ? 'En progreso' : 'Pendiente';
+    const fecha = t.due_date ? new Date(t.due_date).toLocaleDateString('es-PR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Sin fecha';
+
+    titleEl.textContent = t.title || 'Tarea';
+    metaEl.innerHTML = `
+      <span style="display:inline-flex; align-items:center; gap:0.35rem; font-size:0.75rem; font-weight:700; color:#fff; padding:0.15rem 0.5rem; border-radius:999px; background:${badgeColor}; margin-right:0.5rem;">
+        ${escaparHtml(priority.toUpperCase())}
+      </span>
+      <span style="font-size:0.78rem; color:#374151; margin-right:0.5rem;">${escaparHtml(statusLabel)}</span>
+      <span style="font-size:0.78rem; color:#6b7280;">${escaparHtml(fecha)}</span>
+    `;
+
+    const desc = (t.description || '').trim();
+    descEl.textContent = desc || 'Sin descripción.';
+
+    const editBtn = document.getElementById('staffCalendarEventEditBtn');
+    if (editBtn) editBtn.setAttribute('data-task-id', t.id);
+
+    box.style.display = 'block';
+}
+
 // Resolver ID de staff a partir de email (admin / secretaria u otros miembros)
 async function resolverStaffIdPorEmail(email) {
     if (!supabaseClient || !email) return null;
@@ -949,10 +980,7 @@ function inicializarStaffCalendar() {
             const taskId = arg.event.extendedProps?.taskId || arg.event.id;
             const t = staffTasksCache.find(x => x.id === taskId);
             if (t) {
-                cargarTareaEnFormulario(t);
-                const navItems = document.querySelectorAll('.staff-nav-item');
-                navItems.forEach(b => b.classList.toggle('active', b.getAttribute('data-section') === 'tasks'));
-                mostrarSeccionStaff('tasks');
+                mostrarDetalleEventoCalendario(t);
             }
         },
         dateClick: async (info) => {
@@ -986,6 +1014,27 @@ document.addEventListener('click', (e) => {
         const navItems = document.querySelectorAll('.staff-nav-item');
         navItems.forEach(b => b.classList.toggle('active', b.getAttribute('data-section') === 'tasks'));
         mostrarSeccionStaff('tasks');
+    }
+});
+
+document.addEventListener('click', (e) => {
+    const closeDetailBtn = e.target?.closest?.('#staffCalendarEventCloseBtn');
+    if (closeDetailBtn) {
+        const box = document.getElementById('staffCalendarEventDetail');
+        if (box) box.style.display = 'none';
+        return;
+    }
+
+    const editFromDetailBtn = e.target?.closest?.('#staffCalendarEventEditBtn');
+    if (editFromDetailBtn) {
+        const taskId = editFromDetailBtn.getAttribute('data-task-id');
+        const t = staffTasksCache.find(x => x.id === taskId);
+        if (t) {
+            cargarTareaEnFormulario(t);
+            const navItems = document.querySelectorAll('.staff-nav-item');
+            navItems.forEach(b => b.classList.toggle('active', b.getAttribute('data-section') === 'tasks'));
+            mostrarSeccionStaff('tasks');
+        }
     }
 });
 
