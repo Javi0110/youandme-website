@@ -563,10 +563,28 @@ let staffTasksCache = [];
 
 function formatoDiaLargoES(date) {
     try {
+        // Evita corrimientos de un día al parsear cadenas YYYY-MM-DD en Safari/Chrome.
+        if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            const [y, m, d] = date.split('-').map(Number);
+            return new Date(y, m - 1, d, 12, 0, 0).toLocaleDateString('es-PR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
         return new Date(date).toLocaleDateString('es-PR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     } catch (_) {
         return String(date);
     }
+}
+
+function obtenerHoyISO() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }
 
 function normalizarFechaISO(dateStr) {
@@ -963,7 +981,16 @@ function inicializarStaffCalendar() {
     }
     staffCalendar = new FullCalendar.Calendar(el, {
         initialView: 'dayGridMonth',
-        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' },
+        customButtons: {
+            todayOpen: {
+                text: 'today',
+                click: async () => {
+                    staffCalendar.today();
+                    await mostrarDesgloseParaFecha(obtenerHoyISO());
+                }
+            }
+        },
+        headerToolbar: { left: 'prev,next todayOpen', center: 'title', right: 'dayGridMonth,listWeek' },
         locale: 'es',
         selectable: true,
         events: async (info, successCallback) => {
