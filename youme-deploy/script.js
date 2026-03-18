@@ -788,7 +788,7 @@ async function inicializarStaffReferralsCalendar() {
 
     staffReferralsCalendar = new FullCalendar.Calendar(el, {
         initialView: 'dayGridMonth',
-        headerToolbar: { left: 'prev,next', center: '', right: '' },
+        headerToolbar: { left: 'prev,next', center: 'title', right: '' },
         locale: 'es',
         selectable: false,
         events: async (info, successCallback) => {
@@ -1631,7 +1631,7 @@ function inicializarStaffCalendar() {
     }
     staffCalendar = new FullCalendar.Calendar(el, {
         initialView: 'dayGridMonth',
-        headerToolbar: { left: 'prev,next', center: '', right: '' },
+        headerToolbar: { left: 'prev,next', center: 'title', right: '' },
         locale: 'es',
         selectable: true,
         events: async (info, successCallback) => {
