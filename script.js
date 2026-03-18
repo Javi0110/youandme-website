@@ -589,10 +589,27 @@ function obtenerHoyISO() {
 
 function normalizarFechaISO(dateStr) {
     if (!dateStr) return null;
-    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    if (typeof dateStr === 'string') {
+        const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (match) return match[1];
+    }
     const d = new Date(dateStr);
     if (Number.isNaN(d.getTime())) return null;
-    return d.toISOString().slice(0, 10);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function formatearFechaCorta(dateStr) {
+    const iso = normalizarFechaISO(dateStr);
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0).toLocaleDateString('es-PR', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    });
 }
 
 async function obtenerTareasParaDia(dateStr) {
@@ -703,7 +720,7 @@ function mostrarDetalleEventoCalendario(t) {
     const status = t.status || 'pending';
     const badgeColor = prioridadColor(priority);
     const statusLabel = status === 'completed' ? 'Completada' : status === 'in_progress' ? 'En progreso' : 'Pendiente';
-    const fecha = t.due_date ? new Date(t.due_date).toLocaleDateString('es-PR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Sin fecha';
+    const fecha = t.due_date ? formatearFechaCorta(t.due_date) : 'Sin fecha';
 
     titleEl.textContent = t.title || 'Tarea';
     metaEl.innerHTML = `
@@ -795,7 +812,7 @@ function renderizarTareasStaff(tareas) {
 
     function renderColumn(title, items, status) {
         const frag = items.map(t => {
-            const due = t.due_date ? new Date(t.due_date).toLocaleDateString('es-PR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+            const due = t.due_date ? formatearFechaCorta(t.due_date) : '—';
             const color = prioridadColor(t.priority || 'medium');
             const checked = status === 'completed';
             return `
@@ -924,7 +941,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 title,
                 description: description || null,
                 priority,
-                due_date: dueDate ? new Date(dueDate).toISOString() : null,
+                // Guardar al mediodía UTC evita corrimientos de fecha por zona horaria.
+                due_date: dueDate ? `${dueDate}T12:00:00.000Z` : null,
                 updated_at: new Date().toISOString()
             };
             if (!id) {
@@ -1000,7 +1018,7 @@ function inicializarStaffCalendar() {
                 const events = (data || []).map(t => ({
                     id: t.id,
                     title: t.title || 'Tarea',
-                    start: t.due_date,
+                    start: normalizarFechaISO(t.due_date) || t.due_date,
                     allDay: true,
                     backgroundColor: prioridadColor(t.priority || 'medium'),
                     extendedProps: { taskId: t.id }
