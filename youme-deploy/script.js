@@ -1583,6 +1583,94 @@ function cerrarModalDetalleTarea() {
     if (modal) modal.style.display = 'none';
 }
 
+function asegurarModalDetalleReservaEvento() {
+    let modal = document.getElementById('staffReservationQuickModal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'staffReservationQuickModal';
+    modal.style.cssText = 'display:none; position:fixed; inset:0; z-index:2100; background:rgba(15,23,42,0.45); padding:1rem; overflow:auto;';
+    modal.innerHTML = `
+      <div style="max-width:720px; margin:3rem auto; background:#fff; border-radius:12px; border:1px solid #e5e7eb; padding:0.95rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem; flex-wrap:wrap;">
+          <div>
+            <h4 id="staffReservationModalTitle" style="margin:0; font-size:1.05rem;">Detalle de reserva</h4>
+            <p id="staffReservationModalMeta" style="margin:0.25rem 0 0 0; font-size:0.85rem; color:#6b7280;"></p>
+          </div>
+          <button type="button" class="btn btn-secondary" id="staffReservationModalCloseBtn" style="padding:0.35rem 0.7rem;">Cerrar</button>
+        </div>
+        <div style="margin-top:0.85rem;">
+          <p id="staffReservationModalChild" style="margin:0.25rem 0; font-size:0.95rem;"></p>
+          <p id="staffReservationModalParent" style="margin:0.25rem 0; font-size:0.95rem;"></p>
+          <p id="staffReservationModalContact" style="margin:0.25rem 0; font-size:0.95rem;"></p>
+          <p id="staffReservationModalDays" style="margin:0.25rem 0; font-size:0.95rem;"></p>
+          <p id="staffReservationModalTotal" style="margin:0.25rem 0; font-size:0.95rem;"></p>
+          <p id="staffReservationModalPaid" style="margin:0.25rem 0; font-size:0.95rem;"></p>
+          <div style="margin-top:0.75rem; color:#4b5563; font-size:0.92rem;">
+            <strong>Comentarios (admin):</strong>
+            <div id="staffReservationModalCommentsBox" style="margin-top:0.25rem; white-space:pre-wrap;"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    return modal;
+}
+
+function cerrarModalDetalleReservaEvento() {
+    const modal = document.getElementById('staffReservationQuickModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function abrirModalDetalleReservaEvento({ reservation, evento, startDateISO }) {
+    if (!reservation) return;
+    const modal = asegurarModalDetalleReservaEvento();
+    modal.style.display = 'block';
+    modal.setAttribute('data-reservation-id', reservation.id || '');
+
+    const metaEl = document.getElementById('staffReservationModalMeta');
+    const titleEl = document.getElementById('staffReservationModalTitle');
+    const childEl = document.getElementById('staffReservationModalChild');
+    const parentEl = document.getElementById('staffReservationModalParent');
+    const contactEl = document.getElementById('staffReservationModalContact');
+    const daysEl = document.getElementById('staffReservationModalDays');
+    const totalEl = document.getElementById('staffReservationModalTotal');
+    const paidEl = document.getElementById('staffReservationModalPaid');
+    const commentsBox = document.getElementById('staffReservationModalCommentsBox');
+
+    if (titleEl) titleEl.textContent = `Reserva de evento`;
+    const displayDate = startDateISO ? formatearFechaCorta(startDateISO) : '—';
+    if (metaEl) metaEl.textContent = `${evento?.nombre || 'Evento'} · ${displayDate}`;
+
+    if (childEl) childEl.textContent = `Niño/a: ${reservation.nombre_nino || '—'}${reservation.edad_nino != null ? ` (${reservation.edad_nino} años)` : ''}`;
+    if (parentEl) parentEl.textContent = `Padre/Madre: ${reservation.nombre_padre || '—'}`;
+    if (contactEl) contactEl.textContent = `Tel: ${reservation.telefono || '—'} · Email: ${reservation.email || '—'}`;
+    if (daysEl) daysEl.textContent = `Días reservados: ${reservation.dias ?? 1}`;
+    if (totalEl) totalEl.textContent = `Total: $${reservation.total ?? '—'}`;
+    if (paidEl) paidEl.textContent = `Estado: ${reservation.pagado ? 'Pagado' : 'Pendiente'}`;
+    if (commentsBox) commentsBox.textContent = reservation.comentarios_admin || '';
+}
+
+async function abrirModalDetalleReservaEventoPorId(reservationId) {
+    if (!reservationId || !supabaseClient) return;
+    const { data: reservation, error: resErr } = await supabaseClient
+        .from('reservas_eventos')
+        .select('id, evento_id, nombre_nino, edad_nino, nombre_padre, email, telefono, dias, total, pagado, comentarios_admin')
+        .eq('id', reservationId)
+        .maybeSingle();
+    if (resErr || !reservation) return;
+
+    const { data: evento, error: evErr } = await supabaseClient
+        .from('eventos')
+        .select('id, nombre, fecha, horario')
+        .eq('id', reservation.evento_id)
+        .maybeSingle();
+    if (evErr || !evento) return;
+
+    const fechas = typeof parsearFechasEvento === 'function' ? parsearFechasEvento(evento.fecha) : [{ fecha: evento.fecha, display: evento.fecha }];
+    const startDateISO = fechas?.[0]?.fecha ? normalizarFechaISO(fechas[0].fecha) : null;
+    abrirModalDetalleReservaEvento({ reservation, evento, startDateISO });
+}
+
 function abrirModalDetalleTarea(task) {
     if (!task) return;
     const modal = asegurarModalDetalleTarea();
@@ -1815,6 +1903,7 @@ function inicializarStaffCalendar() {
             try {
                 const uid = currentStaffSession?.user?.id;
                 if (!uid) return successCallback([]);
+                const isAdminCalendar = String(currentStaffSession?.user?.email || '').toLowerCase() === 'centroyouandme@gmail.com';
                 const startISO = normalizarFechaISO(info.startStr) || info.startStr;
                 const endISOExclusive = normalizarFechaISO(info.endStr) || info.endStr; // `endStr` es fin exclusivo
                 if (!startISO || !endISOExclusive) return successCallback([]);
@@ -1850,12 +1939,81 @@ function inicializarStaffCalendar() {
                     }
                 });
 
+                // ADMIN (solo centroyouandme@gmail.com): pintar reservas de eventos desde el website.
+                if (isAdminCalendar) {
+                    const { data: eventosRows, error: eventosErr } = await supabaseClient
+                        .from('eventos')
+                        .select('id, nombre, fecha, horario')
+                        .order('created_at', { ascending: false });
+                    if (!eventosErr && Array.isArray(eventosRows)) {
+                        const eventoIdToStartISO = new Map();
+                        const eventoIdsInRange = [];
+
+                        eventosRows.forEach(ev => {
+                            const fechas = typeof parsearFechasEvento === 'function' ? parsearFechasEvento(ev.fecha) : [{ fecha: ev.fecha, display: ev.fecha }];
+                            let startDateISO = null;
+                            if (Array.isArray(fechas)) {
+                                for (const f of fechas) {
+                                    const iso = normalizarFechaISO(f?.fecha);
+                                    if (iso && iso >= startISO && iso < endISOExclusive) {
+                                        startDateISO = iso;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!startDateISO) return;
+                            eventoIdToStartISO.set(String(ev.id), startDateISO);
+                            eventoIdsInRange.push(ev.id);
+                        });
+
+                        const uniqueEventoIds = Array.from(new Set(eventoIdsInRange)).filter(Boolean);
+                        if (uniqueEventoIds.length > 0) {
+                            const { data: reservasRows, error: reservasErr } = await supabaseClient
+                                .from('reservas_eventos')
+                                .select('id, evento_id, nombre_nino, nombre_padre, email, telefono, dias, total, pagado, comentarios_admin')
+                                .in('evento_id', uniqueEventoIds);
+
+                            if (!reservasErr && Array.isArray(reservasRows)) {
+                                const eventoIdToInfo = new Map((eventosRows || []).map(ev => [String(ev.id), ev]));
+                                reservasRows.forEach(r => {
+                                    const eventoInfo = eventoIdToInfo.get(String(r.evento_id));
+                                    const startDateISO = eventoIdToStartISO.get(String(r.evento_id));
+                                    if (!eventoInfo || !startDateISO) return;
+                                    const diasVal = r.dias ?? 1;
+                                    const paidColor = r.pagado ? '#16a34a' : '#f59e0b';
+                                    const diasSuffix = Number(diasVal) > 1 ? ` (+${diasVal - 1} días)` : '';
+
+                                    events.push({
+                                        id: `reservaEvento:${r.id}`,
+                                        title: `Reserva: ${eventoInfo.nombre || 'Evento'}${diasSuffix}`,
+                                        start: startDateISO,
+                                        allDay: true,
+                                        backgroundColor: paidColor,
+                                        extendedProps: {
+                                            reservationType: 'evento',
+                                            reservationId: r.id
+                                        }
+                                    });
+                                });
+                            }
+                        }
+                    } else {
+                        console.warn('Error cargando eventos para reservas calendario staff:', eventosErr?.message || eventosErr);
+                    }
+                }
+
                 successCallback(events);
             } catch (e) {
                 successCallback([]);
             }
         },
         eventClick: async (arg) => {
+            const reservationType = arg.event.extendedProps?.reservationType;
+            if (reservationType === 'evento') {
+                const reservationId = arg.event.extendedProps?.reservationId;
+                await abrirModalDetalleReservaEventoPorId(reservationId).catch(() => { /* ignore */ });
+                return;
+            }
             const taskId = arg.event.extendedProps?.taskId || arg.event.id;
             const t = staffTasksCache.find(x => x.id === taskId);
             if (t) return mostrarDetalleEventoCalendario(t);
@@ -2104,6 +2262,14 @@ document.addEventListener('click', async (e) => {
         if (t) cargarTareaEnFormulario(t);
         cerrarModalDetalleTarea();
         return;
+    }
+});
+
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('staffReservationQuickModal');
+    if (!modal || modal.style.display === 'none') return;
+    if (e.target === modal || e.target?.closest?.('#staffReservationModalCloseBtn')) {
+        cerrarModalDetalleReservaEvento();
     }
 });
 
@@ -2953,37 +3119,55 @@ async function abrirModalEvento(eventoId) {
 
 // Parsear rango de fechas del evento
 function parsearFechasEvento(fechaStr) {
-    // Detectar formato: "15-20 de julio, 2025" o "18-22 de diciembre, 2025"
-    const match = fechaStr.match(/(\d+)-(\d+)\s+de\s+(\w+),?\s+(\d+)/i);
-    
-    if (!match) {
-        // Si no es un rango, devolver fecha única
-        return [{ fecha: fechaStr, display: fechaStr }];
-    }
-    
-    const [_, diaInicio, diaFin, mes, año] = match;
+    if (!fechaStr) return [];
+
     const meses = {
         'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3,
         'mayo': 4, 'junio': 5, 'julio': 6, 'agosto': 7,
         'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11
     };
-    
-    const mesNum = meses[mes.toLowerCase()];
-    const fechas = [];
-    
-    for (let dia = parseInt(diaInicio); dia <= parseInt(diaFin); dia++) {
-        const fecha = new Date(parseInt(año), mesNum, dia);
+
+    // Detectar formato rango: "15-20 de julio, 2025" o "18-22 de diciembre, 2025"
+    const matchRange = fechaStr.match(/(\d+)\s*-\s*(\d+)\s+de\s+(\w+),?\s+(\d+)/i);
+    if (matchRange) {
+        const [_, diaInicio, diaFin, mes, año] = matchRange;
+        const mesNum = meses[mes.toLowerCase()];
+        if (mesNum == null) return [{ fecha: fechaStr, display: fechaStr }];
+        const fechas = [];
+
+        for (let dia = parseInt(diaInicio); dia <= parseInt(diaFin); dia++) {
+            const fecha = new Date(parseInt(año), mesNum, dia);
+            const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            const diaSemana = diasSemana[fecha.getDay()];
+            fechas.push({
+                fecha: `${año}-${String(mesNum + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`,
+                display: `${diaSemana} ${dia} de ${mes}`,
+                dia: dia
+            });
+        }
+
+        return fechas;
+    }
+
+    // Detectar formato fecha única: "5 de noviembre, 2025"
+    const matchSingle = fechaStr.match(/(\d{1,2})\s+de\s+(\w+),?\s+(\d{4})/i);
+    if (matchSingle) {
+        const [_, dia, mes, año] = matchSingle;
+        const mesNum = meses[String(mes).toLowerCase()];
+        if (mesNum == null) return [{ fecha: fechaStr, display: fechaStr }];
+        const fecha = new Date(parseInt(año), mesNum, parseInt(dia));
         const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         const diaSemana = diasSemana[fecha.getDay()];
-        
-        fechas.push({
-            fecha: `${año}-${String(mesNum + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`,
+        const iso = `${año}-${String(mesNum + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+        return [{
+            fecha: iso,
             display: `${diaSemana} ${dia} de ${mes}`,
-            dia: dia
-        });
+            dia: parseInt(dia)
+        }];
     }
-    
-    return fechas;
+
+    // Fallback: no se pudo parsear
+    return [{ fecha: fechaStr, display: fechaStr }];
 }
 
 // Wrapper para usar datos del evento actual
