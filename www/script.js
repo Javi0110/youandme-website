@@ -20,7 +20,8 @@ const STAFF_PORTAL_CONTACTS = [
     { email: 'mfadhel.ot@gmail.com', role: 'admin', label: 'Maria Fadhel' },
     { email: 'andreagarciaot@gmail.com', role: 'admin', label: 'Andrea García' },
     { email: 'centroyouandme@gmail.com', role: 'admin', label: 'Admin' },
-    { email: 'asistenteyouandme@gmail.com', role: 'secretary', label: 'Secretaria' }
+    { email: 'asistenteyouandme@gmail.com', role: 'secretary', label: 'Secretaria' },
+    { email: 'magaribyelena@gmail.com', role: 'admin', label: 'Elena Fadhel' }
 ];
 
 function rolePorEmailStaff(email) {
