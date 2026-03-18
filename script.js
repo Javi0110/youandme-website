@@ -1106,6 +1106,8 @@ async function obtenerTareasParaDia(dateStr) {
         });
     }
 
+    const uid = currentStaffSession?.user?.id;
+    if (!uid) return [];
     if (!supabaseClient) return [];
 
     try {
@@ -1114,6 +1116,7 @@ async function obtenerTareasParaDia(dateStr) {
             .select('id, title, description, due_date, priority, status')
             .not('due_date', 'is', null)
             .neq('status', 'completed')
+            .or(`assigned_to.eq.${uid},created_by.eq.${uid}`)
             .order('priority', { ascending: false })
             .order('title', { ascending: true });
         if (error) throw error;
