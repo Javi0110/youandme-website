@@ -927,6 +927,7 @@ function inicializarStaffCalendar() {
         initialView: 'dayGridMonth',
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' },
         locale: 'es',
+        selectable: true,
         events: async (info, successCallback) => {
             if (!supabaseClient) return successCallback([]);
             try {
