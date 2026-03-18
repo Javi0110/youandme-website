@@ -542,7 +542,7 @@ function inicializarStaffPortal() {
                 const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (error) {
                     if (errorEl) {
-                        errorEl.textContent = 'No se pudo iniciar sesión. Verifique sus credenciales.';
+                        errorEl.textContent = `No se pudo iniciar sesión: ${error?.message || 'credenciales inválidas'}`;
                         errorEl.style.display = 'block';
                     }
                     return;
@@ -551,7 +551,7 @@ function inicializarStaffPortal() {
             } catch (err) {
                 console.error('Error login staff:', err);
                 if (errorEl) {
-                    errorEl.textContent = 'Ocurrió un error al iniciar sesión.';
+                    errorEl.textContent = `Ocurrió un error al iniciar sesión: ${err?.message || 'desconocido'}`;
                     errorEl.style.display = 'block';
                 }
             }
