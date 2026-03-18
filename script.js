@@ -2362,7 +2362,7 @@ function inicializarStaffCalendar() {
                         const { data: reservasCumpleRows, error: reservasCumpleErr } = await supabaseClient
                             .from('reservas_cumple')
                             .select('id, nombre_nino, fecha, contacto, telefono, email, horas, actividad, total, pagado, comentarios_admin')
-                            .order('fecha', { ascending: true });
+                            ;
 
                         if (!reservasCumpleErr && Array.isArray(reservasCumpleRows)) {
                             reservasCumpleRows.forEach(r => {
