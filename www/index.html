@@ -875,6 +875,16 @@
                         <h4 style="margin-top:0;">Calendario de tareas</h4>
                         <p style="font-size:0.85rem; color:#6b7280; margin-bottom:0.75rem;">Tareas con fecha límite. Clic en una tarea para editarla.</p>
                         <div id="staffCalendar" style="min-height:400px; background:#fff; border-radius:12px; border:1px solid #e5e7eb;"></div>
+                        <div id="staffTodayDetailScreen" style="display:none; margin-top:0.9rem; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:0.9rem;">
+                          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem; flex-wrap:wrap;">
+                            <div>
+                              <h4 id="staffTodayDetailTitle" style="margin:0; font-size:1.05rem;">Detalle del día</h4>
+                              <p id="staffTodayDetailSubtitle" style="margin:0.25rem 0 0 0; font-size:0.85rem; color:#6b7280;">Resumen de tareas del día.</p>
+                            </div>
+                            <button type="button" class="btn btn-secondary" id="staffTodayBackToCalendarBtn" style="padding:0.45rem 0.8rem;">Volver al calendario</button>
+                          </div>
+                          <div id="staffTodayDetailContent" style="margin-top:0.75rem;"></div>
+                        </div>
                         <div id="staffCalendarEventDetail" style="margin-top:0.9rem; display:none; background:#fff; border-radius:12px; border:1px solid #e5e7eb; padding:0.9rem;">
                           <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem; flex-wrap:wrap;">
                             <div>

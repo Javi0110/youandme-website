@@ -612,6 +612,20 @@ function formatearFechaCorta(dateStr) {
     });
 }
 
+function formatearHorarioTarea(dateStr) {
+    if (!dateStr) return 'Sin horario';
+    if (typeof dateStr === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return 'Sin horario';
+        if (/T12:00:00(\.000)?Z$/.test(dateStr)) return 'Sin horario';
+    }
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return 'Sin horario';
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    if (hh === '00' && mm === '00') return 'Sin horario';
+    return `${hh}:${mm}`;
+}
+
 async function obtenerTareasParaDia(dateStr) {
     const dayISO = normalizarFechaISO(dateStr);
     if (!dayISO) return [];
@@ -707,6 +721,67 @@ async function mostrarDesgloseParaFecha(dateStr) {
     if (contentEl) contentEl.innerHTML = '';
     const tasks = await obtenerTareasParaDia(dateStr);
     renderizarDesgloseDia(dateStr, tasks);
+}
+
+async function abrirVistaDetalleDiaCompleta(dateStr) {
+    const calEl = document.getElementById('staffCalendar');
+    const dayScreen = document.getElementById('staffTodayDetailScreen');
+    const titleEl = document.getElementById('staffTodayDetailTitle');
+    const subtitleEl = document.getElementById('staffTodayDetailSubtitle');
+    const contentEl = document.getElementById('staffTodayDetailContent');
+    if (!calEl || !dayScreen || !titleEl || !subtitleEl || !contentEl) return;
+
+    calEl.style.display = 'none';
+    const eventDetail = document.getElementById('staffCalendarEventDetail');
+    const dayBreakdown = document.getElementById('staffDayBreakdown');
+    if (eventDetail) eventDetail.style.display = 'none';
+    if (dayBreakdown) dayBreakdown.style.display = 'none';
+
+    dayScreen.style.display = 'block';
+    titleEl.textContent = `Detalle del día: ${formatoDiaLargoES(dateStr)}`;
+    subtitleEl.textContent = 'Cargando tareas del día...';
+    contentEl.innerHTML = '';
+
+    const tasks = await obtenerTareasParaDia(dateStr);
+    const total = tasks.length;
+    subtitleEl.textContent = total === 0 ? 'No hay tareas para este día.' : `${total} tarea(s) para este día.`;
+
+    if (total === 0) {
+        contentEl.innerHTML = `
+          <div style="padding:0.75rem; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; color:#6b7280; font-size:0.9rem;">
+            Ninguna tarea para este día.
+          </div>
+        `;
+        return;
+    }
+
+    contentEl.innerHTML = tasks.map(t => {
+        const priority = t.priority || 'medium';
+        const status = t.status || 'pending';
+        const color = prioridadColor(priority);
+        const statusLabel = status === 'completed' ? 'Completada' : status === 'in_progress' ? 'En progreso' : 'Pendiente';
+        const horario = formatearHorarioTarea(t.due_date);
+        const desc = (t.description || '').trim();
+        return `
+          <div style="padding:0.8rem; border:1px solid #e5e7eb; border-left:4px solid ${color}; border-radius:10px; margin-bottom:0.65rem;">
+            <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:flex-start; flex-wrap:wrap;">
+              <div style="min-width:0;">
+                <div style="font-weight:700; color:#111827; word-break:break-word;">${escaparHtml(t.title || 'Tarea')}</div>
+                <div style="font-size:0.82rem; color:#6b7280; margin-top:0.2rem;">Horario: ${escaparHtml(horario)} · Estado: ${escaparHtml(statusLabel)}</div>
+                ${desc ? `<div style="font-size:0.88rem; color:#4b5563; margin-top:0.35rem; white-space:pre-wrap; word-break:break-word;">${escaparHtml(desc)}</div>` : ''}
+              </div>
+              <button type="button" class="btn btn-secondary staff-today-detail-edit-btn" data-task-id="${escaparHtml(t.id)}" style="padding:0.35rem 0.7rem;">Editar</button>
+            </div>
+          </div>
+        `;
+    }).join('');
+}
+
+function cerrarVistaDetalleDiaCompleta() {
+    const calEl = document.getElementById('staffCalendar');
+    const dayScreen = document.getElementById('staffTodayDetailScreen');
+    if (calEl) calEl.style.display = '';
+    if (dayScreen) dayScreen.style.display = 'none';
 }
 
 function mostrarDetalleEventoCalendario(t) {
@@ -1004,7 +1079,7 @@ function inicializarStaffCalendar() {
                 text: 'today',
                 click: async () => {
                     staffCalendar.today();
-                    await mostrarDesgloseParaFecha(obtenerHoyISO());
+                    await abrirVistaDetalleDiaCompleta(obtenerHoyISO());
                 }
             }
         },
@@ -1043,6 +1118,25 @@ function inicializarStaffCalendar() {
 }
 
 document.addEventListener('click', (e) => {
+    const backBtn = e.target?.closest?.('#staffTodayBackToCalendarBtn');
+    if (backBtn) {
+        cerrarVistaDetalleDiaCompleta();
+        return;
+    }
+
+    const editTodayBtn = e.target?.closest?.('.staff-today-detail-edit-btn');
+    if (editTodayBtn) {
+        const taskId = editTodayBtn.getAttribute('data-task-id');
+        const t = staffTasksCache.find(x => x.id === taskId);
+        if (t) {
+            cargarTareaEnFormulario(t);
+            const navItems = document.querySelectorAll('.staff-nav-item');
+            navItems.forEach(b => b.classList.toggle('active', b.getAttribute('data-section') === 'tasks'));
+            mostrarSeccionStaff('tasks');
+        }
+        return;
+    }
+
     const closeBtn = e.target?.closest?.('#staffDayBreakdownCloseBtn');
     if (closeBtn) {
         cerrarDesgloseDia();
