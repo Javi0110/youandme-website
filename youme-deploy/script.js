@@ -587,20 +587,16 @@ async function obtenerTareasParaDia(dateStr) {
     }
 
     if (!supabaseClient) return [];
-    const start = new Date(`${dayISO}T00:00:00.000Z`);
-    const end = new Date(start);
-    end.setUTCDate(end.getUTCDate() + 1);
 
     try {
         const { data, error } = await supabaseClient
             .from('tasks')
             .select('id, title, description, due_date, priority, status')
-            .gte('due_date', start.toISOString())
-            .lt('due_date', end.toISOString())
+            .not('due_date', 'is', null)
             .order('priority', { ascending: false })
             .order('title', { ascending: true });
         if (error) throw error;
-        return data || [];
+        return (data || []).filter(t => normalizarFechaISO(t.due_date) === dayISO);
     } catch (e) {
         console.error('Error obteniendo tareas del día:', e);
         return [];
