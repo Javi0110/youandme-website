@@ -1890,18 +1890,23 @@ async function cargarToDosReservaEnModal() {
                     const dueISO = normalizarFechaISO(t.due_date);
                     const due = dueISO ? formatearFechaCorta(dueISO) : '—';
                     const status = t.status || 'pending';
+                    const checked = status === 'completed';
                     const statusLabel = status === 'completed' ? 'Completada' : status === 'in_progress' ? 'En progreso' : 'Pendiente';
                     return `
                       <div style="border:1px solid #e5e7eb; border-radius:10px; padding:0.6rem; display:flex; justify-content:space-between; gap:0.6rem; align-items:flex-start;">
                         <div style="min-width:0;">
-                          <div style="font-weight:800; word-break:break-word;">${escaparHtml(t.title || 'Tarea')}</div>
+                          <div style="font-weight:800; word-break:break-word; ${checked ? 'text-decoration:line-through; color:#6b7280;' : ''}">${escaparHtml(t.title || 'Tarea')}</div>
                           <div style="font-size:0.82rem; color:#6b7280; margin-top:0.25rem;">
                             Estado: ${escaparHtml(statusLabel)} · Fecha: ${escaparHtml(due)}
                           </div>
                         </div>
-                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                          <button type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.5rem;" data-open-todo-task-id="${escaparHtml(t.id)}">
-                            Abrir
+                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; justify-content:flex-end;">
+                          <label class="staffReservationTodoCheckboxLabel" data-todo-task-id="${escaparHtml(t.id)}" style="display:inline-flex; align-items:center; gap:0.35rem; font-size:0.85rem; color:#374151; cursor:pointer;">
+                            <input type="checkbox" class="staffReservationTodoCheckbox" data-todo-task-id="${escaparHtml(t.id)}" ${checked ? 'checked' : ''} />
+                            <span>${checked ? 'Hecho' : 'Pendiente'}</span>
+                          </label>
+                          <button type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.5rem; background:#f97373; border-color:#f97373; color:#fff;" data-delete-todo-task-id="${escaparHtml(t.id)}">
+                            Borrar
                           </button>
                         </div>
                       </div>
@@ -2730,19 +2735,46 @@ document.addEventListener('click', async (e) => {
         return;
     }
 
-    const openTodoBtn = e.target?.closest?.('[data-open-todo-task-id]');
-    if (openTodoBtn) {
-        const taskId = openTodoBtn.getAttribute('data-open-todo-task-id') || '';
+    const todoCheckboxLabel = e.target?.closest?.('.staffReservationTodoCheckboxLabel');
+    if (todoCheckboxLabel) {
+        const taskId = todoCheckboxLabel.getAttribute('data-todo-task-id') || '';
         if (!taskId) return;
+        const inputEl = todoCheckboxLabel.querySelector?.('.staffReservationTodoCheckbox');
+        const nextStatus = inputEl?.checked ? 'completed' : 'pending';
         try {
-            const { data } = await supabaseClient
+            const { error } = await supabaseClient
                 .from('tasks')
-                .select('id, title, description, due_date, priority, status')
-                .eq('id', taskId)
-                .maybeSingle();
-            if (data) abrirModalDetalleTarea(data);
+                .update({ status: nextStatus, updated_at: new Date().toISOString() })
+                .eq('id', taskId);
+            if (error) throw error;
+            await cargarToDosReservaEnModal();
+            if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+            cargarResumenDashboardStaff();
         } catch (err) {
-            console.error('Error abriendo to-do:', err);
+            console.error('Error actualizando to-do:', err);
+            alert('No se pudo actualizar el to-do.');
+        }
+        return;
+    }
+
+    const deleteTodoBtn = e.target?.closest?.('[data-delete-todo-task-id]');
+    if (deleteTodoBtn) {
+        const taskId = deleteTodoBtn.getAttribute('data-delete-todo-task-id') || '';
+        if (!taskId) return;
+        const ok = window.confirm('¿Borrar este to-do? Esta acción no se puede deshacer.');
+        if (!ok) return;
+        try {
+            const { error } = await supabaseClient
+                .from('tasks')
+                .delete()
+                .eq('id', taskId);
+            if (error) throw error;
+            await cargarToDosReservaEnModal();
+            if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+            cargarResumenDashboardStaff();
+        } catch (err) {
+            console.error('Error borrando to-do:', err);
+            alert('No se pudo borrar el to-do.');
         }
         return;
     }
