@@ -532,6 +532,7 @@ function mostrarSeccionStaff(section) {
 
     const titleEl = document.getElementById('staffSectionTitle');
     const subtitleEl = document.querySelector('.staff-section-subtitle');
+    const calendarControls = document.getElementById('staffCalendarHeaderControls');
     if (!titleEl || !subtitleEl) return;
 
     const map = {
@@ -544,6 +545,10 @@ function mostrarSeccionStaff(section) {
     const info = map[section] || map.dashboard;
     titleEl.textContent = info.title;
     if (subtitleEl) subtitleEl.textContent = info.subtitle;
+
+    if (calendarControls) {
+        calendarControls.style.display = section === 'calendar' ? 'flex' : 'none';
+    }
 
     if (section === 'tasks') cargarTareasStaff();
     else if (section === 'messages') cargarConversacionesStaff();
@@ -1074,16 +1079,7 @@ function inicializarStaffCalendar() {
     }
     staffCalendar = new FullCalendar.Calendar(el, {
         initialView: 'dayGridMonth',
-        customButtons: {
-            todayOpen: {
-                text: 'today',
-                click: async () => {
-                    staffCalendar.today();
-                    await abrirVistaDetalleDiaCompleta(obtenerHoyISO());
-                }
-            }
-        },
-        headerToolbar: { left: 'prev,next todayOpen', center: 'title', right: 'dayGridMonth,listWeek' },
+        headerToolbar: { left: 'prev,next', center: '', right: '' },
         locale: 'es',
         selectable: true,
         events: async (info, successCallback) => {
@@ -1118,6 +1114,26 @@ function inicializarStaffCalendar() {
 }
 
 document.addEventListener('click', (e) => {
+    const calTodayBtn = e.target?.closest?.('#staffCalendarTodayBtn');
+    const calMonthBtn = e.target?.closest?.('#staffCalendarMonthBtn');
+    const calListBtn = e.target?.closest?.('#staffCalendarListBtn');
+
+    if (calTodayBtn && typeof staffCalendar !== 'undefined' && staffCalendar) {
+        staffCalendar.today();
+        abrirVistaDetalleDiaCompleta(obtenerHoyISO());
+        return;
+    }
+    if (calMonthBtn && typeof staffCalendar !== 'undefined' && staffCalendar) {
+        cerrarVistaDetalleDiaCompleta();
+        staffCalendar.changeView('dayGridMonth');
+        return;
+    }
+    if (calListBtn && typeof staffCalendar !== 'undefined' && staffCalendar) {
+        cerrarVistaDetalleDiaCompleta();
+        staffCalendar.changeView('listWeek');
+        return;
+    }
+
     const backBtn = e.target?.closest?.('#staffTodayBackToCalendarBtn');
     if (backBtn) {
         cerrarVistaDetalleDiaCompleta();
