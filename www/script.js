@@ -852,6 +852,54 @@ async function resolverStaffIdPorEmail(email) {
     return null;
 }
 
+// Enriquecer tareas con label legible para `assigned_to`
+async function enriquecerAssignedToLabels(tareas) {
+    if (!supabaseClient || !Array.isArray(tareas) || tareas.length === 0) return;
+    const ids = Array.from(new Set(tareas.map(t => t?.assigned_to).filter(Boolean)));
+    if (ids.length === 0) return;
+
+    const roleToLabel = { admin: 'Admin', secretary: 'Secretaria' };
+    const idToInfo = new Map(); // id -> { label, role }
+
+    // 1) staff_members (fuente principal)
+    try {
+        const { data: staffRows, error } = await supabaseClient
+            .from('staff_members')
+            .select('id, role, display_name')
+            .in('id', ids);
+        if (!error && Array.isArray(staffRows) && staffRows.length > 0) {
+            staffRows.forEach(r => {
+                const label = r.display_name || roleToLabel[r.role] || r.role || ('Usuario ' + String(r.id).slice(0, 8));
+                idToInfo.set(r.id, { label, role: r.role || null });
+            });
+        }
+    } catch (_) { /* si falla, hacemos fallback */ }
+
+    // 2) profiles (fallback)
+    try {
+        const missing = ids.filter(id => !idToInfo.has(id));
+        if (missing.length > 0) {
+            const { data: profRows } = await supabaseClient
+                .from('profiles')
+                .select('id, role')
+                .in('id', missing);
+            (profRows || []).forEach(r => {
+                if (!idToInfo.has(r.id)) {
+                    const label = roleToLabel[r.role] || r.role || ('Usuario ' + String(r.id).slice(0, 8));
+                    idToInfo.set(r.id, { label, role: r.role || null });
+                }
+            });
+        }
+    } catch (_) { /* ignorar */ }
+
+    tareas.forEach(t => {
+        if (!t?.assigned_to) return;
+        const info = idToInfo.get(t.assigned_to);
+        t.assigned_to_role = info?.role || null;
+        t.assigned_to_label = info?.label || null;
+    });
+}
+
 async function cargarTareasStaff() {
     const listEl = document.getElementById('staffTasksList');
     if (!listEl || !supabaseClient || !currentStaffSession) return;
@@ -865,6 +913,7 @@ async function cargarTareasStaff() {
             .order('created_at', { ascending: false });
         if (error) throw error;
         staffTasksCache = data || [];
+        await enriquecerAssignedToLabels(staffTasksCache);
         renderizarTareasStaff(staffTasksCache);
     } catch (e) {
         console.error('Error cargando tareas:', e);
@@ -902,6 +951,7 @@ function renderizarTareasStaff(tareas) {
                   <input type="checkbox" ${checked ? 'checked' : ''} data-status="${status}" data-task-id="${t.id}" class="staff-task-checkbox">
                   <div style="flex:1;">
                     <strong>${escapeHtml(t.title || '')}</strong>
+                    ${t.assigned_to ? `<p style="font-size:0.8rem; color:#6b7280; margin:0.15rem 0 0 0;">Asignado a: ${escapeHtml(t.assigned_to_label || '—')}</p>` : ''}
                     ${t.description ? `<p style="font-size:0.85rem; color:#6b7280; margin:0.25rem 0 0 0;">${escapeHtml(t.description)}</p>` : ''}
                     <p style="font-size:0.8rem; color:#6b7280; margin-top:0.35rem;">
                       <span class="staff-task-priority-badge staff-task-priority-${t.priority || 'medium'}">
@@ -968,6 +1018,11 @@ function cargarTareaEnFormulario(t) {
     document.getElementById('taskDescription').value = t.description || '';
     document.getElementById('taskPriority').value = t.priority || 'medium';
     document.getElementById('taskDueDate').value = t.due_date ? t.due_date.slice(0, 10) : '';
+    const assigneeSelect = document.getElementById('taskAssigneeSelect');
+    if (assigneeSelect) {
+        // El dropdown actual solo tiene "Secretaria" por ahora.
+        assigneeSelect.value = t.assigned_to_role === 'secretary' ? 'secretaria' : '';
+    }
     document.getElementById('taskAssignedEmail').value = '';
     const statusEl = document.getElementById('taskFormStatus');
     if (statusEl) statusEl.textContent = 'Editando. Guarde para aplicar cambios.';
