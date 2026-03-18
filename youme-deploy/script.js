@@ -1609,6 +1609,14 @@ function asegurarModalDetalleReservaEvento() {
             <strong>Comentarios (admin):</strong>
             <div id="staffReservationModalCommentsBox" style="margin-top:0.25rem; white-space:pre-wrap;"></div>
           </div>
+          <div id="staffReservationTodoSection" style="margin-top:1rem; border-top:1px solid #e5e7eb; padding-top:0.85rem;">
+            <div style="font-weight:800; margin-bottom:0.55rem;">To-dos de la reserva</div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+              <input type="text" id="staffReservationTodoTitleInput" placeholder="Ej: comprar vasos, enviar invitaciones..." style="flex:1; min-width:220px; padding:0.5rem; border-radius:6px; border:1px solid #ddd; font-size:0.95rem;" />
+              <button type="button" class="btn btn-primary" id="staffReservationTodoAddBtn">Agregar</button>
+            </div>
+            <div id="staffReservationTodoList" style="display:grid; gap:0.55rem;"></div>
+          </div>
         </div>
       </div>
     `;
@@ -1626,6 +1634,8 @@ function abrirModalDetalleReservaEvento({ reservation, evento, startDateISO }) {
     const modal = asegurarModalDetalleReservaEvento();
     modal.style.display = 'block';
     modal.setAttribute('data-reservation-id', reservation.id || '');
+    modal.setAttribute('data-reservation-type', 'evento');
+    modal.setAttribute('data-reservation-date-iso', startDateISO || '');
 
     const metaEl = document.getElementById('staffReservationModalMeta');
     const titleEl = document.getElementById('staffReservationModalTitle');
@@ -1648,6 +1658,9 @@ function abrirModalDetalleReservaEvento({ reservation, evento, startDateISO }) {
     if (totalEl) totalEl.textContent = `Total: $${reservation.total ?? '—'}`;
     if (paidEl) paidEl.textContent = `Estado: ${reservation.pagado ? 'Pagado' : 'Pendiente'}`;
     if (commentsBox) commentsBox.textContent = reservation.comentarios_admin || '';
+
+    const todoSection = document.getElementById('staffReservationTodoSection');
+    if (todoSection) todoSection.style.display = 'none';
 }
 
 async function abrirModalDetalleReservaEventoPorId(reservationId) {
@@ -1671,6 +1684,174 @@ async function abrirModalDetalleReservaEventoPorId(reservationId) {
     abrirModalDetalleReservaEvento({ reservation, evento, startDateISO });
 }
 
+function getReservationTodoPrefix(reservationType, reservationId) {
+    return `reservation_type=${reservationType}|reservation_id=${reservationId}`;
+}
+
+async function cargarToDosReservaEnModal() {
+    const modal = document.getElementById('staffReservationQuickModal');
+    if (!modal || modal.style.display === 'none') return;
+    if (!supabaseClient || !currentStaffSession) return;
+
+    const reservationType = modal.getAttribute('data-reservation-type') || '';
+    const reservationId = modal.getAttribute('data-reservation-id') || '';
+    if (!reservationType || !reservationId) return;
+
+    const uid = currentStaffSession.user.id;
+    const todoPrefix = getReservationTodoPrefix(reservationType, reservationId);
+
+    const todoListEl = document.getElementById('staffReservationTodoList');
+    if (todoListEl) todoListEl.innerHTML = '<p style="color:#6b7280; font-size:0.9rem;">Cargando...</p>';
+
+    try {
+        const { data: tareasRes, error } = await supabaseClient
+            .from('tasks')
+            .select('id, title, description, due_date, priority, status')
+            .or(`assigned_to.eq.${uid},created_by.eq.${uid}`)
+            .ilike('description', `%${todoPrefix}%`);
+
+        if (error) throw error;
+        const tareas = Array.isArray(tareasRes) ? tareasRes : [];
+
+        if (todoListEl) {
+            if (tareas.length === 0) {
+                todoListEl.innerHTML = '<p style="color:#6b7280; font-size:0.9rem;">Todavía no hay to-dos para esta reserva.</p>';
+            } else {
+                todoListEl.innerHTML = tareas.map(t => {
+                    const dueISO = normalizarFechaISO(t.due_date);
+                    const due = dueISO ? formatearFechaCorta(dueISO) : '—';
+                    const status = t.status || 'pending';
+                    const statusLabel = status === 'completed' ? 'Completada' : status === 'in_progress' ? 'En progreso' : 'Pendiente';
+                    return `
+                      <div style="border:1px solid #e5e7eb; border-radius:10px; padding:0.6rem; display:flex; justify-content:space-between; gap:0.6rem; align-items:flex-start;">
+                        <div style="min-width:0;">
+                          <div style="font-weight:800; word-break:break-word;">${escaparHtml(t.title || 'Tarea')}</div>
+                          <div style="font-size:0.82rem; color:#6b7280; margin-top:0.25rem;">
+                            Estado: ${escaparHtml(statusLabel)} · Fecha: ${escaparHtml(due)}
+                          </div>
+                        </div>
+                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                          <button type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.5rem;" data-open-todo-task-id="${escaparHtml(t.id)}">
+                            Abrir
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                }).join('');
+            }
+        }
+    } catch (err) {
+        console.error('Error cargando to-dos reserva:', err);
+        if (todoListEl) todoListEl.innerHTML = '<p style="color:#b91c1c; font-size:0.9rem;">No se pudieron cargar los to-dos.</p>';
+    }
+}
+
+async function crearTodoEnModal() {
+    const modal = document.getElementById('staffReservationQuickModal');
+    if (!modal || modal.style.display === 'none') return;
+    if (!supabaseClient || !currentStaffSession) return;
+
+    const isAdmin = String(currentStaffSession?.user?.email || '').toLowerCase() === 'centroyouandme@gmail.com';
+    if (!isAdmin) return;
+
+    const reservationType = modal.getAttribute('data-reservation-type') || '';
+    const reservationId = modal.getAttribute('data-reservation-id') || '';
+    const reservationDateISO = modal.getAttribute('data-reservation-date-iso') || '';
+    if (!reservationType || !reservationId || !reservationDateISO) return;
+
+    const todoPrefix = getReservationTodoPrefix(reservationType, reservationId);
+    const title = document.getElementById('staffReservationTodoTitleInput')?.value?.trim() || '';
+    if (!title) {
+        alert('Escribe el título del to-do.');
+        return;
+    }
+
+    const uid = currentStaffSession.user.id;
+    const dueDateUTC = `${reservationDateISO}T12:00:00.000Z`;
+
+    try {
+        const payload = {
+            title,
+            description: `${todoPrefix}`,
+            priority: 'low',
+            due_date: dueDateUTC,
+            status: 'pending',
+            created_by: uid,
+            assigned_to: uid,
+            updated_at: new Date().toISOString()
+        };
+
+        const { error } = await supabaseClient.from('tasks').insert([payload]);
+        if (error) throw error;
+
+        const inputEl = document.getElementById('staffReservationTodoTitleInput');
+        if (inputEl) inputEl.value = '';
+
+        await cargarToDosReservaEnModal();
+        if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+        cargarResumenDashboardStaff();
+    } catch (err) {
+        console.error('Error creando to-do reserva:', err);
+        alert('No se pudo crear el to-do.');
+    }
+}
+
+function abrirModalDetalleReservaCumple({ reservation, startDateISO }) {
+    if (!reservation) return;
+    const modal = asegurarModalDetalleReservaEvento();
+    modal.style.display = 'block';
+    modal.setAttribute('data-reservation-id', reservation.id || '');
+    modal.setAttribute('data-reservation-type', 'cumple');
+    modal.setAttribute('data-reservation-date-iso', startDateISO || '');
+
+    const metaEl = document.getElementById('staffReservationModalMeta');
+    const titleEl = document.getElementById('staffReservationModalTitle');
+    const childEl = document.getElementById('staffReservationModalChild');
+    const parentEl = document.getElementById('staffReservationModalParent');
+    const contactEl = document.getElementById('staffReservationModalContact');
+    const daysEl = document.getElementById('staffReservationModalDays');
+    const totalEl = document.getElementById('staffReservationModalTotal');
+    const paidEl = document.getElementById('staffReservationModalPaid');
+    const commentsBox = document.getElementById('staffReservationModalCommentsBox');
+
+    if (titleEl) titleEl.textContent = 'Detalle de cumpleaños';
+    const displayDate = startDateISO ? formatearFechaCorta(startDateISO) : '—';
+    if (metaEl) metaEl.textContent = `Cumpleaños · ${displayDate}`;
+
+    if (childEl) childEl.textContent = `Niño/a: ${reservation.nombre_nino || '—'}`;
+    if (parentEl) parentEl.textContent = `Contacto: ${reservation.contacto || '—'}`;
+    if (contactEl) contactEl.textContent = `Tel: ${reservation.telefono || '—'} · Email: ${reservation.email || '—'}`;
+
+    if (daysEl) {
+        const actividad = reservation.actividad ? String(reservation.actividad) : '';
+        const horas = reservation.horas ? String(reservation.horas) : '';
+        const extra = [horas ? `Horas: ${horas}` : '', actividad ? `Actividad: ${actividad}` : ''].filter(Boolean).join(' · ');
+        daysEl.textContent = extra || '—';
+    }
+
+    if (totalEl) totalEl.textContent = `Total: $${reservation.total ?? '—'}`;
+    if (paidEl) paidEl.textContent = `Estado: ${reservation.pagado ? 'Pagado' : 'Pendiente'}`;
+    if (commentsBox) commentsBox.textContent = reservation.comentarios_admin || '';
+
+    const todoSection = document.getElementById('staffReservationTodoSection');
+    if (todoSection) todoSection.style.display = '';
+
+    cargarToDosReservaEnModal().catch(() => { /* ignore */ });
+}
+
+async function abrirModalDetalleReservaCumplePorId(reservationId) {
+    if (!reservationId || !supabaseClient) return;
+    const { data: reservation, error: resErr } = await supabaseClient
+        .from('reservas_cumple')
+        .select('id, nombre_nino, fecha, contacto, telefono, email, horas, actividad, total, pagado, comentarios_admin')
+        .eq('id', reservationId)
+        .maybeSingle();
+    if (resErr || !reservation) return;
+
+    const startDateISO = reservation.fecha ? normalizarFechaISO(reservation.fecha) : null;
+    abrirModalDetalleReservaCumple({ reservation, startDateISO });
+}
+
 function abrirModalDetalleTarea(task) {
     if (!task) return;
     const modal = asegurarModalDetalleTarea();
@@ -1680,8 +1861,11 @@ function abrirModalDetalleTarea(task) {
     const originalDesc = task.description || '';
     const reminderPrefixMatch = originalDesc.match(/reminder_type=reminder\|referral_patient_id=[^\n]*/);
     const reminderPrefix = reminderPrefixMatch ? reminderPrefixMatch[0] : '';
+    const reservationPrefixMatch = originalDesc.match(/reservation_type=(cumple|evento)\|reservation_id=[^\n]*/);
+    const reservationPrefix = reservationPrefixMatch ? reservationPrefixMatch[0] : '';
+    const internalPrefix = reminderPrefix || reservationPrefix;
     modal.setAttribute('data-original-description', originalDesc);
-    modal.setAttribute('data-reminder-prefix', reminderPrefix);
+    modal.setAttribute('data-internal-prefix', internalPrefix);
 
     const titleEl = document.getElementById('staffTaskModalTitle');
     const metaEl = document.getElementById('staffTaskModalMeta');
@@ -1695,11 +1879,8 @@ function abrirModalDetalleTarea(task) {
         metaEl.textContent = `${statusLabel} · Fecha: ${due}`;
     }
     if (commentEl) {
-        if (reminderPrefix) {
-            commentEl.value = originalDesc.replace(reminderPrefix, '').trim();
-        } else {
-            commentEl.value = originalDesc;
-        }
+        if (internalPrefix) commentEl.value = originalDesc.replace(internalPrefix, '').trim();
+        else commentEl.value = originalDesc;
     }
     if (toggleBtn) toggleBtn.textContent = task.status === 'completed' ? 'Marcar pendiente' : 'Marcar completada';
     if (progressBtn) progressBtn.style.display = task.status === 'pending' ? '' : 'none';
@@ -1941,6 +2122,33 @@ function inicializarStaffCalendar() {
 
                 // ADMIN (solo centroyouandme@gmail.com): pintar reservas de eventos desde el website.
                 if (isAdminCalendar) {
+                    // ADMIN: Reservas de cumpleaños (reservas_cumple)
+                    try {
+                        const { data: reservasCumpleRows, error: reservasCumpleErr } = await supabaseClient
+                            .from('reservas_cumple')
+                            .select('id, nombre_nino, fecha, contacto, telefono, email, horas, actividad, total, pagado, comentarios_admin')
+                            .gte('fecha', startISO)
+                            .lt('fecha', endISOExclusive);
+
+                        if (!reservasCumpleErr && Array.isArray(reservasCumpleRows)) {
+                            reservasCumpleRows.forEach(r => {
+                                const fechaISO = normalizarFechaISO(r.fecha);
+                                if (!fechaISO) return;
+                                const paidColor = r.pagado ? '#16a34a' : '#f59e0b';
+                                events.push({
+                                    id: `reservaCumple:${r.id}`,
+                                    title: `Cumpleaños - ${r.nombre_nino || 'Paciente'}`,
+                                    start: fechaISO,
+                                    allDay: true,
+                                    backgroundColor: paidColor,
+                                    extendedProps: { reservationType: 'cumple', reservationId: r.id }
+                                });
+                            });
+                        }
+                    } catch (err) {
+                        console.warn('Error cargando reservas_cumple para calendario staff:', err);
+                    }
+
                     const { data: eventosRows, error: eventosErr } = await supabaseClient
                         .from('eventos')
                         .select('id, nombre, fecha, horario')
@@ -2012,6 +2220,11 @@ function inicializarStaffCalendar() {
             if (reservationType === 'evento') {
                 const reservationId = arg.event.extendedProps?.reservationId;
                 await abrirModalDetalleReservaEventoPorId(reservationId).catch(() => { /* ignore */ });
+                return;
+            }
+            if (reservationType === 'cumple') {
+                const reservationId = arg.event.extendedProps?.reservationId;
+                await abrirModalDetalleReservaCumplePorId(reservationId).catch(() => { /* ignore */ });
                 return;
             }
             const taskId = arg.event.extendedProps?.taskId || arg.event.id;
@@ -2208,9 +2421,9 @@ document.addEventListener('click', async (e) => {
     if (saveBtn) {
         const txt = document.getElementById('staffTaskModalCommentInput')?.value?.trim() ?? '';
         try {
-            const reminderPrefix = modal.getAttribute('data-reminder-prefix') || '';
-            const newDescription = reminderPrefix
-                ? `${reminderPrefix}${txt ? '\n' + txt : ''}`
+            const internalPrefix = modal.getAttribute('data-internal-prefix') || '';
+            const newDescription = internalPrefix
+                ? `${internalPrefix}${txt ? '\n' + txt : ''}`
                 : txt;
             const { error } = await supabaseClient
                 .from('tasks')
@@ -2265,11 +2478,35 @@ document.addEventListener('click', async (e) => {
     }
 });
 
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
     const modal = document.getElementById('staffReservationQuickModal');
     if (!modal || modal.style.display === 'none') return;
     if (e.target === modal || e.target?.closest?.('#staffReservationModalCloseBtn')) {
         cerrarModalDetalleReservaEvento();
+        return;
+    }
+
+    const addTodoBtn = e.target?.closest?.('#staffReservationTodoAddBtn');
+    if (addTodoBtn) {
+        await crearTodoEnModal();
+        return;
+    }
+
+    const openTodoBtn = e.target?.closest?.('[data-open-todo-task-id]');
+    if (openTodoBtn) {
+        const taskId = openTodoBtn.getAttribute('data-open-todo-task-id') || '';
+        if (!taskId) return;
+        try {
+            const { data } = await supabaseClient
+                .from('tasks')
+                .select('id, title, description, due_date, priority, status')
+                .eq('id', taskId)
+                .maybeSingle();
+            if (data) abrirModalDetalleTarea(data);
+        } catch (err) {
+            console.error('Error abriendo to-do:', err);
+        }
+        return;
     }
 });
 
