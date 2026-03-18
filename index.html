@@ -792,6 +792,7 @@
                       <button class="staff-nav-item active" data-section="dashboard">Dashboard</button>
                       <button class="staff-nav-item" data-section="tasks">Tareas</button>
                       <button class="staff-nav-item" data-section="calendar">Calendario</button>
+                      <button class="staff-nav-item" data-section="referrals">Referidos</button>
                       <button class="staff-nav-item" data-section="messages">Mensajes</button>
                       <button class="staff-nav-item staff-nav-item-admin" id="backToAdminBtn" style="display:none;">Panel de administración</button>
                     </nav>
@@ -923,6 +924,38 @@
                             <button type="button" class="btn btn-secondary" id="staffDayBreakdownCloseBtn" style="padding:0.45rem 0.8rem;">Cerrar</button>
                           </div>
                           <div id="staffDayBreakdownContent" style="margin-top:0.75rem;"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="staff-section" data-staff-section="referrals" style="display:none;">
+                      <div class="staff-card" style="padding:0.75rem;">
+                        <h4 style="margin-top:0;">Calendario de referidos</h4>
+                        <p style="font-size:0.85rem; color:#6b7280; margin-bottom:0.75rem;">
+                          Agrega pacientes y la fecha de vencimiento del referido. El sistema crea recordatorios automáticos una semana antes.
+                        </p>
+                        <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                          <div style="flex:1; min-width:260px;">
+                            <form id="referralPatientForm" style="margin-top:0.5rem;">
+                              <input type="hidden" id="referralPatientId">
+                              <div class="form-group">
+                                <label>Paciente</label>
+                                <input type="text" id="referralPatientName" required placeholder="Ej: Alanis">
+                              </div>
+                              <div class="form-group">
+                                <label>Vencimiento del referido</label>
+                                <input type="date" id="referralExpiresOn" required>
+                              </div>
+                              <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+                                <button type="submit" class="btn btn-primary">Guardar</button>
+                                <button type="button" class="btn btn-secondary" id="referralFormCancelBtn">Cancelar</button>
+                              </div>
+                              <p id="referralFormStatus" style="margin-top:0.5rem; font-size:0.85rem; color:#6b7280;"></p>
+                            </form>
+                          </div>
+                          <div style="flex:2; min-width:320px;">
+                            <div id="staffReferralsCalendar" style="min-height:400px; background:#fff; border-radius:12px; border:1px solid #e5e7eb;"></div>
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -377,6 +377,11 @@ function actualizarUIStaff() {
     cargarResumenDashboardStaff().catch((e) => {
         console.error('Error cargando resumen de dashboard:', e);
     });
+
+    // Scheduler de recordatorios por vencimiento de referidos (1 vez al día)
+    ejecutarSchedulerReferidos().catch((e) => {
+        console.error('Error ejecutando scheduler de referidos:', e);
+    });
 }
 
 function requireStaffRole(requiredRoles = []) {
@@ -543,6 +548,7 @@ function mostrarSeccionStaff(section) {
         dashboard: { title: 'Dashboard', subtitle: 'Resumen: tareas de hoy y mensajes sin leer.' },
         tasks: { title: 'Tareas', subtitle: 'Crear, asignar y marcar tareas como completadas.' },
         calendar: { title: 'Calendario', subtitle: 'Tareas con fecha límite. Clic para editar.' },
+        referrals: { title: 'Referidos', subtitle: 'Vencimientos de referidos + recordatorios automáticos.' },
         messages: { title: 'Mensajes', subtitle: 'Comunicación entre admin y secretaria.' }
     };
 
@@ -557,6 +563,7 @@ function mostrarSeccionStaff(section) {
     if (section === 'tasks') cargarTareasStaff();
     else if (section === 'messages') cargarConversacionesStaff();
     else if (section === 'calendar') inicializarStaffCalendar();
+    else if (section === 'referrals') inicializarStaffReferralsCalendar();
 }
 
 function manejarRutasStaff() {
@@ -569,6 +576,9 @@ function manejarRutasStaff() {
 // ==================== STAFF PORTAL: TAREAS, MENSAJES, CALENDARIO ====================
 let staffCalendar = null;
 let staffTasksCache = [];
+let staffReferralsCalendar = null;
+let staffReferralsCache = [];
+let __referralReminderSchedulerLastRunISO = null;
 
 function formatoDiaLargoES(date) {
     try {
@@ -633,6 +643,227 @@ function formatearHorarioTarea(dateStr) {
     const mm = String(d.getMinutes()).padStart(2, '0');
     if (hh === '00' && mm === '00') return 'Sin horario';
     return `${hh}:${mm}`;
+}
+
+function sumarDiasISO(dateISO, deltaDays) {
+    const iso = normalizarFechaISO(dateISO);
+    if (!iso) return null;
+    const [y, m, d] = iso.split('-').map(Number);
+    // Usar UTC evita corrimientos por zona horaria.
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    dt.setUTCDate(dt.getUTCDate() + deltaDays);
+    return dt.toISOString().slice(0, 10);
+}
+
+async function cargarPacientesReferidos() {
+    if (!supabaseClient || !currentStaffSession) return [];
+    const { data, error } = await supabaseClient
+        .from('referral_patients')
+        .select('id, patient_name, referral_expires_on')
+        .order('referral_expires_on', { ascending: true });
+    if (error) throw error;
+    staffReferralsCache = data || [];
+    return staffReferralsCache;
+}
+
+function cargarPacienteReferidoEnFormulario(p) {
+    const idEl = document.getElementById('referralPatientId');
+    const nameEl = document.getElementById('referralPatientName');
+    const expiresEl = document.getElementById('referralExpiresOn');
+    if (!idEl || !nameEl || !expiresEl) return;
+
+    idEl.value = p?.id || '';
+    nameEl.value = p?.patient_name || '';
+    expiresEl.value = p?.referral_expires_on ? normalizarFechaISO(p.referral_expires_on) : '';
+    const statusEl = document.getElementById('referralFormStatus');
+    if (statusEl) statusEl.textContent = 'Editando. Guarda para aplicar cambios.';
+}
+
+function limpiarFormularioReferidos() {
+    const form = document.getElementById('referralPatientForm');
+    if (!form) return;
+    form.reset();
+    const statusEl = document.getElementById('referralFormStatus');
+    if (statusEl) statusEl.textContent = '';
+    const idEl = document.getElementById('referralPatientId');
+    if (idEl) idEl.value = '';
+}
+
+async function inicializarStaffReferralsCalendar() {
+    const el = document.getElementById('staffReferralsCalendar');
+    if (!el || typeof FullCalendar === 'undefined') return;
+    if (staffReferralsCalendar) {
+        staffReferralsCalendar.refetchEvents();
+        return;
+    }
+
+    staffReferralsCalendar = new FullCalendar.Calendar(el, {
+        initialView: 'dayGridMonth',
+        headerToolbar: { left: 'prev,next', center: '', right: '' },
+        locale: 'es',
+        selectable: false,
+        events: async (info, successCallback) => {
+            try {
+                // Cargar una vez si no hay cache.
+                if (!Array.isArray(staffReferralsCache) || staffReferralsCache.length === 0) {
+                    await cargarPacientesReferidos();
+                }
+
+                const startISO = normalizarFechaISO(info.startStr);
+                const endISO = normalizarFechaISO(info.endStr);
+                const events = (staffReferralsCache || []).map(r => {
+                    const expISO = normalizarFechaISO(r.referral_expires_on);
+                    if (!expISO) return null;
+                    // Solo pintar dentro del rango visible (endStr es fin exclusivo).
+                    if (startISO && endISO && expISO < startISO) return null;
+                    if (startISO && endISO && expISO >= endISO) return null;
+                    return {
+                        id: r.id,
+                        title: r.patient_name || 'Paciente',
+                        start: expISO,
+                        allDay: true,
+                        extendedProps: { referralPatientId: r.id }
+                    };
+                }).filter(Boolean);
+
+                successCallback(events);
+            } catch (e) {
+                console.error('Error cargando calendario de referidos:', e);
+                successCallback([]);
+            }
+        },
+        eventClick: (arg) => {
+            const referralId = arg.event.extendedProps?.referralPatientId || arg.event.id;
+            const p = (staffReferralsCache || []).find(x => x.id === referralId);
+            if (p) cargarPacienteReferidoEnFormulario(p);
+        }
+    });
+
+    staffReferralsCalendar.render();
+}
+
+async function ejecutarSchedulerReferidos() {
+    if (!supabaseClient || !currentStaffSession) return;
+    const hoyISO = obtenerHoyISO();
+    if (__referralReminderSchedulerLastRunISO === hoyISO) return;
+    __referralReminderSchedulerLastRunISO = hoyISO;
+
+    const targetEmails = [
+        'centroyouandme@gmail.com',
+        'mfadhel.ot@gmail.com',
+        'andreagarciaot@gmail.com',
+        'asistenteyouandme@gmail.com'
+    ];
+
+    // Ventana: crear recordatorios dentro de +/- unos días alrededor de hoy.
+    const reminderBackDays = 14;
+    const reminderForwardDays = 1;
+    const reminderStartISO = sumarDiasISO(hoyISO, -reminderBackDays);
+    const reminderEndISO = sumarDiasISO(hoyISO, reminderForwardDays);
+    if (!reminderStartISO || !reminderEndISO) return;
+
+    // Traer staff (para asignar cada reminder).
+    const { data: staffRows, error: staffErr } = await supabaseClient
+        .from('staff_members')
+        .select('id, email, role, display_name')
+        .in('email', targetEmails);
+    if (staffErr) throw staffErr;
+    const staffIds = (staffRows || []).map(r => r.id).filter(Boolean);
+    if (staffIds.length === 0) return;
+
+    // Traer referidos cuyos vencimientos caerán cerca del rango de reminders.
+    // Reminder = expires_on - 7 días.
+    const startExpiresISO = sumarDiasISO(reminderStartISO, 7);
+    const endExpiresISO = sumarDiasISO(reminderEndISO, 7);
+    if (!startExpiresISO || !endExpiresISO) return;
+
+    const { data: referralRows, error: refErr } = await supabaseClient
+        .from('referral_patients')
+        .select('id, patient_name, referral_expires_on')
+        .gte('referral_expires_on', startExpiresISO)
+        .lte('referral_expires_on', endExpiresISO);
+    if (refErr) throw refErr;
+
+    if (!Array.isArray(referralRows) || referralRows.length === 0) return;
+
+    // Cargar jobs existentes para evitar duplicados.
+    const { data: jobs, error: jobsErr } = await supabaseClient
+        .from('referral_reminder_jobs')
+        .select('referral_patient_id, reminder_due_on')
+        .gte('reminder_due_on', reminderStartISO)
+        .lte('reminder_due_on', reminderEndISO);
+    if (jobsErr) throw jobsErr;
+
+    const jobKeySet = new Set((jobs || []).map(j => `${j.referral_patient_id}|${normalizarFechaISO(j.reminder_due_on)}`));
+
+    const nowISO = new Date().toISOString();
+    const tasksToInsertByStaffId = [];
+
+    // Crear reminders faltantes.
+    for (const r of referralRows) {
+        const expiresISO = normalizarFechaISO(r.referral_expires_on);
+        if (!expiresISO) continue;
+        const reminderDueISO = sumarDiasISO(expiresISO, -7);
+        if (!reminderDueISO) continue;
+
+        if (reminderDueISO < reminderStartISO || reminderDueISO > reminderEndISO) continue;
+
+        const key = `${r.id}|${reminderDueISO}`;
+        if (jobKeySet.has(key)) continue;
+
+        // Insertar job primero para evitar duplicados (único en la tabla).
+        try {
+            const { error: jobInsErr } = await supabaseClient
+                .from('referral_reminder_jobs')
+                .insert([{
+                    referral_patient_id: r.id,
+                    reminder_due_on: reminderDueISO,
+                    created_by: currentStaffSession.user.id
+                }]);
+            if (jobInsErr) throw jobInsErr;
+            jobKeySet.add(key);
+        } catch (e) {
+            // Si hay conflicto por duplicado, lo ignoramos.
+            console.warn('No se pudo insertar job de reminder (probable duplicado):', e?.message || e);
+            continue;
+        }
+
+        const expiresDisplay = formatearFechaCorta(expiresISO);
+        const title = `Avisar a padres de ${r.patient_name} que el referido vencerá ${expiresDisplay}`;
+        const description = `reminder_type=reminder|referral_patient_id=${r.id}`;
+        const dueDateUTC = `${reminderDueISO}T12:00:00.000Z`;
+
+        const tasksBatch = staffIds.map(staffId => ({
+            title,
+            description,
+            priority: 'low',
+            due_date: dueDateUTC,
+            status: 'pending',
+            created_by: currentStaffSession.user.id,
+            assigned_to: staffId,
+            updated_at: nowISO
+        }));
+
+        tasksToInsertByStaffId.push(tasksBatch);
+
+        // Insertar por lotes (pequeño: 4 staff).
+        try {
+            const flat = tasksBatch;
+            const { error: taskErr } = await supabaseClient.from('tasks').insert(flat);
+            if (taskErr) throw taskErr;
+        } catch (e) {
+            console.error('Error insertando tareas reminder:', e);
+        }
+    }
+
+    // Refrescar UI relevante.
+    try {
+        cargarResumenDashboardStaff();
+        if (document.querySelector('.staff-section[data-staff-section="tasks"]')?.style?.display !== 'none') {
+            cargarTareasStaff();
+        }
+        if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+    } catch (_) { /* ignore */ }
 }
 
 async function obtenerTareasParaDia(dateStr) {
@@ -1146,6 +1377,64 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('staffTaskForm')?.reset();
             document.getElementById('taskId').value = '';
             document.getElementById('taskFormStatus').textContent = '';
+        });
+    }
+});
+
+// Referidos: formulario (alta/edicion)
+document.addEventListener('DOMContentLoaded', () => {
+    const referralForm = document.getElementById('referralPatientForm');
+    const cancelBtn = document.getElementById('referralFormCancelBtn');
+    if (referralForm) {
+        referralForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!supabaseClient || !currentStaffSession) return;
+
+            const id = document.getElementById('referralPatientId')?.value?.trim() || '';
+            const patientName = document.getElementById('referralPatientName')?.value?.trim();
+            const expiresOn = document.getElementById('referralExpiresOn')?.value || '';
+            const statusEl = document.getElementById('referralFormStatus');
+
+            if (!patientName || !expiresOn) return;
+            const expiresISO = normalizarFechaISO(expiresOn);
+            if (!expiresISO) return;
+
+            try {
+                if (id) {
+                    const { error } = await supabaseClient
+                        .from('referral_patients')
+                        .update({
+                            patient_name: patientName,
+                            referral_expires_on: expiresISO
+                        })
+                        .eq('id', id);
+                    if (error) throw error;
+                    if (statusEl) statusEl.textContent = 'Referido actualizado.';
+                } else {
+                    const { error } = await supabaseClient
+                        .from('referral_patients')
+                        .insert([{
+                            patient_name: patientName,
+                            referral_expires_on: expiresISO,
+                            created_by: currentStaffSession.user.id
+                        }]);
+                    if (error) throw error;
+                    if (statusEl) statusEl.textContent = 'Referido guardado.';
+                }
+
+                limpiarFormularioReferidos();
+                await cargarPacientesReferidos();
+                if (staffReferralsCalendar) staffReferralsCalendar.refetchEvents();
+            } catch (err) {
+                console.error('Error guardando referido:', err);
+                if (statusEl) statusEl.textContent = 'Error al guardar referido.';
+            }
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            limpiarFormularioReferidos();
         });
     }
 });
