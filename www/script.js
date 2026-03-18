@@ -1064,6 +1064,36 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('taskFormStatus').textContent = '';
         });
     }
+
+    document.addEventListener('click', async (e) => {
+        const btn = e.target?.closest?.('.staff-message-delete-btn');
+        if (!btn) return;
+
+        const id = btn.getAttribute('data-message-id');
+        const uid = currentStaffSession?.user?.id;
+        if (!id || !uid || !supabaseClient) return;
+
+        const ok = window.confirm('¿Borrar este mensaje? Esta acción no se puede deshacer.');
+        if (!ok) return;
+
+        try {
+            const { error } = await supabaseClient
+                .from('messages')
+                .delete()
+                .eq('id', id)
+                .eq('sender_id', uid);
+            if (error) throw error;
+
+            const currentReceiver = document.getElementById('staffCurrentReceiverId')?.value;
+            const currentLabel = document.getElementById('staffConversationTitle')?.textContent || '';
+            if (currentReceiver) {
+                await seleccionarConversacionStaff(currentReceiver, currentLabel);
+            }
+        } catch (err) {
+            console.error('Error borrando mensaje:', err);
+            alert('No se pudo borrar el mensaje. Intenta de nuevo.');
+        }
+    });
 });
 
 function inicializarStaffCalendar() {
@@ -1302,11 +1332,24 @@ async function seleccionarConversacionStaff(otherUserId, otherLabel) {
     document.getElementById('staffCurrentReceiverId').value = otherUserId;
     document.getElementById('staffConversationTitle').textContent = otherLabel || otherUserId;
     const historyEl = document.getElementById('staffMessagesHistory');
-    const { data } = await supabaseClient.from('messages').select('*').or(`and(sender_id.eq.${uid},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${uid})`).order('created_at', { ascending: true });
+    const { data } = await supabaseClient
+        .from('messages')
+        .select('*')
+        .or(
+            `and(sender_id.eq.${uid},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${uid})`
+        )
+        .order('created_at', { ascending: true });
     historyEl.innerHTML = (data || []).map(m => {
         const isMe = m.sender_id === uid;
         const time = new Date(m.created_at).toLocaleString('es-PR', { timeStyle: 'short', dateStyle: 'short' });
-        return `<div class="staff-msg ${isMe ? 'staff-msg-me' : 'staff-msg-them'}"><div>${escapeHtml(m.message)}</div><small>${time}</small></div>`;
+        return `
+          <div class="staff-msg ${isMe ? 'staff-msg-me' : 'staff-msg-them'}" data-message-id="${m.id}">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
+              <div>${escapeHtml(m.message)}</div>
+              ${isMe ? `<button type="button" class="btn btn-secondary staff-message-delete-btn" data-message-id="${m.id}" style="font-size:0.7rem; padding:0.15rem 0.4rem;">Borrar</button>` : ''}
+            </div>
+            <small>${time}</small>
+          </div>`;
     }).join('');
     historyEl.scrollTop = historyEl.scrollHeight;
     await supabaseClient.from('messages').update({ read_status: true }).eq('receiver_id', uid).eq('sender_id', otherUserId);
