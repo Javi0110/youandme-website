@@ -2034,7 +2034,7 @@ async function abrirModalDetalleReservaCumplePorId(reservationId) {
     if (!reservationId || !supabaseClient) return;
     const { data: reservation, error: resErr } = await supabaseClient
         .from('reservas_cumple')
-        .select('id, nombre_nino, fecha, contacto, telefono, email, horas, actividad, total, pagado, comentarios_admin')
+        .select('id, nombre_nino, fecha, pagado')
         .eq('id', reservationId)
         .maybeSingle();
     if (resErr || !reservation) return;
@@ -2361,8 +2361,7 @@ function inicializarStaffCalendar() {
                     try {
                         const { data: reservasCumpleRows, error: reservasCumpleErr } = await supabaseClient
                             .from('reservas_cumple')
-                            .select('id, nombre_nino, fecha, contacto, telefono, email, horas, actividad, total, pagado, comentarios_admin')
-                            ;
+                            .select('id, nombre_nino, fecha, pagado');
 
                         if (!reservasCumpleErr && Array.isArray(reservasCumpleRows)) {
                             reservasCumpleRows.forEach(r => {
