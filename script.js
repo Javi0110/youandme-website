@@ -1015,7 +1015,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const description = document.getElementById('taskDescription').value.trim();
             const priority = document.getElementById('taskPriority').value || 'medium';
             const dueDate = document.getElementById('taskDueDate').value || null;
-            const assignedEmail = document.getElementById('taskAssignedEmail').value.trim().toLowerCase() || null;
+            const assigneeSelect = document.getElementById('taskAssigneeSelect');
+            let assignedEmail = document.getElementById('taskAssignedEmail')?.value.trim().toLowerCase() || null;
+            if (assigneeSelect) {
+                const assigneeValue = assigneeSelect.value;
+                if (assigneeValue === 'secretaria') {
+                    // Email fijo de la secretaria en el staff portal
+                    assignedEmail = 'centroyouandme@gmail.com';
+                } else {
+                    assignedEmail = null;
+                }
+                const hiddenEmailInput = document.getElementById('taskAssignedEmail');
+                if (hiddenEmailInput) hiddenEmailInput.value = assignedEmail || '';
+            }
             const statusEl = document.getElementById('taskFormStatus');
             const payload = {
                 title,
