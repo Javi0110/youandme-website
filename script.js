@@ -411,8 +411,8 @@ async function cargarResumenDashboardStaff() {
     const hoyInicio = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
     const hoyFin = new Date(hoyInicio);
     hoyFin.setDate(hoyFin.getDate() + 1);
-    const hoyInicioISO = hoyInicio.toISOString();
     const hoyFinISO = hoyFin.toISOString();
+    const hoyISO = obtenerHoyISO();
 
     let tareasHoy = 0;
     let mensajesSinLeer = 0;
@@ -421,10 +421,9 @@ async function cargarResumenDashboardStaff() {
         const [tareasRes, mensajesRes] = await Promise.all([
             supabaseClient
                 .from('tasks')
-                .select('id')
+                .select('id, due_date')
                 .or(`assigned_to.eq.${uid},created_by.eq.${uid}`)
                 .in('status', ['pending', 'in_progress'])
-                .gte('due_date', hoyInicioISO)
                 .lt('due_date', hoyFinISO),
             supabaseClient
                 .from('messages')
@@ -433,7 +432,12 @@ async function cargarResumenDashboardStaff() {
                 .eq('read_status', false)
         ]);
 
-        if (!tareasRes.error && Array.isArray(tareasRes.data)) tareasHoy = tareasRes.data.length;
+        if (!tareasRes.error && Array.isArray(tareasRes.data)) {
+            tareasHoy = tareasRes.data.filter(t => {
+                const dueISO = normalizarFechaISO(t.due_date);
+                return dueISO && dueISO <= hoyISO;
+            }).length;
+        }
         if (!mensajesRes.error && Array.isArray(mensajesRes.data)) mensajesSinLeer = mensajesRes.data.length;
     } catch (e) {
         console.error('Error consultando resumen de dashboard:', e);
@@ -636,8 +640,12 @@ async function obtenerTareasParaDia(dateStr) {
     if (!dayISO) return [];
 
     if (Array.isArray(staffTasksCache) && staffTasksCache.length > 0) {
-        const fromCache = staffTasksCache.filter(t => normalizarFechaISO(t.due_date) === dayISO);
-        if (fromCache.length > 0) return fromCache;
+        // Tareas no completadas: se consideran activas desde due_date hacia adelante.
+        return staffTasksCache.filter(t => {
+            if (!t || t.status === 'completed') return false;
+            const dueISO = normalizarFechaISO(t.due_date);
+            return !!dueISO && dueISO <= dayISO;
+        });
     }
 
     if (!supabaseClient) return [];
@@ -647,10 +655,15 @@ async function obtenerTareasParaDia(dateStr) {
             .from('tasks')
             .select('id, title, description, due_date, priority, status')
             .not('due_date', 'is', null)
+            .neq('status', 'completed')
             .order('priority', { ascending: false })
             .order('title', { ascending: true });
         if (error) throw error;
-        return (data || []).filter(t => normalizarFechaISO(t.due_date) === dayISO);
+        // Filtro por "activa" (due_date <= día) para que aparezca todos los días posteriores.
+        return (data || []).filter(t => {
+            const dueISO = normalizarFechaISO(t.due_date);
+            return dueISO && dueISO <= dayISO && t.status !== 'completed';
+        });
     } catch (e) {
         console.error('Error obteniendo tareas del día:', e);
         return [];
@@ -1152,26 +1165,49 @@ function inicializarStaffCalendar() {
         events: async (info, successCallback) => {
             if (!supabaseClient) return successCallback([]);
             try {
-                const { data } = await supabaseClient.from('tasks').select('id, title, due_date, priority, status').not('due_date', 'is', null);
-                const events = (data || []).map(t => ({
-                    id: t.id,
-                    title: t.title || 'Tarea',
-                    start: normalizarFechaISO(t.due_date) || t.due_date,
-                    allDay: true,
-                    backgroundColor: prioridadColor(t.priority || 'medium'),
-                    extendedProps: { taskId: t.id }
-                }));
+                const endISO = normalizarFechaISO(info.endStr) || info.endStr; // `endStr` es el fin exclusivo del rango visible
+                const { data } = await supabaseClient
+                    .from('tasks')
+                    .select('id, title, due_date, priority, status')
+                    .not('due_date', 'is', null)
+                    .neq('status', 'completed');
+
+                const events = (data || []).map(t => {
+                    const startISO = normalizarFechaISO(t.due_date);
+                    if (!startISO) return null;
+                    // Si la tarea aún no inicia (due_date en el futuro), no la mostramos en este rango.
+                    if (startISO > endISO) return null;
+
+                    return {
+                        id: t.id,
+                        title: t.title || 'Tarea',
+                        start: startISO,
+                        end: endISO,
+                        allDay: true,
+                        backgroundColor: prioridadColor(t.priority || 'medium'),
+                        extendedProps: { taskId: t.id }
+                    };
+                }).filter(Boolean);
+
                 successCallback(events);
             } catch (e) {
                 successCallback([]);
             }
         },
-        eventClick: (arg) => {
+        eventClick: async (arg) => {
             const taskId = arg.event.extendedProps?.taskId || arg.event.id;
             const t = staffTasksCache.find(x => x.id === taskId);
-            if (t) {
-                mostrarDetalleEventoCalendario(t);
-            }
+            if (t) return mostrarDetalleEventoCalendario(t);
+
+            // Fallback: si la caché está vacía, traemos el task por id.
+            try {
+                const { data } = await supabaseClient
+                    .from('tasks')
+                    .select('id, title, description, due_date, priority, status')
+                    .eq('id', taskId)
+                    .maybeSingle();
+                if (data) mostrarDetalleEventoCalendario(data);
+            } catch (_) { /* ignore */ }
         },
         dateClick: async (info) => {
             await mostrarDesgloseParaFecha(info.dateStr);
