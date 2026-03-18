@@ -890,6 +890,15 @@ document.addEventListener('click', async (e) => {
         try {
             const { error } = await supabaseClient.from('referral_patients').delete().eq('id', referralId);
             if (error) throw error;
+
+            const { error: tasksDelErr } = await supabaseClient
+                .from('tasks')
+                .delete()
+                .ilike('description', `%reminder_type=reminder|referral_patient_id=${referralId}%`);
+            if (tasksDelErr) {
+                console.warn('No se pudieron borrar tasks recordatorios del referido:', tasksDelErr?.message || tasksDelErr);
+            }
+
             cerrarModalDetalleReferido();
             await cargarPacientesReferidos();
             if (staffReferralsCalendar) staffReferralsCalendar.refetchEvents();
@@ -1044,7 +1053,7 @@ async function ejecutarSchedulerReferidos() {
             priority: 'low',
             due_date: dueDateUTC,
             status: 'pending',
-            created_by: currentStaffSession.user.id,
+            created_by: staffId,
             assigned_to: staffId,
             updated_at: nowISO
         }));
@@ -1237,7 +1246,14 @@ function cerrarVistaDetalleDiaCompleta() {
 }
 
 function mostrarDetalleEventoCalendario(t) {
+    // Nuevo comportamiento: abrir pop-up (no panel debajo del calendario).
     const box = document.getElementById('staffCalendarEventDetail');
+    if (box) box.style.display = 'none';
+    if (typeof abrirModalDetalleTarea === 'function' && t) {
+        abrirModalDetalleTarea(t);
+        return;
+    }
+
     const titleEl = document.getElementById('staffCalendarEventTitle');
     const metaEl = document.getElementById('staffCalendarEventMeta');
     const descEl = document.getElementById('staffCalendarEventDescription');
@@ -1551,6 +1567,11 @@ function abrirModalDetalleTarea(task) {
     modal.style.display = 'block';
     modal.setAttribute('data-task-id', task.id || '');
     modal.setAttribute('data-current-status', task.status || 'pending');
+    const originalDesc = task.description || '';
+    const reminderPrefixMatch = originalDesc.match(/reminder_type=reminder\|referral_patient_id=[^\n]*/);
+    const reminderPrefix = reminderPrefixMatch ? reminderPrefixMatch[0] : '';
+    modal.setAttribute('data-original-description', originalDesc);
+    modal.setAttribute('data-reminder-prefix', reminderPrefix);
 
     const titleEl = document.getElementById('staffTaskModalTitle');
     const metaEl = document.getElementById('staffTaskModalMeta');
@@ -1563,7 +1584,13 @@ function abrirModalDetalleTarea(task) {
         const statusLabel = task.status === 'completed' ? 'Completada' : task.status === 'in_progress' ? 'En progreso' : 'Pendiente';
         metaEl.textContent = `${statusLabel} · Fecha: ${due}`;
     }
-    if (commentEl) commentEl.value = task.description || '';
+    if (commentEl) {
+        if (reminderPrefix) {
+            commentEl.value = originalDesc.replace(reminderPrefix, '').trim();
+        } else {
+            commentEl.value = originalDesc;
+        }
+    }
     if (toggleBtn) toggleBtn.textContent = task.status === 'completed' ? 'Marcar pendiente' : 'Marcar completada';
     if (progressBtn) progressBtn.style.display = task.status === 'pending' ? '' : 'none';
 }
@@ -1794,6 +1821,8 @@ function inicializarStaffCalendar() {
         events: async (info, successCallback) => {
             if (!supabaseClient) return successCallback([]);
             try {
+                const uid = currentStaffSession?.user?.id;
+                if (!uid) return successCallback([]);
                 const startISO = normalizarFechaISO(info.startStr) || info.startStr;
                 const endISOExclusive = normalizarFechaISO(info.endStr) || info.endStr; // `endStr` es fin exclusivo
                 if (!startISO || !endISOExclusive) return successCallback([]);
@@ -1801,7 +1830,8 @@ function inicializarStaffCalendar() {
                     .from('tasks')
                     .select('id, title, due_date, priority, status')
                     .not('due_date', 'is', null)
-                    .neq('status', 'completed');
+                    .neq('status', 'completed')
+                    .or(`assigned_to.eq.${uid},created_by.eq.${uid}`);
 
                 // FullCalendar month view divide multi-día por semana.
                 // Para mostrar la tarea en *cada día* posterior al `due_date`,
@@ -2021,9 +2051,13 @@ document.addEventListener('click', async (e) => {
     if (saveBtn) {
         const txt = document.getElementById('staffTaskModalCommentInput')?.value?.trim() ?? '';
         try {
+            const reminderPrefix = modal.getAttribute('data-reminder-prefix') || '';
+            const newDescription = reminderPrefix
+                ? `${reminderPrefix}${txt ? '\n' + txt : ''}`
+                : txt;
             const { error } = await supabaseClient
                 .from('tasks')
-                .update({ description: txt, updated_at: new Date().toISOString() })
+                .update({ description: newDescription, updated_at: new Date().toISOString() })
                 .eq('id', taskId);
             if (error) throw error;
             await refrescarTareaYReabrirModal(taskId);
