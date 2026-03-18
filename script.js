@@ -666,6 +666,18 @@ function renderizarDesgloseDia(dateStr, tasks) {
     }).join('');
 }
 
+async function mostrarDesgloseParaFecha(dateStr) {
+    abrirDesgloseDia();
+    const subtitleEl = document.getElementById('staffDayBreakdownSubtitle');
+    const contentEl = document.getElementById('staffDayBreakdownContent');
+    const titleEl = document.getElementById('staffDayBreakdownTitle');
+    if (titleEl) titleEl.textContent = `Desglose: ${formatoDiaLargoES(dateStr)}`;
+    if (subtitleEl) subtitleEl.textContent = 'Cargando tareas…';
+    if (contentEl) contentEl.innerHTML = '';
+    const tasks = await obtenerTareasParaDia(dateStr);
+    renderizarDesgloseDia(dateStr, tasks);
+}
+
 function mostrarDetalleEventoCalendario(t) {
     const box = document.getElementById('staffCalendarEventDetail');
     const titleEl = document.getElementById('staffCalendarEventTitle');
@@ -983,15 +995,7 @@ function inicializarStaffCalendar() {
             }
         },
         dateClick: async (info) => {
-            abrirDesgloseDia();
-            const subtitleEl = document.getElementById('staffDayBreakdownSubtitle');
-            const contentEl = document.getElementById('staffDayBreakdownContent');
-            const titleEl = document.getElementById('staffDayBreakdownTitle');
-            if (titleEl) titleEl.textContent = `Desglose: ${formatoDiaLargoES(info.dateStr)}`;
-            if (subtitleEl) subtitleEl.textContent = 'Cargando tareas…';
-            if (contentEl) contentEl.innerHTML = '';
-            const tasks = await obtenerTareasParaDia(info.dateStr);
-            renderizarDesgloseDia(info.dateStr, tasks);
+            await mostrarDesgloseParaFecha(info.dateStr);
         }
     });
     staffCalendar.render();
