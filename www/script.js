@@ -561,6 +561,112 @@ function manejarRutasStaff() {
 let staffCalendar = null;
 let staffTasksCache = [];
 
+function formatoDiaLargoES(date) {
+    try {
+        return new Date(date).toLocaleDateString('es-PR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    } catch (_) {
+        return String(date);
+    }
+}
+
+function normalizarFechaISO(dateStr) {
+    if (!dateStr) return null;
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString().slice(0, 10);
+}
+
+async function obtenerTareasParaDia(dateStr) {
+    const dayISO = normalizarFechaISO(dateStr);
+    if (!dayISO) return [];
+
+    // Si ya cargamos tareas (sección Tareas), úsalo como fuente rápida
+    if (Array.isArray(staffTasksCache) && staffTasksCache.length > 0) {
+        const fromCache = staffTasksCache.filter(t => normalizarFechaISO(t.due_date) === dayISO);
+        if (fromCache.length > 0) return fromCache;
+    }
+
+    if (!supabaseClient) return [];
+    const start = new Date(`${dayISO}T00:00:00.000Z`);
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 1);
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('tasks')
+            .select('id, title, description, due_date, priority, status')
+            .gte('due_date', start.toISOString())
+            .lt('due_date', end.toISOString())
+            .order('priority', { ascending: false })
+            .order('title', { ascending: true });
+        if (error) throw error;
+        return data || [];
+    } catch (e) {
+        console.error('Error obteniendo tareas del día:', e);
+        return [];
+    }
+}
+
+function abrirDesgloseDia() {
+    const box = document.getElementById('staffDayBreakdown');
+    if (box) box.style.display = 'block';
+}
+
+function cerrarDesgloseDia() {
+    const box = document.getElementById('staffDayBreakdown');
+    if (box) box.style.display = 'none';
+}
+
+function escaparHtml(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function renderizarDesgloseDia(dateStr, tasks) {
+    const titleEl = document.getElementById('staffDayBreakdownTitle');
+    const subtitleEl = document.getElementById('staffDayBreakdownSubtitle');
+    const contentEl = document.getElementById('staffDayBreakdownContent');
+    if (!titleEl || !subtitleEl || !contentEl) return;
+
+    titleEl.textContent = `Desglose: ${formatoDiaLargoES(dateStr)}`;
+    const total = tasks.length;
+    subtitleEl.textContent = total === 0 ? 'No hay tareas con fecha límite para este día.' : `${total} tarea(s) con fecha límite.`;
+
+    if (total === 0) {
+        contentEl.innerHTML = `
+          <div style="padding:0.75rem; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; color:#6b7280; font-size:0.9rem;">
+            Ninguna tarea para este día.
+          </div>
+        `;
+        return;
+    }
+
+    contentEl.innerHTML = tasks.map(t => {
+        const priority = t.priority || 'medium';
+        const status = t.status || 'pending';
+        const badgeColor = prioridadColor(priority);
+        const statusLabel = status === 'completed' ? 'Completada' : status === 'in_progress' ? 'En progreso' : 'Pendiente';
+        const desc = (t.description || '').trim();
+        return `
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem; padding:0.75rem; border:1px solid #e5e7eb; border-radius:10px; margin-bottom:0.6rem;">
+            <div style="min-width:0;">
+              <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                <span style="display:inline-flex; align-items:center; gap:0.35rem; font-size:0.75rem; font-weight:700; color:#fff; padding:0.15rem 0.5rem; border-radius:999px; background:${badgeColor};">
+                  ${escaparHtml(priority.toUpperCase())}
+                </span>
+                <span style="font-size:0.78rem; color:#6b7280;">${escaparHtml(statusLabel)}</span>
+              </div>
+              <div style="margin-top:0.25rem; font-weight:700; color:#111827; word-break:break-word;">${escaparHtml(t.title || 'Tarea')}</div>
+              ${desc ? `<div style="margin-top:0.25rem; color:#4b5563; font-size:0.88rem; white-space:pre-wrap; word-break:break-word;">${escaparHtml(desc)}</div>` : ''}
+            </div>
+            <div style="flex:0 0 auto; display:flex; gap:0.5rem;">
+              <button type="button" class="btn btn-secondary staff-day-edit-btn" data-task-id="${escaparHtml(t.id)}" style="padding:0.45rem 0.8rem;">Editar</button>
+            </div>
+          </div>
+        `;
+    }).join('');
+}
+
 // Resolver ID de staff a partir de email (admin / secretaria u otros miembros)
 async function resolverStaffIdPorEmail(email) {
     if (!supabaseClient || !email) return null;
@@ -847,10 +953,40 @@ function inicializarStaffCalendar() {
                 navItems.forEach(b => b.classList.toggle('active', b.getAttribute('data-section') === 'tasks'));
                 mostrarSeccionStaff('tasks');
             }
+        },
+        dateClick: async (info) => {
+            abrirDesgloseDia();
+            const subtitleEl = document.getElementById('staffDayBreakdownSubtitle');
+            const contentEl = document.getElementById('staffDayBreakdownContent');
+            const titleEl = document.getElementById('staffDayBreakdownTitle');
+            if (titleEl) titleEl.textContent = `Desglose: ${formatoDiaLargoES(info.dateStr)}`;
+            if (subtitleEl) subtitleEl.textContent = 'Cargando tareas…';
+            if (contentEl) contentEl.innerHTML = '';
+            const tasks = await obtenerTareasParaDia(info.dateStr);
+            renderizarDesgloseDia(info.dateStr, tasks);
         }
     });
     staffCalendar.render();
 }
+
+document.addEventListener('click', (e) => {
+    const closeBtn = e.target?.closest?.('#staffDayBreakdownCloseBtn');
+    if (closeBtn) {
+        cerrarDesgloseDia();
+        return;
+    }
+
+    const editBtn = e.target?.closest?.('.staff-day-edit-btn');
+    if (!editBtn) return;
+    const taskId = editBtn.getAttribute('data-task-id');
+    const t = staffTasksCache.find(x => x.id === taskId);
+    if (t) {
+        cargarTareaEnFormulario(t);
+        const navItems = document.querySelectorAll('.staff-nav-item');
+        navItems.forEach(b => b.classList.toggle('active', b.getAttribute('data-section') === 'tasks'));
+        mostrarSeccionStaff('tasks');
+    }
+});
 
 // Configuración escalable para contactos de staff (admin ↔ secretaria)
 const STAFF_COUNTERPART_LABELS = { admin: 'Admin', secretary: 'Secretaria' };

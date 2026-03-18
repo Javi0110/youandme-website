@@ -244,7 +244,7 @@
                     <div class="staff-card" style="max-width:420px; margin:0 auto;">
                         <h3>Iniciar sesión</h3>
                         <p style="font-size:0.9rem; color:#6b7280; margin-bottom:0.75rem;">
-                            Usa tu usuario de staff (admin o secretaria).
+                            Usa tu cuenta de staff (admin o secretaria).
                         </p>
                         <button type="button" class="btn btn-primary btn-large" id="goToStaffBtn">
                             Entrar al Staff Portal
@@ -875,6 +875,16 @@
                         <h4 style="margin-top:0;">Calendario de tareas</h4>
                         <p style="font-size:0.85rem; color:#6b7280; margin-bottom:0.75rem;">Tareas con fecha límite. Clic en una tarea para editarla.</p>
                         <div id="staffCalendar" style="min-height:400px; background:#fff; border-radius:12px; border:1px solid #e5e7eb;"></div>
+                        <div id="staffDayBreakdown" style="margin-top:0.9rem; display:none; background:#fff; border-radius:12px; border:1px solid #e5e7eb; padding:0.9rem;">
+                          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem; flex-wrap:wrap;">
+                            <div>
+                              <h4 id="staffDayBreakdownTitle" style="margin:0; font-size:1rem;">Desglose del día</h4>
+                              <p id="staffDayBreakdownSubtitle" style="margin:0.25rem 0 0 0; font-size:0.85rem; color:#6b7280;">Seleccione un día en el calendario para ver sus tareas.</p>
+                            </div>
+                            <button type="button" class="btn btn-secondary" id="staffDayBreakdownCloseBtn" style="padding:0.45rem 0.8rem;">Cerrar</button>
+                          </div>
+                          <div id="staffDayBreakdownContent" style="margin-top:0.75rem;"></div>
+                        </div>
                       </div>
                     </div>
 
@@ -931,7 +941,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                             <h2 style="color: white; margin: 0;">Panel de Administración</h2>
                             <div style="display: flex; gap: 0.75rem; align-items: center;">
-                                <a href="#staff" class="btn btn-primary" id="adminGoToStaffBtn" style="text-decoration:none;">Portal de equipo (tareas, mensajes, calendario…)</a>
+                                <a href="#staff" class="btn btn-primary" id="adminGoToStaffBtn" style="text-decoration:none;">Staff Portal</a>
                                 <button onclick="cerrarSesionAdmin()" class="btn btn-secondary">Cerrar Sesión</button>
                             </div>
                         </div>
