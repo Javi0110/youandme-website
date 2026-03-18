@@ -964,7 +964,7 @@ function renderizarDesgloseDia(dateStr, tasks) {
         const statusLabel = status === 'completed' ? 'Completada' : status === 'in_progress' ? 'En progreso' : 'Pendiente';
         const desc = (t.description || '').trim();
         return `
-          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem; padding:0.75rem; border:1px solid #e5e7eb; border-radius:10px; margin-bottom:0.6rem;">
+          <div class="staff-day-task-item" data-task-id="${escaparHtml(t.id)}" role="button" style="cursor:pointer; display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem; padding:0.75rem; border:1px solid #e5e7eb; border-radius:10px; margin-bottom:0.6rem;">
             <div style="min-width:0;">
               <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                 <span style="display:inline-flex; align-items:center; gap:0.35rem; font-size:0.75rem; font-weight:700; color:#fff; padding:0.15rem 0.5rem; border-radius:999px; background:${badgeColor};">
@@ -1035,7 +1035,7 @@ async function abrirVistaDetalleDiaCompleta(dateStr) {
         const horario = formatearHorarioTarea(t.due_date);
         const desc = (t.description || '').trim();
         return `
-          <div style="padding:0.8rem; border:1px solid #e5e7eb; border-left:4px solid ${color}; border-radius:10px; margin-bottom:0.65rem;">
+          <div class="staff-today-detail-task-item" data-task-id="${escaparHtml(t.id)}" role="button" style="cursor:pointer; padding:0.8rem; border:1px solid #e5e7eb; border-left:4px solid ${color}; border-radius:10px; margin-bottom:0.65rem;">
             <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:flex-start; flex-wrap:wrap;">
               <div style="min-width:0;">
                 <div style="font-weight:700; color:#111827; word-break:break-word;">${escaparHtml(t.title || 'Tarea')}</div>
@@ -1063,6 +1063,12 @@ function mostrarDetalleEventoCalendario(t) {
     const descEl = document.getElementById('staffCalendarEventDescription');
     if (!box || !titleEl || !metaEl || !descEl) return;
 
+    // Ocultar pantallas alternativas si estaban visibles.
+    const dayScreen = document.getElementById('staffTodayDetailScreen');
+    const dayBreakdown = document.getElementById('staffDayBreakdown');
+    if (dayScreen) dayScreen.style.display = 'none';
+    if (dayBreakdown) dayBreakdown.style.display = 'none';
+
     const priority = t.priority || 'medium';
     const status = t.status || 'pending';
     const badgeColor = prioridadColor(priority);
@@ -1079,12 +1085,49 @@ function mostrarDetalleEventoCalendario(t) {
     `;
 
     const desc = (t.description || '').trim();
-    descEl.textContent = desc || 'Sin descripción.';
+    const nextCompleteLabel = status === 'completed' ? 'Marcar pendiente' : 'Marcar completada';
+    descEl.innerHTML = `
+      <div style="white-space:pre-wrap; color:#4b5563; font-size:0.9rem;">
+        ${escaparHtml(desc || 'Sin descripción.')}
+      </div>
+      <div style="margin-top:0.85rem;">
+        <label for="staffCalendarEventCommentInput" style="display:block; font-size:0.8rem; color:#6b7280; margin-bottom:0.25rem;">
+          Comentarios
+        </label>
+        <textarea id="staffCalendarEventCommentInput" rows="3" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #ddd; font-size:0.95rem;">${escaparHtml(desc)}</textarea>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.6rem;">
+          <button type="button" class="btn btn-primary" id="staffCalendarEventSaveCommentBtn" data-task-id="${escaparHtml(t.id)}" style="padding:0.45rem 0.8rem;">
+            Guardar comentario
+          </button>
+          <button type="button" class="btn btn-secondary" id="staffCalendarEventToggleCompleteBtn"
+            data-task-id="${escaparHtml(t.id)}"
+            data-current-status="${escaparHtml(status)}"
+            style="padding:0.45rem 0.8rem;">
+            ${escaparHtml(nextCompleteLabel)}
+          </button>
+        </div>
+      </div>
+    `;
 
     const editBtn = document.getElementById('staffCalendarEventEditBtn');
     if (editBtn) editBtn.setAttribute('data-task-id', t.id);
 
     box.style.display = 'block';
+}
+
+async function abrirDetalleTareaPorId(taskId) {
+    if (!taskId || !supabaseClient) return;
+    // Prioridad: usar caché si existe (para evitar requests).
+    let t = staffTasksCache.find(x => x.id === taskId);
+    if (!t) {
+        const { data } = await supabaseClient
+            .from('tasks')
+            .select('id, title, description, due_date, priority, status')
+            .eq('id', taskId)
+            .maybeSingle();
+        if (data) t = data;
+    }
+    if (t) mostrarDetalleEventoCalendario(t);
 }
 
 // Resolver ID de staff a partir de email (admin / secretaria u otros miembros)
@@ -1567,18 +1610,36 @@ document.addEventListener('click', (e) => {
     }
 
     const editBtn = e.target?.closest?.('.staff-day-edit-btn');
-    if (!editBtn) return;
-    const taskId = editBtn.getAttribute('data-task-id');
-    const t = staffTasksCache.find(x => x.id === taskId);
-    if (t) {
-        cargarTareaEnFormulario(t);
-        const navItems = document.querySelectorAll('.staff-nav-item');
-        navItems.forEach(b => b.classList.toggle('active', b.getAttribute('data-section') === 'tasks'));
-        mostrarSeccionStaff('tasks');
+    if (editBtn) {
+        const taskId = editBtn.getAttribute('data-task-id');
+        const t = staffTasksCache.find(x => x.id === taskId);
+        if (t) {
+            cargarTareaEnFormulario(t);
+            const navItems = document.querySelectorAll('.staff-nav-item');
+            navItems.forEach(b => b.classList.toggle('active', b.getAttribute('data-section') === 'tasks'));
+            mostrarSeccionStaff('tasks');
+        }
+        return;
+    }
+
+    // Clic sobre una tarea del "desglose del día": abrir detalle
+    const dayTaskItem = e.target?.closest?.('.staff-day-task-item');
+    if (dayTaskItem) {
+        const taskId = dayTaskItem.getAttribute('data-task-id');
+        abrirDetalleTareaPorId(taskId).catch(() => { /* ignore */ });
+        return;
+    }
+
+    // Clic sobre una tarea del "detalle del día" (cuando se abre con Today): abrir detalle
+    const todayDetailTaskItem = e.target?.closest?.('.staff-today-detail-task-item');
+    if (todayDetailTaskItem) {
+        const taskId = todayDetailTaskItem.getAttribute('data-task-id');
+        abrirDetalleTareaPorId(taskId).catch(() => { /* ignore */ });
+        return;
     }
 });
 
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
     const closeDetailBtn = e.target?.closest?.('#staffCalendarEventCloseBtn');
     if (closeDetailBtn) {
         const box = document.getElementById('staffCalendarEventDetail');
@@ -1596,6 +1657,59 @@ document.addEventListener('click', (e) => {
             navItems.forEach(b => b.classList.toggle('active', b.getAttribute('data-section') === 'tasks'));
             mostrarSeccionStaff('tasks');
         }
+    }
+
+    const saveCommentBtn = e.target?.closest?.('#staffCalendarEventSaveCommentBtn');
+    if (saveCommentBtn) {
+        const taskId = saveCommentBtn.getAttribute('data-task-id');
+        const textarea = document.getElementById('staffCalendarEventCommentInput');
+        const texto = textarea?.value?.trim() ?? '';
+        try {
+            const { error } = await supabaseClient
+                .from('tasks')
+                .update({ description: texto, updated_at: new Date().toISOString() })
+                .eq('id', taskId);
+            if (error) throw error;
+            await cargarTareasStaff();
+            await cargarResumenDashboardStaff();
+            if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+            const t = staffTasksCache.find(x => x.id === taskId) || null;
+            if (t) mostrarDetalleEventoCalendario(t);
+        } catch (err) {
+            console.error('Error guardando comentario:', err);
+        }
+        return;
+    }
+
+    const toggleCompleteBtn = e.target?.closest?.('#staffCalendarEventToggleCompleteBtn');
+    if (toggleCompleteBtn) {
+        const taskId = toggleCompleteBtn.getAttribute('data-task-id');
+        const currentStatus = toggleCompleteBtn.getAttribute('data-current-status') || '';
+        const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+        try {
+            const { error } = await supabaseClient
+                .from('tasks')
+                .update({ status: nextStatus, updated_at: new Date().toISOString() })
+                .eq('id', taskId);
+            if (error) throw error;
+            await cargarTareasStaff();
+            await cargarResumenDashboardStaff();
+            if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+            const t = staffTasksCache.find(x => x.id === taskId) || null;
+            if (t) {
+                mostrarDetalleEventoCalendario(t);
+            } else {
+                const { data } = await supabaseClient
+                    .from('tasks')
+                    .select('id, title, description, due_date, priority, status')
+                    .eq('id', taskId)
+                    .maybeSingle();
+                if (data) mostrarDetalleEventoCalendario(data);
+            }
+        } catch (err) {
+            console.error('Error cambiando estado:', err);
+        }
+        return;
     }
 });
 
