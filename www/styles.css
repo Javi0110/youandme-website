@@ -959,6 +959,16 @@ h1, h2, h3, h4 {
     color: var(--gray-dark);
 }
 
+/* FullCalendar desktop: make events and day numbers clearly clickable */
+@media (hover: hover) and (pointer: fine) {
+    #staffCalendar .fc-event,
+    #staffCalendar .fc-daygrid-day-number,
+    #staffCalendar .fc-list-event-title {
+        cursor: pointer;
+        user-select: none;
+    }
+}
+
 @media (max-width: 900px) {
     .staff-layout {
         display: flex;
