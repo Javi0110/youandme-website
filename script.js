@@ -1646,29 +1646,41 @@ function inicializarStaffCalendar() {
         events: async (info, successCallback) => {
             if (!supabaseClient) return successCallback([]);
             try {
-                const endISO = normalizarFechaISO(info.endStr) || info.endStr; // `endStr` es el fin exclusivo del rango visible
+                const startISO = normalizarFechaISO(info.startStr) || info.startStr;
+                const endISOExclusive = normalizarFechaISO(info.endStr) || info.endStr; // `endStr` es fin exclusivo
+                if (!startISO || !endISOExclusive) return successCallback([]);
                 const { data } = await supabaseClient
                     .from('tasks')
                     .select('id, title, due_date, priority, status')
                     .not('due_date', 'is', null)
                     .neq('status', 'completed');
 
-                const events = (data || []).map(t => {
-                    const startISO = normalizarFechaISO(t.due_date);
-                    if (!startISO) return null;
-                    // Si la tarea aún no inicia (due_date en el futuro), no la mostramos en este rango.
-                    if (startISO > endISO) return null;
+                // FullCalendar month view "divide" eventos multi-día por semana.
+                // Para que la tarea aparezca en *cada día* posterior al `due_date`,
+                // generamos un evento de 1 día por cada fecha.
+                const events = [];
+                (data || []).forEach(t => {
+                    const dueISO = normalizarFechaISO(t.due_date);
+                    if (!dueISO) return;
+                    // No mostrar si el `due_date` todavía está fuera del rango visible.
+                    if (dueISO >= endISOExclusive) return;
 
-                    return {
-                        id: t.id,
-                        title: t.title || 'Tarea',
-                        start: startISO,
-                        end: endISO,
-                        allDay: true,
-                        backgroundColor: prioridadColor(t.priority || 'medium'),
-                        extendedProps: { taskId: t.id }
-                    };
-                }).filter(Boolean);
+                    let dayCursor = dueISO < startISO ? startISO : dueISO;
+                    // Asegurar: no mostrar antes del due_date
+                    if (dayCursor < dueISO) dayCursor = dueISO;
+
+                    while (dayCursor && dayCursor < endISOExclusive) {
+                        events.push({
+                            id: `${t.id}|${dayCursor}`,
+                            title: t.title || 'Tarea',
+                            start: dayCursor,
+                            allDay: true,
+                            backgroundColor: prioridadColor(t.priority || 'medium'),
+                            extendedProps: { taskId: t.id }
+                        });
+                        dayCursor = sumarDiasISO(dayCursor, 1);
+                    }
+                });
 
                 successCallback(events);
             } catch (e) {
