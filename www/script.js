@@ -560,7 +560,10 @@ function mostrarSeccionStaff(section) {
         calendarControls.style.display = section === 'calendar' ? 'flex' : 'none';
     }
 
-    if (section === 'tasks') cargarTareasStaff();
+    if (section === 'tasks') {
+        cargarOpcionesAsignarTareas().catch(() => { /* ignore */ });
+        cargarTareasStaff();
+    }
     else if (section === 'messages') cargarConversacionesStaff();
     else if (section === 'calendar') inicializarStaffCalendar();
     else if (section === 'referrals') inicializarStaffReferralsCalendar();
@@ -653,6 +656,33 @@ function sumarDiasISO(dateISO, deltaDays) {
     const dt = new Date(Date.UTC(y, m - 1, d));
     dt.setUTCDate(dt.getUTCDate() + deltaDays);
     return dt.toISOString().slice(0, 10);
+}
+
+async function cargarOpcionesAsignarTareas() {
+    const select = document.getElementById('taskAssigneeSelect');
+    if (!select || !supabaseClient || !currentStaffSession) return;
+
+    const { data: staffRows, error } = await supabaseClient
+        .from('staff_members')
+        .select('id, email, role, display_name')
+        .order('role', { ascending: true })
+        .order('display_name', { ascending: true });
+    if (error) {
+        console.warn('No se pudieron cargar staff_members para asignar tareas:', error?.message || error);
+        return;
+    }
+
+    const currentEmpty = select.querySelector('option[value=""]');
+    select.innerHTML = '';
+    if (currentEmpty) select.appendChild(currentEmpty);
+
+    (staffRows || []).forEach(s => {
+        if (!s?.email) return;
+        const opt = document.createElement('option');
+        opt.value = s.email.toLowerCase().trim();
+        opt.textContent = s.display_name || opt.value;
+        select.appendChild(opt);
+    });
 }
 
 async function cargarPacientesReferidos() {
@@ -748,13 +778,6 @@ async function ejecutarSchedulerReferidos() {
     if (__referralReminderSchedulerLastRunISO === hoyISO) return;
     __referralReminderSchedulerLastRunISO = hoyISO;
 
-    const targetEmails = [
-        'centroyouandme@gmail.com',
-        'mfadhel.ot@gmail.com',
-        'andreagarciaot@gmail.com',
-        'asistenteyouandme@gmail.com'
-    ];
-
     // Ventana: crear recordatorios dentro de +/- unos días alrededor de hoy.
     const reminderBackDays = 14;
     const reminderForwardDays = 1;
@@ -765,8 +788,7 @@ async function ejecutarSchedulerReferidos() {
     // Traer staff (para asignar cada reminder).
     const { data: staffRows, error: staffErr } = await supabaseClient
         .from('staff_members')
-        .select('id, email, role, display_name')
-        .in('email', targetEmails);
+        .select('id');
     if (staffErr) throw staffErr;
     const staffIds = (staffRows || []).map(r => r.id).filter(Boolean);
     if (staffIds.length === 0) return;
@@ -1104,12 +1126,12 @@ async function enriquecerAssignedToLabels(tareas) {
     try {
         const { data: staffRows, error } = await supabaseClient
             .from('staff_members')
-            .select('id, role, display_name')
+            .select('id, role, display_name, email')
             .in('id', ids);
         if (!error && Array.isArray(staffRows) && staffRows.length > 0) {
             staffRows.forEach(r => {
                 const label = r.display_name || roleToLabel[r.role] || r.role || ('Usuario ' + String(r.id).slice(0, 8));
-                idToInfo.set(r.id, { label, role: r.role || null });
+                idToInfo.set(r.id, { label, role: r.role || null, email: r.email || null });
             });
         }
     } catch (_) { /* si falla, hacemos fallback */ }
@@ -1136,6 +1158,7 @@ async function enriquecerAssignedToLabels(tareas) {
         const info = idToInfo.get(t.assigned_to);
         t.assigned_to_role = info?.role || null;
         t.assigned_to_label = info?.label || null;
+        t.assigned_to_email = info?.email || null;
     });
 }
 
@@ -1258,10 +1281,7 @@ function cargarTareaEnFormulario(t) {
     document.getElementById('taskPriority').value = t.priority || 'medium';
     document.getElementById('taskDueDate').value = t.due_date ? t.due_date.slice(0, 10) : '';
     const assigneeSelect = document.getElementById('taskAssigneeSelect');
-    if (assigneeSelect) {
-        // El dropdown actual solo tiene "Secretaria" por ahora.
-        assigneeSelect.value = t.assigned_to_role === 'secretary' ? 'secretaria' : '';
-    }
+    if (assigneeSelect) assigneeSelect.value = t.assigned_to_email || '';
     document.getElementById('taskAssignedEmail').value = '';
     const statusEl = document.getElementById('taskFormStatus');
     if (statusEl) statusEl.textContent = 'Editando. Guarde para aplicar cambios.';
@@ -1311,18 +1331,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const priority = document.getElementById('taskPriority').value || 'medium';
             const dueDate = document.getElementById('taskDueDate').value || null;
             const assigneeSelect = document.getElementById('taskAssigneeSelect');
-            let assignedEmail = document.getElementById('taskAssignedEmail')?.value.trim().toLowerCase() || null;
-            if (assigneeSelect) {
-                const assigneeValue = assigneeSelect.value;
-                if (assigneeValue === 'secretaria') {
-                    // Email fijo de la secretaria en el staff portal
-                    assignedEmail = 'asistenteyouandme@gmail.com';
-                } else {
-                    assignedEmail = null;
-                }
-                const hiddenEmailInput = document.getElementById('taskAssignedEmail');
-                if (hiddenEmailInput) hiddenEmailInput.value = assignedEmail || '';
-            }
+            let assignedEmail = assigneeSelect?.value?.trim()?.toLowerCase() || null;
+            const hiddenEmailInput = document.getElementById('taskAssignedEmail');
+            if (hiddenEmailInput) hiddenEmailInput.value = assignedEmail || '';
             const statusEl = document.getElementById('taskFormStatus');
             const payload = {
                 title,
@@ -1626,9 +1637,12 @@ async function obtenerContraparteStaff(uid) {
             .select('id, role, display_name')
             .eq('role', counterpartRole)
             .neq('id', uid)
-            .limit(1);
-        if (staff && staff.length > 0) {
-            return { id: staff[0].id, label: staff[0].display_name || label };
+            ;
+        if (staff && Array.isArray(staff) && staff.length > 0) {
+            return staff.map(s => ({
+                id: s.id,
+                label: s.display_name || STAFF_COUNTERPART_LABELS[s.role] || label || ('Usuario ' + String(s.id).slice(0, 8))
+            }));
         }
     } catch (_) { /* staff_members puede no existir */ }
 
@@ -1639,17 +1653,25 @@ async function obtenerContraparteStaff(uid) {
             .select('id, role')
             .eq('role', counterpartRole)
             .neq('id', uid)
-            .limit(1);
-        if (profiles && profiles.length > 0) {
-            return { id: profiles[0].id, label };
+            ;
+        if (profiles && Array.isArray(profiles) && profiles.length > 0) {
+            return profiles.map(p => ({
+                id: p.id,
+                label: STAFF_COUNTERPART_LABELS[p.role] || label || ('Usuario ' + String(p.id).slice(0, 8))
+            }));
         }
     } catch (_) { /* fallback */ }
 
     // 3. Config manual (window.STAFF_COUNTERPART_IDS = { admin: 'uuid', secretary: 'uuid' })
     const manual = typeof window.STAFF_COUNTERPART_IDS === 'object' && window.STAFF_COUNTERPART_IDS[counterpartRole];
-    if (manual) return { id: manual, label };
+    if (manual) {
+        const ids = Array.isArray(manual) ? manual : [manual];
+        return ids
+            .filter(Boolean)
+            .map(idVal => ({ id: idVal, label }));
+    }
 
-    return null;
+    return [];
 }
 
 async function enriquecerContactosConStaff(contactMap, uid) {
@@ -1694,6 +1716,20 @@ async function cargarConversacionesStaff() {
     try {
         const { data: messages } = await supabaseClient.from('messages').select('*').or(`sender_id.eq.${uid},receiver_id.eq.${uid}`).order('created_at', { ascending: false });
         const contactMap = new Map(); // id -> { label }
+
+        // 1) Mostrar TODAS las cuentas de staff (menos la actual), aunque no haya historial de mensajes.
+        try {
+            const { data: staffRows } = await supabaseClient
+                .from('staff_members')
+                .select('id, display_name, role')
+                .neq('id', uid);
+            (staffRows || []).forEach(s => {
+                if (!s?.id) return;
+                contactMap.set(s.id, { label: s.display_name || String(s.id).slice(0, 8) });
+            });
+        } catch (_) { /* si no existe staff_members, seguimos con fallback */ }
+
+        // 2) Asegurar que cualquier ID presente en mensajes también aparezca
         (messages || []).forEach(m => {
             const otherId = m.sender_id === uid ? m.receiver_id : m.sender_id;
             if (otherId && !contactMap.has(otherId)) {
@@ -1701,16 +1737,16 @@ async function cargarConversacionesStaff() {
             }
         });
 
-        // Si no hay conversaciones, cargar contraparte (admin ↔ secretaria)
-        if (contactMap.size === 0) {
-            const counterpart = await obtenerContraparteStaff(uid);
-            if (counterpart) {
-                contactMap.set(counterpart.id, { label: counterpart.label });
-            }
-        }
-
-        // Enriquecer labels con información de staff (display_name / role)
+        // 3) Enriquecer labels con información de staff (display_name / role)
         await enriquecerContactosConStaff(contactMap, uid);
+
+        // 4) Si seguimos sin contactos, fallback a contrapartes
+        if (contactMap.size === 0) {
+            const counterparts = await obtenerContraparteStaff(uid);
+            (counterparts || []).forEach(c => {
+                if (c?.id) contactMap.set(c.id, { label: c.label });
+            });
+        }
 
         if (contactMap.size === 0) {
             listEl.innerHTML = '<p style="font-size:0.9rem; color:#6b7280;">No hay contactos de staff configurados. Crea la tabla staff_members o profiles con role.</p>';

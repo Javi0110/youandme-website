@@ -29,11 +29,11 @@ ON CONFLICT (id) DO UPDATE SET role = 'secretary', display_name = 'Secretaria', 
 
 -- Inserts adicionales (opcional): María y Andrea como staff
 INSERT INTO staff_members (id, email, role, display_name)
-SELECT id, email, 'secretary', 'María Fadhel'
+SELECT id, email, 'admin', 'María Fadhel'
 FROM auth.users WHERE email = 'mfadhel.ot@gmail.com'
-ON CONFLICT (id) DO UPDATE SET role = 'secretary', display_name = 'María Fadhel', email = EXCLUDED.email;
+ON CONFLICT (id) DO UPDATE SET role = 'admin', display_name = 'María Fadhel', email = EXCLUDED.email;
 
 INSERT INTO staff_members (id, email, role, display_name)
-SELECT id, email, 'secretary', 'Andrea García'
+SELECT id, email, 'admin', 'Andrea García'
 FROM auth.users WHERE email = 'andreagarciaot@gmail.com'
-ON CONFLICT (id) DO UPDATE SET role = 'secretary', display_name = 'Andrea García', email = EXCLUDED.email;
+ON CONFLICT (id) DO UPDATE SET role = 'admin', display_name = 'Andrea García', email = EXCLUDED.email;
