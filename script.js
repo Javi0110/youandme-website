@@ -908,9 +908,14 @@ document.addEventListener('click', async (e) => {
                 .ilike('description', `%reminder_type=reminder|referral_patient_id=${referralId}%`);
             if (tasksDelErr) {
                 console.warn('No se pudieron borrar tasks recordatorios del referido:', tasksDelErr?.message || tasksDelErr);
+                alert('No se pudieron borrar algunos to-dos del referido (permisos). Se ocultarán del calendario igualmente.');
             }
 
             cerrarModalDetalleReferido();
+            // Refresca para ocultar reminders aunque no hayan podido borrarse por RLS.
+            await cargarTareasStaff();
+            await cargarResumenDashboardStaff();
+            if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
             await cargarPacientesReferidos();
             if (staffReferralsCalendar) staffReferralsCalendar.refetchEvents();
             limpiarFormularioReferidos();
@@ -1121,10 +1126,11 @@ async function obtenerTareasParaDia(dateStr) {
             .order('title', { ascending: true });
         if (error) throw error;
         // Filtro por "activa" (due_date <= día) para que aparezca todos los días posteriores.
-        return (data || []).filter(t => {
+        const tareasActivas = (data || []).filter(t => {
             const dueISO = normalizarFechaISO(t.due_date);
             return dueISO && dueISO <= dayISO && t.status !== 'completed';
         });
+        return await filtrarTareasReferidosStale(tareasActivas);
     } catch (e) {
         console.error('Error obteniendo tareas del día:', e);
         return [];
@@ -1143,6 +1149,51 @@ function cerrarDesgloseDia() {
 
 function escaparHtml(s) {
     return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function limpiarDescripcionInternaParaMostrar(desc) {
+    if (!desc) return '';
+    let cleaned = String(desc);
+    // Quitamos prefijos internos que usamos para relacionar tareas con recordatorios.
+    cleaned = cleaned.replace(/reminder_type=reminder\|referral_patient_id=[^\n\r]*/g, '');
+    cleaned = cleaned.replace(/reservation_type=(cumple|evento)\|reservation_id=[^\n\r]*/g, '');
+    return cleaned.trim();
+}
+
+function extraerReferralIdDeReminder(desc) {
+    if (!desc) return null;
+    const m = String(desc).match(/reminder_type=reminder\|referral_patient_id=([^\n\r]*)/);
+    const id = m?.[1]?.trim() || '';
+    return id || null;
+}
+
+async function filtrarTareasReferidosStale(tareas) {
+    if (!supabaseClient || !Array.isArray(tareas) || tareas.length === 0) return tareas;
+
+    const referralIds = Array.from(new Set(
+        tareas.map(t => extraerReferralIdDeReminder(t?.description))
+            .filter(Boolean)
+    ));
+    if (referralIds.length === 0) return tareas;
+
+    try {
+        const { data: rows, error } = await supabaseClient
+            .from('referral_patients')
+            .select('id')
+            .in('id', referralIds);
+        if (error) throw error;
+
+        const existSet = new Set((rows || []).map(r => String(r.id)));
+        return tareas.filter(t => {
+            const rid = extraerReferralIdDeReminder(t?.description);
+            if (!rid) return true;
+            return existSet.has(String(rid));
+        });
+    } catch (e) {
+        // Si hay error de permisos/red, no bloqueamos la UI.
+        console.warn('No se pudieron filtrar tareas con referidos:', e);
+        return tareas;
+    }
 }
 
 function renderizarDesgloseDia(dateStr, tasks) {
@@ -1172,7 +1223,7 @@ function renderizarDesgloseDia(dateStr, tasks) {
         const status = t.status || 'pending';
         const badgeColor = prioridadColor(priority);
         const statusLabel = status === 'completed' ? 'Completada' : status === 'in_progress' ? 'En progreso' : 'Pendiente';
-        const desc = (t.description || '').trim();
+        const desc = limpiarDescripcionInternaParaMostrar(t.description);
         return `
           <div class="staff-day-task-item" data-task-id="${escaparHtml(t.id)}" role="button" style="cursor:pointer; display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem; padding:0.75rem; border:1px solid #e5e7eb; border-radius:10px; margin-bottom:0.6rem;">
             <div style="min-width:0;">
@@ -1246,7 +1297,7 @@ async function abrirVistaDetalleDiaCompleta(dateStr) {
         const color = prioridadColor(priority);
         const statusLabel = status === 'completed' ? 'Completada' : status === 'in_progress' ? 'En progreso' : 'Pendiente';
         const horario = formatearHorarioTarea(t.due_date);
-        const desc = (t.description || '').trim();
+        const desc = limpiarDescripcionInternaParaMostrar(t.description);
         return `
           <div class="staff-today-detail-task-item" data-task-id="${escaparHtml(t.id)}" role="button" style="cursor:pointer; padding:0.8rem; border:1px solid #e5e7eb; border-left:4px solid ${color}; border-radius:10px; margin-bottom:0.65rem;">
             <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:flex-start; flex-wrap:wrap;">
@@ -1318,7 +1369,7 @@ function mostrarDetalleEventoCalendario(t) {
       <span style="font-size:0.78rem; color:#6b7280;">${escaparHtml(fecha)}</span>
     `;
 
-    const desc = (t.description || '').trim();
+    const desc = limpiarDescripcionInternaParaMostrar(t.description);
     const nextCompleteLabel = status === 'completed' ? 'Marcar pendiente' : 'Marcar completada';
     descEl.innerHTML = `
       <div style="white-space:pre-wrap; color:#4b5563; font-size:0.9rem;">
@@ -1456,7 +1507,7 @@ async function cargarTareasStaff() {
             .order('due_date', { ascending: true, nullsFirst: false })
             .order('created_at', { ascending: false });
         if (error) throw error;
-        staffTasksCache = data || [];
+        staffTasksCache = await filtrarTareasReferidosStale(data || []);
         await enriquecerAssignedToLabels(staffTasksCache);
         renderizarTareasStaff(staffTasksCache);
     } catch (e) {
@@ -1489,6 +1540,7 @@ function renderizarTareasStaff(tareas) {
             const due = t.due_date ? formatearFechaCorta(t.due_date) : '—';
             const color = prioridadColor(t.priority || 'medium');
             const checked = status === 'completed';
+            const desc = limpiarDescripcionInternaParaMostrar(t.description);
             return `
               <div class="staff-task-card" data-task-id="${t.id}" style="border-left:4px solid ${color};">
                 <div class="staff-task-open-area" data-open-task="${t.id}" style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer;">
@@ -1496,7 +1548,7 @@ function renderizarTareasStaff(tareas) {
                   <div style="flex:1;">
                     <strong>${escapeHtml(t.title || '')}</strong>
                     ${t.assigned_to ? `<p style="font-size:0.8rem; color:#6b7280; margin:0.15rem 0 0 0;">Asignado a: ${escapeHtml(t.assigned_to_label || '—')}</p>` : ''}
-                    ${t.description ? `<p style="font-size:0.85rem; color:#6b7280; margin:0.25rem 0 0 0;">${escapeHtml(t.description)}</p>` : ''}
+                    ${desc ? `<p style="font-size:0.85rem; color:#6b7280; margin:0.25rem 0 0 0;">${escapeHtml(desc)}</p>` : ''}
                     <p style="font-size:0.8rem; color:#6b7280; margin-top:0.35rem;">
                       <span class="staff-task-priority-badge staff-task-priority-${t.priority || 'medium'}">
                         ${prioridadTexto(t.priority || 'medium')}
@@ -2112,16 +2164,18 @@ function inicializarStaffCalendar() {
                 if (!startISO || !endISOExclusive) return successCallback([]);
                 const { data } = await supabaseClient
                     .from('tasks')
-                    .select('id, title, due_date, priority, status')
+                    .select('id, title, description, due_date, priority, status')
                     .not('due_date', 'is', null)
                     .neq('status', 'completed')
                     .or(`assigned_to.eq.${uid},created_by.eq.${uid}`);
+
+                const tareas = await filtrarTareasReferidosStale(data || []);
 
                 // FullCalendar month view "divide" eventos multi-día por semana.
                 // Para que la tarea aparezca en *cada día* posterior al `due_date`,
                 // generamos un evento de 1 día por cada fecha.
                 const events = [];
-                (data || []).forEach(t => {
+                (tareas || []).forEach(t => {
                     const dueISO = normalizarFechaISO(t.due_date);
                     if (!dueISO) return;
                     // No mostrar si el `due_date` todavía está fuera del rango visible.
