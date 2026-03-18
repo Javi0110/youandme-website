@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS staff_members (
 
 ALTER TABLE staff_members ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Staff puede leer staff_members" ON staff_members;
+
 CREATE POLICY "Staff puede leer staff_members"
   ON staff_members FOR SELECT TO authenticated USING (true);
 
@@ -24,3 +26,14 @@ INSERT INTO staff_members (id, email, role, display_name)
 SELECT id, email, 'secretary', 'Secretaria'
 FROM auth.users WHERE email = 'asistenteyouandme@gmail.com'
 ON CONFLICT (id) DO UPDATE SET role = 'secretary', display_name = 'Secretaria', email = EXCLUDED.email;
+
+-- Inserts adicionales (opcional): María y Andrea como staff
+INSERT INTO staff_members (id, email, role, display_name)
+SELECT id, email, 'secretary', 'María Fadhel'
+FROM auth.users WHERE email = 'mfadhel.ot@gmail.com'
+ON CONFLICT (id) DO UPDATE SET role = 'secretary', display_name = 'María Fadhel', email = EXCLUDED.email;
+
+INSERT INTO staff_members (id, email, role, display_name)
+SELECT id, email, 'secretary', 'Andrea García'
+FROM auth.users WHERE email = 'andreagarciaot@gmail.com'
+ON CONFLICT (id) DO UPDATE SET role = 'secretary', display_name = 'Andrea García', email = EXCLUDED.email;

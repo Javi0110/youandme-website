@@ -1077,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const assigneeValue = assigneeSelect.value;
                 if (assigneeValue === 'secretaria') {
                     // Email fijo de la secretaria en el staff portal
-                    assignedEmail = 'centroyouandme@gmail.com';
+                    assignedEmail = 'asistenteyouandme@gmail.com';
                 } else {
                     assignedEmail = null;
                 }
