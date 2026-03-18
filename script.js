@@ -634,7 +634,10 @@ function mostrarSeccionStaff(section) {
     }
     else if (section === 'messages') cargarConversacionesStaff();
     else if (section === 'calendar') inicializarStaffCalendar();
-    else if (section === 'referrals') inicializarStaffReferralsCalendar();
+    else if (section === 'referrals') {
+        cargarPacientesReferidos().catch(() => { /* ignore */ });
+        inicializarStaffReferralsCalendar();
+    }
 }
 
 function manejarRutasStaff() {
@@ -649,6 +652,7 @@ let staffCalendar = null;
 let staffTasksCache = [];
 let staffReferralsCalendar = null;
 let staffReferralsCache = [];
+const REFERRAL_PATIENT_NEW_OPTION_VALUE = '__new__';
 let __referralReminderSchedulerLastRunISO = null;
 
 function formatoDiaLargoES(date) {
@@ -754,17 +758,88 @@ async function cargarPacientesReferidos() {
         .order('referral_expires_on', { ascending: true });
     if (error) throw error;
     staffReferralsCache = data || [];
+    cargarOpcionesPacienteReferidoDropdown();
+    renderizarListaPacientesReferidos();
     return staffReferralsCache;
+}
+
+function cargarOpcionesPacienteReferidoDropdown() {
+    const selectEl = document.getElementById('referralPatientSelect');
+    if (!selectEl) return;
+
+    const currentValue = selectEl.value;
+    selectEl.innerHTML = '<option value="">Seleccione paciente</option>';
+
+    (staffReferralsCache || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        const expISO = normalizarFechaISO(p.referral_expires_on);
+        const expText = expISO ? formatearFechaCorta(expISO) : '';
+        opt.textContent = expText ? `${p.patient_name} (vence ${expText})` : p.patient_name;
+        selectEl.appendChild(opt);
+    });
+
+    const optNew = document.createElement('option');
+    optNew.value = REFERRAL_PATIENT_NEW_OPTION_VALUE;
+    optNew.textContent = '+ Nuevo paciente';
+    selectEl.appendChild(optNew);
+
+    // Restaurar selección si aún aplica.
+    if (currentValue && Array.from(selectEl.options).some(o => o.value === currentValue)) {
+        selectEl.value = currentValue;
+    }
+
+    const customGroup = document.getElementById('referralPatientCustomGroup');
+    const customInput = document.getElementById('referralPatientNameCustom');
+    const showNew = selectEl.value === REFERRAL_PATIENT_NEW_OPTION_VALUE;
+    if (customGroup) customGroup.style.display = showNew ? '' : 'none';
+    if (customInput && !showNew) customInput.value = '';
+}
+
+function renderizarListaPacientesReferidos() {
+    const listEl = document.getElementById('staffReferralsPatientsList');
+    if (!listEl) return;
+
+    const items = staffReferralsCache || [];
+    if (items.length === 0) {
+        listEl.innerHTML = `
+          <div style="padding:0.9rem; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; color:#6b7280; font-size:0.9rem;">
+            Todavía no hay pacientes cargados.
+          </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = items.map(p => {
+        const expISO = normalizarFechaISO(p.referral_expires_on);
+        const expText = expISO ? formatearFechaCorta(expISO) : '—';
+        return `
+          <div style="border:1px solid #e5e7eb; border-radius:10px; padding:0.7rem; display:flex; justify-content:space-between; gap:0.75rem; align-items:flex-start; flex-wrap:wrap;">
+            <div style="min-width:0;">
+              <div style="font-weight:800; color:#111827; word-break:break-word;">${escaparHtml(p.patient_name || 'Paciente')}</div>
+              <div style="font-size:0.85rem; color:#6b7280; margin-top:0.2rem;">Vence: ${escaparHtml(expText)}</div>
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary" data-referral-list-edit-id="${escaparHtml(p.id)}" style="padding:0.35rem 0.7rem;">Editar</button>
+              <button type="button" class="btn btn-secondary" data-referral-list-delete-id="${escaparHtml(p.id)}" style="padding:0.35rem 0.7rem; background:#f97373; border-color:#f97373; color:#fff;">Borrar</button>
+            </div>
+          </div>
+        `;
+    }).join('');
 }
 
 function cargarPacienteReferidoEnFormulario(p) {
     const idEl = document.getElementById('referralPatientId');
-    const nameEl = document.getElementById('referralPatientName');
+    const selectEl = document.getElementById('referralPatientSelect');
     const expiresEl = document.getElementById('referralExpiresOn');
-    if (!idEl || !nameEl || !expiresEl) return;
+    const customGroup = document.getElementById('referralPatientCustomGroup');
+    const customInput = document.getElementById('referralPatientNameCustom');
+    if (!idEl || !selectEl || !expiresEl) return;
 
     idEl.value = p?.id || '';
-    nameEl.value = p?.patient_name || '';
+    selectEl.value = p?.id || '';
+    if (customGroup) customGroup.style.display = 'none';
+    if (customInput) customInput.value = '';
     expiresEl.value = p?.referral_expires_on ? normalizarFechaISO(p.referral_expires_on) : '';
     const statusEl = document.getElementById('referralFormStatus');
     if (statusEl) statusEl.textContent = 'Editando. Guarda para aplicar cambios.';
@@ -778,6 +853,12 @@ function limpiarFormularioReferidos() {
     if (statusEl) statusEl.textContent = '';
     const idEl = document.getElementById('referralPatientId');
     if (idEl) idEl.value = '';
+    const selectEl = document.getElementById('referralPatientSelect');
+    if (selectEl) selectEl.value = '';
+    const customGroup = document.getElementById('referralPatientCustomGroup');
+    if (customGroup) customGroup.style.display = 'none';
+    const customInput = document.getElementById('referralPatientNameCustom');
+    if (customInput) customInput.value = '';
 }
 
 function asegurarModalDetalleReferido() {
@@ -848,6 +929,45 @@ function abrirModalDetalleReferido(p) {
 }
 
 document.addEventListener('click', async (e) => {
+    // Acciones rápidas desde la lista de pacientes existentes
+    const listEditBtn = e.target?.closest?.('[data-referral-list-edit-id]');
+    if (listEditBtn) {
+        const referralId = listEditBtn.getAttribute('data-referral-list-edit-id') || '';
+        const p = (staffReferralsCache || []).find(x => String(x.id) === String(referralId));
+        if (p) {
+            cargarPacienteReferidoEnFormulario(p);
+            abrirModalDetalleReferido(p);
+        }
+        return;
+    }
+
+    const listDeleteBtn = e.target?.closest?.('[data-referral-list-delete-id]');
+    if (listDeleteBtn) {
+        const referralId = listDeleteBtn.getAttribute('data-referral-list-delete-id') || '';
+        if (!referralId) return;
+        const ok = window.confirm('¿Borrar este paciente referido? Esta acción no se puede deshacer.');
+        if (!ok) return;
+
+        try {
+            const { error } = await supabaseClient.from('referral_patients').delete().eq('id', referralId);
+            if (error) throw error;
+
+            // Intento: borrar tasks recordatorios; si RLS lo bloquea igual filtramos en UI.
+            await supabaseClient.from('tasks')
+                .delete()
+                .ilike('description', `%reminder_type=reminder|referral_patient_id=${referralId}%`);
+
+            cerrarModalDetalleReferido();
+            limpiarFormularioReferidos();
+            await cargarPacientesReferidos();
+            if (staffReferralsCalendar) staffReferralsCalendar.refetchEvents();
+            if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+        } catch (err) {
+            console.error('Error borrando referido (lista):', err);
+        }
+        return;
+    }
+
     const modal = document.getElementById('staffReferralQuickModal');
     if (!modal || modal.style.display === 'none') return;
 
@@ -2088,12 +2208,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const referralForm = document.getElementById('referralPatientForm');
     const cancelBtn = document.getElementById('referralFormCancelBtn');
     if (referralForm) {
+        const patientSelect = document.getElementById('referralPatientSelect');
+        const customGroup = document.getElementById('referralPatientCustomGroup');
+        const customInput = document.getElementById('referralPatientNameCustom');
+        const idEl = document.getElementById('referralPatientId');
+
+        if (patientSelect) {
+            patientSelect.addEventListener('change', () => {
+                const sel = patientSelect.value;
+                const showNew = sel === REFERRAL_PATIENT_NEW_OPTION_VALUE;
+                if (customGroup) customGroup.style.display = showNew ? '' : 'none';
+                if (customInput && !showNew) customInput.value = '';
+                if (idEl) idEl.value = showNew ? '' : sel;
+            });
+        }
+
         referralForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!supabaseClient || !currentStaffSession) return;
 
-            const id = document.getElementById('referralPatientId')?.value?.trim() || '';
-            const patientName = document.getElementById('referralPatientName')?.value?.trim();
+            const patientSelectValue = document.getElementById('referralPatientSelect')?.value?.trim() || '';
+            const isNew = patientSelectValue === REFERRAL_PATIENT_NEW_OPTION_VALUE;
+            const selectedId = isNew ? '' : patientSelectValue;
+            const selectedPatient = selectedId ? (staffReferralsCache || []).find(x => x.id === selectedId) : null;
+            const patientName = isNew
+                ? (document.getElementById('referralPatientNameCustom')?.value?.trim() || '')
+                : (selectedPatient?.patient_name || '');
+
+            const id = selectedId;
             const expiresOn = document.getElementById('referralExpiresOn')?.value || '';
             const statusEl = document.getElementById('referralFormStatus');
 
@@ -2131,6 +2273,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error guardando referido:', err);
                 if (statusEl) statusEl.textContent = 'Error al guardar referido.';
             }
+        });
+    }
+
+    const addBtn = document.getElementById('staffReferralsAddPatientBtn');
+    if (addBtn) {
+        addBtn.addEventListener('click', () => {
+            limpiarFormularioReferidos();
+            const patientSelect = document.getElementById('referralPatientSelect');
+            const customGroup = document.getElementById('referralPatientCustomGroup');
+            const customInput = document.getElementById('referralPatientNameCustom');
+            const idEl = document.getElementById('referralPatientId');
+            if (patientSelect) patientSelect.value = REFERRAL_PATIENT_NEW_OPTION_VALUE;
+            if (customGroup) customGroup.style.display = '';
+            if (customInput) customInput.value = '';
+            if (idEl) idEl.value = '';
         });
     }
 

@@ -939,7 +939,13 @@
                               <input type="hidden" id="referralPatientId">
                               <div class="form-group">
                                 <label>Paciente</label>
-                                <input type="text" id="referralPatientName" required placeholder="Ej: Alanis">
+                                <select id="referralPatientSelect" required>
+                                  <option value="">Seleccione paciente</option>
+                                </select>
+                              </div>
+                              <div class="form-group" id="referralPatientCustomGroup" style="display:none;">
+                                <label>Nuevo paciente</label>
+                                <input type="text" id="referralPatientNameCustom" placeholder="Ej: Alanis">
                               </div>
                               <div class="form-group">
                                 <label>Vencimiento del referido</label>
@@ -954,6 +960,13 @@
                           </div>
                           <div style="flex:2; min-width:320px;">
                             <div id="staffReferralsCalendar" style="min-height:400px; background:#fff; border-radius:12px; border:1px solid #e5e7eb;"></div>
+                            <div style="margin-top:1rem;">
+                              <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                                <div style="font-weight:800; color:#111827;">Pacientes existentes</div>
+                                <button type="button" class="btn btn-secondary" id="staffReferralsAddPatientBtn" style="padding:0.35rem 0.7rem;">+ Agregar</button>
+                              </div>
+                              <div id="staffReferralsPatientsList" style="margin-top:0.75rem; display:grid; gap:0.65rem;"></div>
+                            </div>
                           </div>
                         </div>
                       </div>
