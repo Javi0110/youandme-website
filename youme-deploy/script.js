@@ -480,11 +480,6 @@ async function cargarResumenDashboardStaff() {
     if (!supabaseClient || !currentStaffSession) return;
 
     const uid = currentStaffSession.user.id;
-    const hoy = new Date();
-    const hoyInicio = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-    const hoyFin = new Date(hoyInicio);
-    hoyFin.setDate(hoyFin.getDate() + 1);
-    const hoyFinISO = hoyFin.toISOString();
     const hoyISO = obtenerHoyISO();
 
     let tareasHoy = 0;
@@ -494,10 +489,9 @@ async function cargarResumenDashboardStaff() {
         const [tareasRes, mensajesRes] = await Promise.all([
             supabaseClient
                 .from('tasks')
-                .select('id, due_date')
+                .select('id, due_date, description, status')
                 .or(`assigned_to.eq.${uid},created_by.eq.${uid}`)
-                .in('status', ['pending', 'in_progress'])
-                .lt('due_date', hoyFinISO),
+                .in('status', ['pending', 'in_progress']),
             supabaseClient
                 .from('messages')
                 .select('id')
@@ -506,9 +500,12 @@ async function cargarResumenDashboardStaff() {
         ]);
 
         if (!tareasRes.error && Array.isArray(tareasRes.data)) {
-            tareasHoy = tareasRes.data.filter(t => {
+            const tareasValidas = await filtrarTareasReferidosStale(tareasRes.data);
+            tareasHoy = tareasValidas.filter(t => {
                 const dueISO = normalizarFechaISO(t.due_date);
-                return dueISO && dueISO <= hoyISO;
+                if (!dueISO) return false;
+                const activeISO = dueISO > hoyISO ? dueISO : hoyISO;
+                return activeISO === hoyISO;
             }).length;
         }
         if (!mensajesRes.error && Array.isArray(mensajesRes.data)) mensajesSinLeer = mensajesRes.data.length;
