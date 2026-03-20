@@ -1204,13 +1204,16 @@ async function ejecutarSchedulerReferidos() {
 async function obtenerTareasParaDia(dateStr) {
     const dayISO = normalizarFechaISO(dateStr);
     if (!dayISO) return [];
+    const todayISO = obtenerHoyISO();
 
     if (Array.isArray(staffTasksCache) && staffTasksCache.length > 0) {
-        // Tareas no completadas: se consideran activas desde due_date hacia adelante.
+        // Tareas no completadas: solo aparecen en su "día activo" (due_date o, si venció, hoy).
         return staffTasksCache.filter(t => {
             if (!t || t.status === 'completed') return false;
             const dueISO = normalizarFechaISO(t.due_date);
-            return !!dueISO && dueISO <= dayISO;
+            if (!dueISO) return false;
+            const activeISO = dueISO > todayISO ? dueISO : todayISO;
+            return activeISO === dayISO;
         });
     }
 
@@ -1228,10 +1231,12 @@ async function obtenerTareasParaDia(dateStr) {
             .order('priority', { ascending: false })
             .order('title', { ascending: true });
         if (error) throw error;
-        // Filtro por "activa" (due_date <= día) para que aparezca todos los días posteriores.
+        // Filtro por "día activo único": due_date (si aún no vence) o hoy (si ya venció).
         const tareasActivas = (data || []).filter(t => {
             const dueISO = normalizarFechaISO(t.due_date);
-            return dueISO && dueISO <= dayISO && t.status !== 'completed';
+            if (!dueISO || t.status === 'completed') return false;
+            const activeISO = dueISO > todayISO ? dueISO : todayISO;
+            return activeISO === dayISO;
         });
         return await filtrarTareasReferidosStale(tareasActivas);
     } catch (e) {
@@ -2313,29 +2318,23 @@ function inicializarStaffCalendar() {
 
                 const tareas = await filtrarTareasReferidosStale(data || []);
 
-                // FullCalendar divide multi-día por semana (en month view).
-                // Para mostrarla en *cada día* posterior al `due_date`,
-                // generamos un evento de 1 día por fecha.
+                // Mostrar cada tarea pendiente solo en un "día activo":
+                // due_date (si aún no vence) o hoy (si ya está vencida).
                 const events = [];
+                const todayISO = obtenerHoyISO();
                 (tareas || []).forEach(t => {
                     const dueISO = normalizarFechaISO(t.due_date);
                     if (!dueISO) return;
-                    if (dueISO >= endISOExclusive) return;
-
-                    let dayCursor = dueISO < startISO ? startISO : dueISO;
-                    if (dayCursor < dueISO) dayCursor = dueISO;
-
-                    while (dayCursor && dayCursor < endISOExclusive) {
-                        events.push({
-                            id: `${t.id}|${dayCursor}`,
-                            title: t.title || 'Tarea',
-                            start: dayCursor,
-                            allDay: true,
-                            backgroundColor: prioridadColor(t.priority || 'medium'),
-                            extendedProps: { taskId: t.id }
-                        });
-                        dayCursor = sumarDiasISO(dayCursor, 1);
-                    }
+                    const activeISO = dueISO > todayISO ? dueISO : todayISO;
+                    if (activeISO < startISO || activeISO >= endISOExclusive) return;
+                    events.push({
+                        id: `${t.id}|${activeISO}`,
+                        title: t.title || 'Tarea',
+                        start: activeISO,
+                        allDay: true,
+                        backgroundColor: prioridadColor(t.priority || 'medium'),
+                        extendedProps: { taskId: t.id }
+                    });
                 });
 
                 // ADMIN (solo centroyouandme@gmail.com): pintar reservas de eventos desde el website.
