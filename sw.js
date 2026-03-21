@@ -2,7 +2,7 @@ const CACHE_NAME = 'youme-staff-v4';
 const URLS_TO_CACHE = ['/manifest.webmanifest'];
 
 const IMAGE_EXT = /\.(png|jpe?g|webp|gif|svg|ico|avif)$/i;
-const VIDEO_EXT = /\.(mp4|webm|ogg)$/i;
+const VIDEO_EXT = /\.(mp4|webm|ogg|mov)$/i;
 const FONT_EXT = /\.(woff2?|ttf|otf)$/i;
 
 self.addEventListener('install', (event) => {
