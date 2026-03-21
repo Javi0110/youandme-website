@@ -3947,12 +3947,15 @@ function calcularTotalCumpleanos() {
     
     let total = 0;
     
-    // Espacio base: 3hrs $250, hora adicional $50
+    // Espacio base: 3 hrs $250 + fee fijo limpieza $45 = $295; hora adicional $50
+    const ESPACIO_3HR = 250;
+    const FEE_LIMPIEZA = 45;
+    const PRECIO_HORA_ADICIONAL = 50;
     const horas = parseInt(cumpleForm.horas?.value) || 3;
     if (horas <= 3) {
-        total += 250;
+        total += ESPACIO_3HR + FEE_LIMPIEZA;
     } else {
-        total += 250 + ((horas - 3) * 50);
+        total += ESPACIO_3HR + FEE_LIMPIEZA + ((horas - 3) * PRECIO_HORA_ADICIONAL);
     }
     
     // Decoración: básica $175, elaborada $350
