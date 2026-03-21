@@ -1,0 +1,3 @@
+# Sitio estático: publicar la raíz del repo (incluye galeria/, servicios/, *.png, etc.)
+[build]
+  publish = "."
