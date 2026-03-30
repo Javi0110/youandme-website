@@ -145,6 +145,50 @@ async function enviarEmailNotificacionAdminSolicitud(solicitudData = {}) {
     });
 }
 
+async function enviarEmailAdminSolicitudCompletaWeb3Forms(formData, solicitudData = {}) {
+    if (!formData) return false;
+    const accessKey = formData.get('access_key');
+    if (!accessKey) return false;
+    const detalle = [
+        `Servicio: ${solicitudData.servicio || ''}`,
+        `Paciente: ${solicitudData.paciente || ''}`,
+        `Edad: ${solicitudData.edad ?? ''}`,
+        `Tutor/Responsable: ${solicitudData.tutor || ''}`,
+        `Email: ${solicitudData.email || ''}`,
+        `Telefono: ${solicitudData.telefono || ''}`,
+        `Tipo de cobertura: ${solicitudData.tipo_cobertura || ''}`,
+        `Contacto preferido: ${solicitudData.contacto_preferido || ''}`,
+        `Motivo: ${solicitudData.motivo || ''}`
+    ].join('\n');
+
+    const adminData = new FormData();
+    adminData.append('access_key', String(accessKey));
+    adminData.append('subject', `Nueva solicitud de servicio (detalle completo): ${solicitudData.servicio || 'Servicio'}`);
+    adminData.append('from_name', 'You&Me Website - Notificacion interna');
+    adminData.append('message', detalle);
+    adminData.append('servicio', solicitudData.servicio || '');
+    adminData.append('nombre_paciente', solicitudData.paciente || '');
+    adminData.append('edad_paciente', String(solicitudData.edad ?? ''));
+    adminData.append('nombre_tutor', solicitudData.tutor || '');
+    adminData.append('email', solicitudData.email || '');
+    adminData.append('telefono', solicitudData.telefono || '');
+    adminData.append('tipo_cobertura', solicitudData.tipo_cobertura || '');
+    adminData.append('contacto_preferido', solicitudData.contacto_preferido || '');
+    adminData.append('motivo_consulta', solicitudData.motivo || '');
+
+    try {
+        const res = await fetch('https://api.web3forms.com/submit', {
+            method: 'POST',
+            body: adminData
+        });
+        const data = await res.json().catch(() => ({}));
+        return !!data?.success;
+    } catch (e) {
+        console.error('Error enviando detalle admin via Web3Forms:', e);
+        return false;
+    }
+}
+
 async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActividad, total) {
     if (!email) return;
     let totalNum = total;
@@ -4593,6 +4637,7 @@ function inicializarModalServicios() {
             const tutor = formData.get('nombre_tutor');
             await enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio, tutor);
             await enviarEmailNotificacionAdminSolicitud(solicitudData);
+            await enviarEmailAdminSolicitudCompletaWeb3Forms(formData, solicitudData);
             if (guardadoEnServidor) {
                 alert('¡Solicitud enviada exitosamente!\n\nTe hemos enviado un email de confirmación.\n\nNos pondremos en contacto contigo pronto.\n\nPara consultas inmediatas, llámanos al (787) 204-9041');
             } else {
