@@ -56,11 +56,26 @@ DROP POLICY IF EXISTS "solicitudes_select_auth" ON public.solicitudes;
 CREATE POLICY "solicitudes_select_auth" ON public.solicitudes
     FOR SELECT TO authenticated USING (true);
 
+-- Permitir lectura también a anon (el panel admin actual no inicia sesión Supabase)
+DROP POLICY IF EXISTS "solicitudes_select_anon" ON public.solicitudes;
+CREATE POLICY "solicitudes_select_anon" ON public.solicitudes
+    FOR SELECT TO anon USING (true);
+
 DROP POLICY IF EXISTS "solicitudes_update_auth" ON public.solicitudes;
 CREATE POLICY "solicitudes_update_auth" ON public.solicitudes
     FOR UPDATE TO authenticated USING (true);
+
+-- Permitir actualización también a anon (marcar contactado/agendado y notas admin)
+DROP POLICY IF EXISTS "solicitudes_update_anon" ON public.solicitudes;
+CREATE POLICY "solicitudes_update_anon" ON public.solicitudes
+    FOR UPDATE TO anon USING (true) WITH CHECK (true);
 
 -- Permitir que usuarios autenticados eliminen: panel admin
 DROP POLICY IF EXISTS "solicitudes_delete_auth" ON public.solicitudes;
 CREATE POLICY "solicitudes_delete_auth" ON public.solicitudes
     FOR DELETE TO authenticated USING (true);
+
+-- Permitir eliminación también a anon desde el panel admin actual
+DROP POLICY IF EXISTS "solicitudes_delete_anon" ON public.solicitudes;
+CREATE POLICY "solicitudes_delete_anon" ON public.solicitudes
+    FOR DELETE TO anon USING (true);

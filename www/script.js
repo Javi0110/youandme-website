@@ -5797,6 +5797,7 @@ async function cargarSolicitudesAdmin(filtro = null) {
     
     let solicitudes = [];
     let desdeSupabase = [];
+    let supabaseReadErrorMsg = '';
     
     if (supabaseClient) {
         try {
@@ -5827,8 +5828,12 @@ async function cargarSolicitudesAdmin(filtro = null) {
                         agendado: s.agendado || false
                     };
                 });
+            } else if (error) {
+                supabaseReadErrorMsg = error?.message || 'Permiso denegado al leer solicitudes.';
+                console.warn('Cargar solicitudes desde Supabase (error):', error);
             }
         } catch (err) {
+            supabaseReadErrorMsg = err?.message || 'Error de conexión al leer solicitudes.';
             console.warn('Cargar solicitudes desde Supabase:', err);
         }
     }
@@ -5868,6 +5873,9 @@ async function cargarSolicitudesAdmin(filtro = null) {
             let htmlMsg = `<div class="no-data">${mensajes[filtroActualSolicitudes]}</div>`;
             if (filtroActualSolicitudes === 'todas') {
                 htmlMsg += '<p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">Si enviaste una solicitud y no aparece aquí, ejecuta en Supabase (SQL Editor) el archivo <strong>supabase-tabla-solicitudes.sql</strong> del proyecto y vuelve a intentar. Las solicitudes se guardan también en este navegador hasta que el servidor esté listo.</p>';
+                if (supabaseReadErrorMsg) {
+                    htmlMsg += `<p style="margin-top: 0.5rem; font-size: 0.85rem; color: #b45309;"><strong>Detalle:</strong> ${escapeHtml(String(supabaseReadErrorMsg))}</p>`;
+                }
             }
             container.innerHTML = htmlMsg;
             return;
