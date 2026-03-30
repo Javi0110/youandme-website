@@ -105,6 +105,37 @@ async function enviarEmailRelay(payload) {
     }
 }
 
+function obtenerAccessKeyWeb3Forms() {
+    const inline = document.querySelector?.('#servicioForm input[name="access_key"]')?.value?.trim?.();
+    if (inline) return inline;
+    return '5fe6398d-6246-4626-b12c-162e2f9f20f3';
+}
+
+async function enviarEmailInternoWeb3Forms(subject, detalle, extraFields = {}) {
+    const accessKey = obtenerAccessKeyWeb3Forms();
+    if (!accessKey) return false;
+    const fd = new FormData();
+    fd.append('access_key', accessKey);
+    fd.append('subject', subject || 'Notificación interna website');
+    fd.append('from_name', 'You&Me Website - Notificación interna');
+    fd.append('message', detalle || '');
+    Object.entries(extraFields || {}).forEach(([k, v]) => {
+        if (v == null) return;
+        fd.append(String(k), String(v));
+    });
+    try {
+        const res = await fetch('https://api.web3forms.com/submit', { method: 'POST', body: fd });
+        const data = await res.json().catch(() => ({}));
+        if (!data?.success) {
+            console.error('Web3Forms interno (error):', data);
+        }
+        return !!data?.success;
+    } catch (e) {
+        console.error('Web3Forms interno (catch):', e);
+        return false;
+    }
+}
+
 async function enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio, tutor) {
     if (!email) return;
     await enviarEmailRelay({
@@ -133,8 +164,10 @@ async function enviarEmailNotificacionAdminSolicitud(solicitudData = {}) {
         `Cobertura/Pago: ${cobertura}`,
         `Contacto preferido: ${contacto}`,
         `Motivo: ${motivo}`
-    ].join('\n');
+    ].join('
+');
 
+    // Reutilizamos el relay existente para que admin reciba una copia utilizable.
     await enviarEmailRelay({
         type: 'solicitud',
         to_email: adminEmail,
@@ -146,9 +179,6 @@ async function enviarEmailNotificacionAdminSolicitud(solicitudData = {}) {
 }
 
 async function enviarEmailAdminSolicitudCompletaWeb3Forms(formData, solicitudData = {}) {
-    if (!formData) return false;
-    const accessKey = formData.get('access_key');
-    if (!accessKey) return false;
     const detalle = [
         `Servicio: ${solicitudData.servicio || ''}`,
         `Paciente: ${solicitudData.paciente || ''}`,
@@ -159,34 +189,73 @@ async function enviarEmailAdminSolicitudCompletaWeb3Forms(formData, solicitudDat
         `Tipo de cobertura: ${solicitudData.tipo_cobertura || ''}`,
         `Contacto preferido: ${solicitudData.contacto_preferido || ''}`,
         `Motivo: ${solicitudData.motivo || ''}`
-    ].join('\n');
+    ].join('
+');
 
-    const adminData = new FormData();
-    adminData.append('access_key', String(accessKey));
-    adminData.append('subject', `Nueva solicitud de servicio (detalle completo): ${solicitudData.servicio || 'Servicio'}`);
-    adminData.append('from_name', 'You&Me Website - Notificacion interna');
-    adminData.append('message', detalle);
-    adminData.append('servicio', solicitudData.servicio || '');
-    adminData.append('nombre_paciente', solicitudData.paciente || '');
-    adminData.append('edad_paciente', String(solicitudData.edad ?? ''));
-    adminData.append('nombre_tutor', solicitudData.tutor || '');
-    adminData.append('email', solicitudData.email || '');
-    adminData.append('telefono', solicitudData.telefono || '');
-    adminData.append('tipo_cobertura', solicitudData.tipo_cobertura || '');
-    adminData.append('contacto_preferido', solicitudData.contacto_preferido || '');
-    adminData.append('motivo_consulta', solicitudData.motivo || '');
+    return await enviarEmailInternoWeb3Forms(
+        `Nueva solicitud de servicio (detalle completo): ${solicitudData.servicio || 'Servicio'}`,
+        detalle,
+        {
+            servicio: solicitudData.servicio || '',
+            nombre_paciente: solicitudData.paciente || '',
+            edad_paciente: String(solicitudData.edad ?? ''),
+            nombre_tutor: solicitudData.tutor || '',
+            email: solicitudData.email || '',
+            telefono: solicitudData.telefono || '',
+            tipo_cobertura: solicitudData.tipo_cobertura || '',
+            contacto_preferido: solicitudData.contacto_preferido || '',
+            motivo_consulta: solicitudData.motivo || ''
+        }
+    );
+}
 
-    try {
-        const res = await fetch('https://api.web3forms.com/submit', {
-            method: 'POST',
-            body: adminData
-        });
-        const data = await res.json().catch(() => ({}));
-        return !!data?.success;
-    } catch (e) {
-        console.error('Error enviando detalle admin via Web3Forms:', e);
-        return false;
-    }
+async function enviarEmailAdminReservaActividadWeb3Forms(det) {
+    const detalle = [
+        `Tipo: Reserva de actividad`,
+        `Actividad: ${det.nombreActividad || ''}`,
+        `Niño: ${det.nombreNino || ''}`,
+        `Edad: ${det.edadNino || ''}`,
+        `Padre/Madre: ${det.nombrePadre || ''}`,
+        `Email: ${det.email || ''}`,
+        `Telefono: ${det.telefono || ''}`,
+        `Dias: ${det.dias || 1}`,
+        `Total: $${det.precioTotal || 0}`,
+        `Fechas: ${(det.fechasSeleccionadas || []).join(', ')}`
+    ].join('
+');
+    return await enviarEmailInternoWeb3Forms(`Nueva reserva de actividad: ${det.nombreActividad || 'Actividad'}`, detalle);
+}
+
+async function enviarEmailAdminReservaCumpleWeb3Forms(det) {
+    const detalle = [
+        `Tipo: Reserva de cumpleaños`,
+        `Nombre festejado/a: ${det.nombreNino || ''}`,
+        `Fecha: ${det.fecha || ''}`,
+        `Horario: ${det.horaSlot || ''}`,
+        `Contacto: ${det.contacto || ''}`,
+        `Email: ${det.email || ''}`,
+        `Telefono: ${det.telefono || ''}`,
+        `Decoración: ${det.decoracion || ''}`,
+        `Equipo toddlers: ${det.equipo ? 'Sí' : 'No'}`,
+        `Actividad: ${det.actividad || ''}`,
+        `Niños: ${det.numNinos || 0}`,
+        `Total: $${det.total || 0}`
+    ].join('
+');
+    return await enviarEmailInternoWeb3Forms('Nueva reserva de cumpleaños', detalle);
+}
+
+async function enviarEmailAdminSolicitudFechaWeb3Forms(det) {
+    const detalle = [
+        `Tipo: Solicitud de fecha`,
+        `Fecha solicitada: ${det.fecha_solicitada || ''}`,
+        `Nombre contacto: ${det.nombre_contacto || ''}`,
+        `Email: ${det.email || ''}`,
+        `Telefono: ${det.telefono || ''}`,
+        `Mensaje: ${det.mensaje || ''}`
+    ].join('
+');
+    return await enviarEmailInternoWeb3Forms('Nueva solicitud de fecha (celebración)', detalle);
 }
 
 async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActividad, total) {
@@ -3963,6 +4032,17 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
                 localStorage.setItem('youme_reservas_eventos', JSON.stringify(reservasLocales));
                 // Enviar email de confirmación al cliente y notificaciones aunque Supabase falle
                 await enviarEmailConfirmacionActividad(email, nombreNino, nombreActividad || 'Actividad', precioTotal);
+                await enviarEmailAdminReservaActividadWeb3Forms({
+                    nombreActividad: nombreActividad || 'Actividad',
+                    nombreNino,
+                    edadNino,
+                    nombrePadre,
+                    email,
+                    telefono,
+                    dias,
+                    precioTotal,
+                    fechasSeleccionadas
+                });
                 alert(
                     '¡Reservación exitosa!\n\n' +
                     'Para completarla, por favor envía el monto de $' + precioTotal + ' a través de ATH Móvil: Pay a business → YouandMeCenter\n\n' +
@@ -3986,6 +4066,17 @@ async function procesarRsvpEvento(eventoId, precioBase, esMultiDia, nombreActivi
             }
         }
         await enviarEmailConfirmacionActividad(email, nombreNino, nombreActividad || 'Actividad', precioTotal);
+        await enviarEmailAdminReservaActividadWeb3Forms({
+            nombreActividad: nombreActividad || 'Actividad',
+            nombreNino,
+            edadNino,
+            nombrePadre,
+            email,
+            telefono,
+            dias,
+            precioTotal,
+            fechasSeleccionadas
+        });
         alert(`Reserva registrada para ${nombreNino}.${detallesDias}${detallesFechas}\n\nTotal: $${precioTotal}\n\n${mensajePago}`);
     } catch (e) {
         console.error(e);
@@ -4298,6 +4389,13 @@ function inicializarFormularios() {
                 fecha_solicitada: requestDateFecha,
                 mensaje: requestDateMensaje || ''
             });
+            await enviarEmailAdminSolicitudFechaWeb3Forms({
+                fecha_solicitada: requestDateFecha,
+                nombre_contacto: nombre,
+                email,
+                telefono,
+                mensaje: requestDateMensaje || ''
+            });
             mostrarExitoSolicitudFecha();
         } catch (e) {
             console.error(e);
@@ -4394,6 +4492,7 @@ function inicializarFormularios() {
             }
         }
         await enviarEmailConfirmacionCumple(detalles);
+        await enviarEmailAdminReservaCumpleWeb3Forms(detalles);
         mostrarExitoReservaCumple(total, nombre);
     } catch (e) {
         console.error(e);
