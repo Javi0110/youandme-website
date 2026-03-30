@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const type = body.type; // 'solicitud' | 'actividad' | 'cumple' | 'solicitud_fecha_decision' | 'solicitud_fecha'
+    const type = body.type; // 'solicitud' | 'solicitud_admin_detalle' | 'actividad' | 'cumple' | 'solicitud_fecha_decision' | 'solicitud_fecha'
     const toEmail = body.to_email;
 
     if (!type || !toEmail) {
@@ -172,6 +172,21 @@ Deno.serve(async (req) => {
         servicio: body.servicio,
         tutor: body.tutor,
       });
+    } else if (type === 'solicitud_admin_detalle') {
+      subject = body.subject || 'Nueva solicitud de servicio (detalle completo)';
+      html = `
+        <p><strong>Nueva solicitud de servicios recibida desde el website.</strong></p>
+        <p><strong>Servicio:</strong> ${escapeHtml(body.servicio || '')}</p>
+        <p><strong>Paciente:</strong> ${escapeHtml(body.nombre_paciente || '')}</p>
+        <p><strong>Edad:</strong> ${escapeHtml(body.edad_paciente || '')}</p>
+        <p><strong>Tutor/Responsable:</strong> ${escapeHtml(body.nombre_tutor || '')}</p>
+        <p><strong>Email:</strong> ${escapeHtml(body.email || '')}</p>
+        <p><strong>Teléfono:</strong> ${escapeHtml(body.telefono || '')}</p>
+        <p><strong>Tipo de cobertura:</strong> ${escapeHtml(body.tipo_cobertura || '')}</p>
+        <p><strong>Contacto preferido:</strong> ${escapeHtml(body.contacto_preferido || '')}</p>
+        <p><strong>Motivo:</strong></p>
+        <p>${escapeHtml(body.motivo_consulta || '').replace(/\n/g, '<br>')}</p>
+      `.trim();
     } else if (type === 'solicitud_fecha') {
       subject = 'Confirmación - Recibimos tu solicitud de fecha - You&Me Development Center';
       html = htmlSolicitudFechaNueva({
@@ -221,6 +236,12 @@ Deno.serve(async (req) => {
     await sendResend(apiKey, fromEnv, toEmail, subject, html);
 
     // 2) Email de notificación interna al centro (resumen)
+    if (type === 'solicitud_admin_detalle') {
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
     const tipoDescripcion =
       type === 'solicitud'
         ? 'solicitud de servicios'

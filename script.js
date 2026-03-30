@@ -149,34 +149,23 @@ async function enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio,
 }
 
 async function enviarEmailNotificacionAdminSolicitud(solicitudData = {}) {
-    const adminEmail = 'centroyouandme@gmail.com';
-    const paciente = solicitudData.paciente || '';
-    const servicio = solicitudData.servicio || '';
-    const tutor = solicitudData.tutor || '';
-    const telefono = solicitudData.telefono || '';
-    const cobertura = solicitudData.tipo_cobertura || 'No indicado';
-    const motivo = solicitudData.motivo || '';
-    const contacto = solicitudData.contacto_preferido || '';
-    const resumen = [
-        `Paciente: ${paciente}`,
-        `Servicio: ${servicio}`,
-        `Tutor: ${tutor}`,
-        `Teléfono: ${telefono}`,
-        `Cobertura/Pago: ${cobertura}`,
-        `Contacto preferido: ${contacto}`,
-        `Motivo: ${motivo}`
-    ].join('\n');
-
-    // Reutilizamos el relay existente para que admin reciba una copia utilizable.
+    const toEmails = ['centroyouandme@gmail.com', 'magaribyelena@gmail.com'];
     await enviarEmailRelay({
-        type: 'solicitud',
-        to_email: adminEmail,
-        nombre_paciente: paciente,
-        servicio: `${servicio} (copia admin)`,
-        tutor: `${tutor} | Tel: ${telefono} | Cobertura: ${cobertura} | Contacto: ${contacto} | Motivo: ${motivo}`,
-        resumen
+        type: 'solicitud_admin_detalle',
+        to_email: toEmails,
+        subject: `Nueva solicitud de servicio (detalle completo): ${solicitudData.servicio || 'Servicio'}`,
+        servicio: solicitudData.servicio || '',
+        nombre_paciente: solicitudData.paciente || '',
+        edad_paciente: String(solicitudData.edad ?? ''),
+        nombre_tutor: solicitudData.tutor || '',
+        email: solicitudData.email || '',
+        telefono: solicitudData.telefono || '',
+        tipo_cobertura: solicitudData.tipo_cobertura || '',
+        contacto_preferido: solicitudData.contacto_preferido || '',
+        motivo_consulta: solicitudData.motivo || ''
     });
 }
+
 
 async function enviarEmailAdminSolicitudCompletaWeb3Forms(formData, solicitudData = {}) {
     const detalle = [
