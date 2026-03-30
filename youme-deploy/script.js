@@ -111,6 +111,35 @@ async function enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio,
     });
 }
 
+async function enviarEmailNotificacionAdminSolicitud(solicitudData = {}) {
+    const adminEmail = 'centroyouandme@gmail.com';
+    const paciente = solicitudData.paciente || '';
+    const servicio = solicitudData.servicio || '';
+    const tutor = solicitudData.tutor || '';
+    const telefono = solicitudData.telefono || '';
+    const cobertura = solicitudData.tipo_cobertura || 'No indicado';
+    const motivo = solicitudData.motivo || '';
+    const contacto = solicitudData.contacto_preferido || '';
+    const resumen = [
+        `Paciente: ${paciente}`,
+        `Servicio: ${servicio}`,
+        `Tutor: ${tutor}`,
+        `Teléfono: ${telefono}`,
+        `Cobertura/Pago: ${cobertura}`,
+        `Contacto preferido: ${contacto}`,
+        `Motivo: ${motivo}`
+    ].join('\n');
+
+    await enviarEmailRelay({
+        type: 'solicitud',
+        to_email: adminEmail,
+        nombre_paciente: paciente,
+        servicio: `${servicio} (copia admin)`,
+        tutor: `${tutor} | Tel: ${telefono} | Cobertura: ${cobertura} | Contacto: ${contacto} | Motivo: ${motivo}`,
+        resumen
+    });
+}
+
 async function enviarEmailConfirmacionActividad(email, nombreNino, nombreActividad, total) {
     if (!email) return;
     let totalNum = total;
@@ -4558,6 +4587,7 @@ function inicializarModalServicios() {
             const servicio = formData.get('servicio');
             const tutor = formData.get('nombre_tutor');
             await enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio, tutor);
+            await enviarEmailNotificacionAdminSolicitud(solicitudData);
             if (guardadoEnServidor) {
                 alert('¡Solicitud enviada exitosamente!\n\nTe hemos enviado un email de confirmación.\n\nNos pondremos en contacto contigo pronto.\n\nPara consultas inmediatas, llámanos al (787) 204-9041');
             } else {
