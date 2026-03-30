@@ -30,6 +30,11 @@ function rolePorEmailStaff(email) {
     return found?.role || null;
 }
 
+function puedeAccederPanelAdmin(email) {
+    const role = rolePorEmailStaff(email);
+    return role === 'admin' || role === 'secretary';
+}
+
 function inicializarSupabase() {
     try {
         if (typeof window.supabase === 'undefined' || !window.SUPABASE_CONFIG) {
@@ -4693,18 +4698,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (supabaseClient) {
                     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                     if (error) throw error;
-                    if (data.user.email !== ADMIN_CREDENTIALS.email) {
+                    if (!puedeAccederPanelAdmin(data.user.email)) {
                         await supabaseClient.auth.signOut();
                         throw new Error('Acceso no autorizado');
                     }
                     currentStaffSession = data.session;
-                    currentStaffRole = 'admin';
+                    currentStaffRole = rolePorEmailStaff(data.user.email) || 'staff';
                 } else {
-                    if (email !== ADMIN_CREDENTIALS.email || password !== ADMIN_CREDENTIALS.password) {
+                    const normalized = (email || '').toLowerCase().trim();
+                    if (!puedeAccederPanelAdmin(normalized) || password !== ADMIN_CREDENTIALS.password) {
                         errorDiv.style.display = 'block';
                         return;
                     }
                     localStorage.setItem('youme_admin_sesion', 'activa');
+                    currentStaffRole = rolePorEmailStaff(normalized) || 'staff';
                 }
                 document.getElementById('adminLogin').style.display = 'none';
                 document.getElementById('adminDashboard').style.display = 'block';
@@ -4747,7 +4754,7 @@ window.navigateToPage = async function(pageName) {
                 }
             }
             const email = currentStaffSession?.user?.email?.toLowerCase?.() || '';
-            if (email === 'centroyouandme@gmail.com') {
+            if (puedeAccederPanelAdmin(email)) {
                 document.getElementById('adminLogin').style.display = 'none';
                 document.getElementById('adminDashboard').style.display = 'block';
                 mostrarTabAdmin('reservas');

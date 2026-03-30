@@ -30,6 +30,11 @@ function rolePorEmailStaff(email) {
     return found?.role || null;
 }
 
+function puedeAccederPanelAdmin(email) {
+    const role = rolePorEmailStaff(email);
+    return role === 'admin' || role === 'secretary';
+}
+
 function inicializarSupabase() {
     try {
         if (typeof window.supabase === 'undefined' || !window.SUPABASE_CONFIG) {
@@ -4725,7 +4730,7 @@ window.navigateToPage = async function(pageName) {
                 }
             }
             const email = currentStaffSession?.user?.email?.toLowerCase?.() || '';
-            if (email === 'centroyouandme@gmail.com') {
+            if (puedeAccederPanelAdmin(email)) {
                 document.getElementById('adminLogin').style.display = 'none';
                 document.getElementById('adminDashboard').style.display = 'block';
                 mostrarTabAdmin('reservas');
