@@ -4602,7 +4602,11 @@ function inicializarModalServicios() {
             const servicio = formData.get('servicio');
             const tutor = formData.get('nombre_tutor');
             await enviarEmailConfirmacionSolicitud(email, nombrePaciente, servicio, tutor);
-            alert('¡Solicitud enviada exitosamente!\n\nTe hemos enviado un email de confirmación.\n\nNos pondremos en contacto contigo pronto.\n\nPara consultas inmediatas, llámanos al (787) 204-9041');
+            if (guardadoEnServidor) {
+                alert('¡Solicitud enviada exitosamente!\n\nTe hemos enviado un email de confirmación.\n\nNos pondremos en contacto contigo pronto.\n\nPara consultas inmediatas, llámanos al (787) 204-9041');
+            } else {
+                alert('Solicitud enviada por email, pero NO se pudo guardar en el panel admin (Supabase).\n\nTu solicitud fue recibida por correo. Para que aparezca en el panel, hay que habilitar la tabla/políticas de solicitudes en Supabase.');
+            }
             cerrarModalServicio();
         } else {
             throw new Error('Error en el envío');
