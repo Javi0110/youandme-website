@@ -467,7 +467,7 @@ function actualizarUIStaff() {
 
     // Mostrar acceso rápido al panel de administración solo para admin
     if (backToAdminBtn) {
-        if (currentStaffRole === 'admin') {
+        if (currentStaffRole === 'admin' || currentStaffRole === 'secretary') {
             backToAdminBtn.style.display = '';
             backToAdminBtn.onclick = () => navigateToPage('admin');
         } else {
