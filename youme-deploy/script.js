@@ -4645,6 +4645,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = document.getElementById('adminPassword').value;
             const errorDiv = document.getElementById('loginError');
             try {
+                if (errorDiv) {
+                    errorDiv.style.display = 'none';
+                    errorDiv.textContent = 'Credenciales incorrectas. Intenta de nuevo.';
+                }
                 if (supabaseClient) {
                     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                     if (error) throw error;
@@ -4669,7 +4673,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 mostrarTabAdmin('reservas');
             } catch (err) {
                 console.error('Error en login admin:', err);
-                errorDiv.style.display = 'block';
+                if (errorDiv) {
+                    errorDiv.textContent = `No se pudo iniciar sesión: ${err?.message || 'credenciales inválidas'}`;
+                    errorDiv.style.display = 'block';
+                }
             }
         });
     }
