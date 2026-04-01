@@ -5484,14 +5484,6 @@ async function cargarSolicitudesFechaAdmin() {
         container.innerHTML = '<div class="no-data">Error al cargar. ¿Ejecutaste supabase-solicitudes-fecha-celebracion.sql?</div>';
     }
 }
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 async function guardarDisponibilidadServicio(e) {
     // Función mantenida solo para compatibilidad; ya no se muestra el formulario de servicios.
     e.preventDefault();

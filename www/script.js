@@ -177,8 +177,7 @@ async function enviarEmailAdminSolicitudCompletaWeb3Forms(formData, solicitudDat
         `Tipo de cobertura: ${solicitudData.tipo_cobertura || ''}`,
         `Contacto preferido: ${solicitudData.contacto_preferido || ''}`,
         `Motivo: ${solicitudData.motivo || ''}`
-    ].join('
-');
+    ].join('\n');
 
     return await enviarEmailInternoWeb3Forms(
         `Nueva solicitud de servicio (detalle completo): ${solicitudData.servicio || 'Servicio'}`,
@@ -209,8 +208,7 @@ async function enviarEmailAdminReservaActividadWeb3Forms(det) {
         `Dias: ${det.dias || 1}`,
         `Total: $${det.precioTotal || 0}`,
         `Fechas: ${(det.fechasSeleccionadas || []).join(', ')}`
-    ].join('
-');
+    ].join('\n');
     return await enviarEmailInternoWeb3Forms(`Nueva reserva de actividad: ${det.nombreActividad || 'Actividad'}`, detalle);
 }
 
@@ -228,8 +226,7 @@ async function enviarEmailAdminReservaCumpleWeb3Forms(det) {
         `Actividad: ${det.actividad || ''}`,
         `Niños: ${det.numNinos || 0}`,
         `Total: $${det.total || 0}`
-    ].join('
-');
+    ].join('\n');
     return await enviarEmailInternoWeb3Forms('Nueva reserva de cumpleaños', detalle);
 }
 
@@ -241,8 +238,7 @@ async function enviarEmailAdminSolicitudFechaWeb3Forms(det) {
         `Email: ${det.email || ''}`,
         `Telefono: ${det.telefono || ''}`,
         `Mensaje: ${det.mensaje || ''}`
-    ].join('
-');
+    ].join('\n');
     return await enviarEmailInternoWeb3Forms('Nueva solicitud de fecha (celebración)', detalle);
 }
 
@@ -5512,14 +5508,6 @@ async function cargarSolicitudesFechaAdmin() {
         container.innerHTML = '<div class="no-data">Error al cargar. ¿Ejecutaste supabase-solicitudes-fecha-celebracion.sql?</div>';
     }
 }
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 async function guardarDisponibilidadServicio(e) {
     // Función mantenida solo para compatibilidad; ya no se muestra el formulario de servicios.
     e.preventDefault();
