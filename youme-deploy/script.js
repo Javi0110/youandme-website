@@ -77,8 +77,9 @@ function inicializarSupabase() {
     }
 }
 
-// ==================== EMAIL DE CONFIRMACIÓN (Brevo vía Edge Function de Supabase) ====================
-// Cliente + copia a centroyouandme y magaribyelena.
+// ==================== EMAILS ====================
+// Este sitio usa Web3Forms para notificaciones internas (fuente auditable principal).
+// Se mantiene el relay por Supabase como canal adicional opcional.
 
 async function enviarEmailRelay(payload) {
     const cfg = window.SUPABASE_CONFIG;
@@ -633,6 +634,7 @@ async function cargarResumenDashboardStaff() {
         if (!tareasRes.error && Array.isArray(tareasRes.data)) {
             const tareasValidas = await filtrarTareasReferidosStale(tareasRes.data);
             tareasHoy = tareasValidas.filter(t => {
+                if (!tareaEstaPendienteParaVistaStaff(t)) return false;
                 const dueISO = normalizarFechaISO(t.due_date);
                 if (!dueISO) return false;
                 const activeISO = dueISO > hoyISO ? dueISO : hoyISO;
@@ -864,6 +866,7 @@ async function cargarOpcionesAsignarTareas() {
 
     const staffRows = await cargarContactosStaffPortal();
 
+    // Mantener el primer option (Sin asignar).
     const currentEmpty = select.querySelector('option[value=""]');
     select.innerHTML = '';
     if (currentEmpty) select.appendChild(currentEmpty);
@@ -911,6 +914,7 @@ function cargarOpcionesPacienteReferidoDropdown() {
     optNew.textContent = '+ Nuevo paciente';
     selectEl.appendChild(optNew);
 
+    // Restaurar selección si aún aplica.
     if (currentValue && Array.from(selectEl.options).some(o => o.value === currentValue)) {
         selectEl.value = currentValue;
     }
@@ -1073,10 +1077,12 @@ document.addEventListener('click', async (e) => {
         if (!referralId) return;
         const ok = window.confirm('¿Borrar este paciente referido? Esta acción no se puede deshacer.');
         if (!ok) return;
+
         try {
             const { error } = await supabaseClient.from('referral_patients').delete().eq('id', referralId);
             if (error) throw error;
 
+            // Intento: borrar tasks recordatorios; si RLS lo bloquea igual filtramos en UI.
             await supabaseClient.from('tasks')
                 .delete()
                 .ilike('description', `%reminder_type=reminder|referral_patient_id=${referralId}%`);
@@ -1086,8 +1092,6 @@ document.addEventListener('click', async (e) => {
             await cargarPacientesReferidos();
             if (staffReferralsCalendar) staffReferralsCalendar.refetchEvents();
             if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
-            await cargarTareasStaff();
-            await cargarResumenDashboardStaff();
         } catch (err) {
             console.error('Error borrando referido (lista):', err);
         }
@@ -1135,6 +1139,16 @@ document.addEventListener('click', async (e) => {
         const ok = window.confirm('¿Borrar este referido? Esta acción no se puede deshacer.');
         if (!ok) return;
         try {
+            // Si el referido tiene recordatorios asociados (tasks de reminder_type), eliminarlos también.
+            const { error: jobsErr } = await supabaseClient
+                .from('referral_reminder_jobs')
+                .select('reminder_due_on')
+                .eq('referral_patient_id', referralId);
+            if (jobsErr) {
+                // No bloqueamos el borrado del referido si no existen jobs.
+                console.warn('No se pudieron consultar jobs del referido:', jobsErr?.message || jobsErr);
+            }
+
             const { error } = await supabaseClient.from('referral_patients').delete().eq('id', referralId);
             if (error) throw error;
 
@@ -1265,6 +1279,7 @@ async function ejecutarSchedulerReferidos() {
     const jobKeySet = new Set((jobs || []).map(j => `${j.referral_patient_id}|${normalizarFechaISO(j.reminder_due_on)}`));
 
     const nowISO = new Date().toISOString();
+    const tasksToInsertByStaffId = [];
 
     // Crear reminders faltantes.
     for (const r of referralRows) {
@@ -1290,6 +1305,7 @@ async function ejecutarSchedulerReferidos() {
             if (jobInsErr) throw jobInsErr;
             jobKeySet.add(key);
         } catch (e) {
+            // Si hay conflicto por duplicado, lo ignoramos.
             console.warn('No se pudo insertar job de reminder (probable duplicado):', e?.message || e);
             continue;
         }
@@ -1310,9 +1326,12 @@ async function ejecutarSchedulerReferidos() {
             updated_at: nowISO
         }));
 
-        // Insertar por lotes (4 staff).
+        tasksToInsertByStaffId.push(tasksBatch);
+
+        // Insertar por lotes (pequeño: 4 staff).
         try {
-            const { error: taskErr } = await supabaseClient.from('tasks').insert(tasksBatch);
+            const flat = tasksBatch;
+            const { error: taskErr } = await supabaseClient.from('tasks').insert(flat);
             if (taskErr) throw taskErr;
         } catch (e) {
             console.error('Error insertando tareas reminder:', e);
@@ -1337,7 +1356,7 @@ async function obtenerTareasParaDia(dateStr) {
     if (Array.isArray(staffTasksCache) && staffTasksCache.length > 0) {
         // Tareas no completadas: solo aparecen en su "día activo" (due_date o, si venció, hoy).
         return staffTasksCache.filter(t => {
-            if (!t || t.status === 'completed') return false;
+            if (!t || !tareaEstaPendienteParaVistaStaff(t)) return false;
             const dueISO = normalizarFechaISO(t.due_date);
             if (!dueISO) return false;
             const activeISO = dueISO > todayISO ? dueISO : todayISO;
@@ -1362,7 +1381,7 @@ async function obtenerTareasParaDia(dateStr) {
         // Filtro por "día activo único": due_date (si aún no vence) o hoy (si ya venció).
         const tareasActivas = (data || []).filter(t => {
             const dueISO = normalizarFechaISO(t.due_date);
-            if (!dueISO || t.status === 'completed') return false;
+            if (!dueISO || !tareaEstaPendienteParaVistaStaff(t)) return false;
             const activeISO = dueISO > todayISO ? dueISO : todayISO;
             return activeISO === dayISO;
         });
@@ -1390,9 +1409,33 @@ function escaparHtml(s) {
 function limpiarDescripcionInternaParaMostrar(desc) {
     if (!desc) return '';
     let cleaned = String(desc);
+    // Quitamos prefijos internos que usamos para relacionar tareas con recordatorios.
     cleaned = cleaned.replace(/reminder_type=reminder\|referral_patient_id=[^\n\r]*/g, '');
     cleaned = cleaned.replace(/reservation_type=(cumple|evento)\|reservation_id=[^\n\r]*/g, '');
     return cleaned.trim();
+}
+
+/** Tareas completadas no deben contarse ni pintarse en calendario ni en el resumen del dashboard. */
+function tareaEstaPendienteParaVistaStaff(t) {
+    const s = String((t && t.status) || 'pending').toLowerCase();
+    return s !== 'completed';
+}
+
+/** Si el desglose o la pantalla de “detalle del día” están abiertas, vuelve a pintarlas tras cambiar estado de una tarea. */
+async function refrescarVistasDiaStaffSiVisibles() {
+    const breakdown = document.getElementById('staffDayBreakdown');
+    if (breakdown && breakdown.style.display !== 'none') {
+        const day = breakdown.getAttribute('data-visible-day');
+        if (day) {
+            const tasks = await obtenerTareasParaDia(day);
+            renderizarDesgloseDia(day, tasks);
+        }
+    }
+    const todayDetail = document.getElementById('staffTodayDetailScreen');
+    if (todayDetail && todayDetail.style.display !== 'none') {
+        const day = todayDetail.getAttribute('data-visible-day');
+        if (day) await abrirVistaDetalleDiaCompleta(day);
+    }
 }
 
 function extraerReferralIdDeReminder(desc) {
@@ -1425,6 +1468,7 @@ async function filtrarTareasReferidosStale(tareas) {
             return existSet.has(String(rid));
         });
     } catch (e) {
+        // Si hay error de permisos/red, no bloqueamos la UI.
         console.warn('No se pudieron filtrar tareas con referidos:', e);
         return tareas;
     }
@@ -1479,6 +1523,9 @@ function renderizarDesgloseDia(dateStr, tasks) {
 
 async function mostrarDesgloseParaFecha(dateStr) {
     abrirDesgloseDia();
+    const breakdownBox = document.getElementById('staffDayBreakdown');
+    const dayKey = normalizarFechaISO(dateStr) || String(dateStr || '').slice(0, 10);
+    if (breakdownBox && dayKey) breakdownBox.setAttribute('data-visible-day', dayKey);
     const subtitleEl = document.getElementById('staffDayBreakdownSubtitle');
     const contentEl = document.getElementById('staffDayBreakdownContent');
     const titleEl = document.getElementById('staffDayBreakdownTitle');
@@ -1496,6 +1543,9 @@ async function abrirVistaDetalleDiaCompleta(dateStr) {
     const subtitleEl = document.getElementById('staffTodayDetailSubtitle');
     const contentEl = document.getElementById('staffTodayDetailContent');
     if (!calEl || !dayScreen || !titleEl || !subtitleEl || !contentEl) return;
+
+    const dayKey = normalizarFechaISO(dateStr) || String(dateStr || '').slice(0, 10);
+    if (dayKey) dayScreen.setAttribute('data-visible-day', dayKey);
 
     calEl.style.display = 'none';
     const eventDetail = document.getElementById('staffCalendarEventDetail');
@@ -1641,6 +1691,7 @@ function mostrarDetalleEventoCalendario(t) {
 
 async function abrirDetalleTareaPorId(taskId) {
     if (!taskId || !supabaseClient) return;
+    // Prioridad: usar caché si existe (para evitar requests).
     let t = staffTasksCache.find(x => x.id === taskId);
     if (!t) {
         const { data } = await supabaseClient
@@ -1691,7 +1742,7 @@ async function enriquecerAssignedToLabels(tareas) {
     if (ids.length === 0) return;
 
     const roleToLabel = { admin: 'Admin', secretary: 'Secretaria' };
-    const idToInfo = new Map(); // id -> { label, role, email }
+    const idToInfo = new Map(); // id -> { label, role }
 
     // 1) staff_members (fuente principal)
     try {
@@ -1966,6 +2017,7 @@ function abrirModalDetalleReservaEvento({ reservation, evento, startDateISO }) {
     if (paidEl) paidEl.textContent = `Estado: ${reservation.pagado ? 'Pagado' : 'Pendiente'}`;
     if (commentsBox) commentsBox.textContent = reservation.comentarios_admin || '';
 
+    // Por ahora solo habilitamos to-dos para reservas de cumpleaños.
     const todoSection = document.getElementById('staffReservationTodoSection');
     if (todoSection) todoSection.style.display = 'none';
 }
@@ -2002,6 +2054,7 @@ async function cargarToDosReservaEnModal() {
 
     const reservationType = modal.getAttribute('data-reservation-type') || '';
     const reservationId = modal.getAttribute('data-reservation-id') || '';
+    const reservationDateISO = modal.getAttribute('data-reservation-date-iso') || '';
     if (!reservationType || !reservationId) return;
 
     const uid = currentStaffSession.user.id;
@@ -2100,6 +2153,7 @@ async function crearTodoEnModal() {
         if (inputEl) inputEl.value = '';
 
         await cargarToDosReservaEnModal();
+        // Actualiza el calendario/general para reflejar el nuevo to-do.
         if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
         cargarResumenDashboardStaff();
     } catch (err) {
@@ -2133,14 +2187,12 @@ function abrirModalDetalleReservaCumple({ reservation, startDateISO }) {
     if (childEl) childEl.textContent = `Niño/a: ${reservation.nombre_nino || '—'}`;
     if (parentEl) parentEl.textContent = `Contacto: ${reservation.contacto || '—'}`;
     if (contactEl) contactEl.textContent = `Tel: ${reservation.telefono || '—'} · Email: ${reservation.email || '—'}`;
-
     if (daysEl) {
         const actividad = reservation.actividad ? String(reservation.actividad) : '';
         const horas = reservation.horas ? String(reservation.horas) : '';
         const extra = [horas ? `Horas: ${horas}` : '', actividad ? `Actividad: ${actividad}` : ''].filter(Boolean).join(' · ');
         daysEl.textContent = extra || '—';
     }
-
     if (totalEl) totalEl.textContent = `Total: $${reservation.total ?? '—'}`;
     if (paidEl) paidEl.textContent = `Estado: ${reservation.pagado ? 'Pagado' : 'Pendiente'}`;
     if (commentsBox) commentsBox.textContent = reservation.comentarios_admin || '';
@@ -2148,6 +2200,7 @@ function abrirModalDetalleReservaCumple({ reservation, startDateISO }) {
     const todoSection = document.getElementById('staffReservationTodoSection');
     if (todoSection) todoSection.style.display = '';
 
+    // Cargar to-dos para esta reserva (cumple).
     cargarToDosReservaEnModal().catch(() => { /* ignore */ });
 }
 
@@ -2191,6 +2244,7 @@ function abrirModalDetalleTarea(task) {
         metaEl.textContent = `${statusLabel} · Fecha: ${due}`;
     }
     if (commentEl) {
+        // Para evitar mostrar el prefijo interno en el textarea, lo removemos y dejamos solo el comentario real.
         if (internalPrefix) commentEl.value = originalDesc.replace(internalPrefix, '').trim();
         else commentEl.value = originalDesc;
     }
@@ -2202,6 +2256,7 @@ async function refrescarTareaYReabrirModal(taskId) {
     await cargarTareasStaff();
     await cargarResumenDashboardStaff();
     if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+    await refrescarVistasDiaStaffSiVisibles();
     const t = staffTasksCache.find(x => x.id === taskId);
     if (t) abrirModalDetalleTarea(t);
 }
@@ -2213,7 +2268,10 @@ function cargarTareaEnFormulario(t) {
     document.getElementById('taskPriority').value = t.priority || 'medium';
     document.getElementById('taskDueDate').value = t.due_date ? t.due_date.slice(0, 10) : '';
     const assigneeSelect = document.getElementById('taskAssigneeSelect');
-    if (assigneeSelect) assigneeSelect.value = t.assigned_to_email || '';
+    if (assigneeSelect) {
+        // Se espera que las opciones estén pobladas por `cargarOpcionesAsignarTareas()`.
+        assigneeSelect.value = t.assigned_to_email || '';
+    }
     document.getElementById('taskAssignedEmail').value = '';
     const statusEl = document.getElementById('taskFormStatus');
     if (statusEl) statusEl.textContent = 'Editando. Guarde para aplicar cambios.';
@@ -2224,9 +2282,16 @@ async function actualizarEstadoTarea(id, status) {
     try {
         const { error } = await supabaseClient.from('tasks').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
         if (error) throw error;
-        cargarTareasStaff();
-        cargarResumenDashboardStaff();
+        const idx = staffTasksCache.findIndex(x => String(x.id) === String(id));
+        if (idx >= 0) staffTasksCache[idx] = { ...staffTasksCache[idx], status };
+        await cargarTareasStaff();
+        await cargarResumenDashboardStaff();
         if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+        await refrescarVistasDiaStaffSiVisibles();
+        if (String(status).toLowerCase() === 'completed') {
+            const calDetail = document.getElementById('staffCalendarEventDetail');
+            if (calDetail) calDetail.style.display = 'none';
+        }
     } catch (e) {
         console.error('Error actualizando tarea:', e);
     }
@@ -2324,7 +2389,6 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('DOMContentLoaded', () => {
     const referralForm = document.getElementById('referralPatientForm');
     const cancelBtn = document.getElementById('referralFormCancelBtn');
-
     if (referralForm) {
         const patientSelect = document.getElementById('referralPatientSelect');
         const customGroup = document.getElementById('referralPatientCustomGroup');
@@ -2444,7 +2508,7 @@ function inicializarStaffCalendar() {
                     .neq('status', 'completed')
                     .or(`assigned_to.eq.${uid},created_by.eq.${uid}`);
 
-                const tareas = await filtrarTareasReferidosStale(data || []);
+                const tareas = (await filtrarTareasReferidosStale(data || [])).filter(tareaEstaPendienteParaVistaStaff);
 
                 // Mostrar cada tarea pendiente solo en un "día activo":
                 // due_date (si aún no vence) o hoy (si ya está vencida).
@@ -2477,6 +2541,7 @@ function inicializarStaffCalendar() {
                             reservasCumpleRows.forEach(r => {
                                 const fechaISO = normalizarFechaISO(r.fecha);
                                 if (!fechaISO) return;
+                                // Para evitar mismatches de tipo (date vs string) filtramos en el cliente.
                                 if (fechaISO < startISO || fechaISO >= endISOExclusive) return;
                                 const paidColor = r.pagado ? '#16a34a' : '#f59e0b';
                                 events.push({
@@ -2731,16 +2796,22 @@ document.addEventListener('click', async (e) => {
             await cargarTareasStaff();
             await cargarResumenDashboardStaff();
             if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
-            const t = staffTasksCache.find(x => x.id === taskId) || null;
-            if (t) {
-                mostrarDetalleEventoCalendario(t);
+            await refrescarVistasDiaStaffSiVisibles();
+            if (nextStatus === 'completed') {
+                const box = document.getElementById('staffCalendarEventDetail');
+                if (box) box.style.display = 'none';
             } else {
-                const { data } = await supabaseClient
-                    .from('tasks')
-                    .select('id, title, description, due_date, priority, status')
-                    .eq('id', taskId)
-                    .maybeSingle();
-                if (data) mostrarDetalleEventoCalendario(data);
+                const t = staffTasksCache.find(x => x.id === taskId) || null;
+                if (t) {
+                    mostrarDetalleEventoCalendario(t);
+                } else {
+                    const { data } = await supabaseClient
+                        .from('tasks')
+                        .select('id, title, description, due_date, priority, status')
+                        .eq('id', taskId)
+                        .maybeSingle();
+                    if (data) mostrarDetalleEventoCalendario(data);
+                }
             }
         } catch (err) {
             console.error('Error cambiando estado:', err);
@@ -2850,7 +2921,8 @@ document.addEventListener('click', async (e) => {
             if (error) throw error;
             await cargarToDosReservaEnModal();
             if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
-            cargarResumenDashboardStaff();
+            await cargarResumenDashboardStaff();
+            await refrescarVistasDiaStaffSiVisibles();
         } catch (err) {
             console.error('Error actualizando to-do:', err);
             alert('No se pudo actualizar el to-do.');
@@ -2872,7 +2944,8 @@ document.addEventListener('click', async (e) => {
             if (error) throw error;
             await cargarToDosReservaEnModal();
             if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
-            cargarResumenDashboardStaff();
+            await cargarResumenDashboardStaff();
+            await refrescarVistasDiaStaffSiVisibles();
         } catch (err) {
             console.error('Error borrando to-do:', err);
             alert('No se pudo borrar el to-do.');

@@ -634,6 +634,7 @@ async function cargarResumenDashboardStaff() {
         if (!tareasRes.error && Array.isArray(tareasRes.data)) {
             const tareasValidas = await filtrarTareasReferidosStale(tareasRes.data);
             tareasHoy = tareasValidas.filter(t => {
+                if (!tareaEstaPendienteParaVistaStaff(t)) return false;
                 const dueISO = normalizarFechaISO(t.due_date);
                 if (!dueISO) return false;
                 const activeISO = dueISO > hoyISO ? dueISO : hoyISO;
@@ -1355,7 +1356,7 @@ async function obtenerTareasParaDia(dateStr) {
     if (Array.isArray(staffTasksCache) && staffTasksCache.length > 0) {
         // Tareas no completadas: solo aparecen en su "día activo" (due_date o, si venció, hoy).
         return staffTasksCache.filter(t => {
-            if (!t || t.status === 'completed') return false;
+            if (!t || !tareaEstaPendienteParaVistaStaff(t)) return false;
             const dueISO = normalizarFechaISO(t.due_date);
             if (!dueISO) return false;
             const activeISO = dueISO > todayISO ? dueISO : todayISO;
@@ -1380,7 +1381,7 @@ async function obtenerTareasParaDia(dateStr) {
         // Filtro por "día activo único": due_date (si aún no vence) o hoy (si ya venció).
         const tareasActivas = (data || []).filter(t => {
             const dueISO = normalizarFechaISO(t.due_date);
-            if (!dueISO || t.status === 'completed') return false;
+            if (!dueISO || !tareaEstaPendienteParaVistaStaff(t)) return false;
             const activeISO = dueISO > todayISO ? dueISO : todayISO;
             return activeISO === dayISO;
         });
@@ -1412,6 +1413,29 @@ function limpiarDescripcionInternaParaMostrar(desc) {
     cleaned = cleaned.replace(/reminder_type=reminder\|referral_patient_id=[^\n\r]*/g, '');
     cleaned = cleaned.replace(/reservation_type=(cumple|evento)\|reservation_id=[^\n\r]*/g, '');
     return cleaned.trim();
+}
+
+/** Tareas completadas no deben contarse ni pintarse en calendario ni en el resumen del dashboard. */
+function tareaEstaPendienteParaVistaStaff(t) {
+    const s = String((t && t.status) || 'pending').toLowerCase();
+    return s !== 'completed';
+}
+
+/** Si el desglose o la pantalla de “detalle del día” están abiertas, vuelve a pintarlas tras cambiar estado de una tarea. */
+async function refrescarVistasDiaStaffSiVisibles() {
+    const breakdown = document.getElementById('staffDayBreakdown');
+    if (breakdown && breakdown.style.display !== 'none') {
+        const day = breakdown.getAttribute('data-visible-day');
+        if (day) {
+            const tasks = await obtenerTareasParaDia(day);
+            renderizarDesgloseDia(day, tasks);
+        }
+    }
+    const todayDetail = document.getElementById('staffTodayDetailScreen');
+    if (todayDetail && todayDetail.style.display !== 'none') {
+        const day = todayDetail.getAttribute('data-visible-day');
+        if (day) await abrirVistaDetalleDiaCompleta(day);
+    }
 }
 
 function extraerReferralIdDeReminder(desc) {
@@ -1499,6 +1523,9 @@ function renderizarDesgloseDia(dateStr, tasks) {
 
 async function mostrarDesgloseParaFecha(dateStr) {
     abrirDesgloseDia();
+    const breakdownBox = document.getElementById('staffDayBreakdown');
+    const dayKey = normalizarFechaISO(dateStr) || String(dateStr || '').slice(0, 10);
+    if (breakdownBox && dayKey) breakdownBox.setAttribute('data-visible-day', dayKey);
     const subtitleEl = document.getElementById('staffDayBreakdownSubtitle');
     const contentEl = document.getElementById('staffDayBreakdownContent');
     const titleEl = document.getElementById('staffDayBreakdownTitle');
@@ -1516,6 +1543,9 @@ async function abrirVistaDetalleDiaCompleta(dateStr) {
     const subtitleEl = document.getElementById('staffTodayDetailSubtitle');
     const contentEl = document.getElementById('staffTodayDetailContent');
     if (!calEl || !dayScreen || !titleEl || !subtitleEl || !contentEl) return;
+
+    const dayKey = normalizarFechaISO(dateStr) || String(dateStr || '').slice(0, 10);
+    if (dayKey) dayScreen.setAttribute('data-visible-day', dayKey);
 
     calEl.style.display = 'none';
     const eventDetail = document.getElementById('staffCalendarEventDetail');
@@ -2226,6 +2256,7 @@ async function refrescarTareaYReabrirModal(taskId) {
     await cargarTareasStaff();
     await cargarResumenDashboardStaff();
     if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+    await refrescarVistasDiaStaffSiVisibles();
     const t = staffTasksCache.find(x => x.id === taskId);
     if (t) abrirModalDetalleTarea(t);
 }
@@ -2251,9 +2282,16 @@ async function actualizarEstadoTarea(id, status) {
     try {
         const { error } = await supabaseClient.from('tasks').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
         if (error) throw error;
-        cargarTareasStaff();
-        cargarResumenDashboardStaff();
+        const idx = staffTasksCache.findIndex(x => String(x.id) === String(id));
+        if (idx >= 0) staffTasksCache[idx] = { ...staffTasksCache[idx], status };
+        await cargarTareasStaff();
+        await cargarResumenDashboardStaff();
         if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
+        await refrescarVistasDiaStaffSiVisibles();
+        if (String(status).toLowerCase() === 'completed') {
+            const calDetail = document.getElementById('staffCalendarEventDetail');
+            if (calDetail) calDetail.style.display = 'none';
+        }
     } catch (e) {
         console.error('Error actualizando tarea:', e);
     }
@@ -2470,7 +2508,7 @@ function inicializarStaffCalendar() {
                     .neq('status', 'completed')
                     .or(`assigned_to.eq.${uid},created_by.eq.${uid}`);
 
-                const tareas = await filtrarTareasReferidosStale(data || []);
+                const tareas = (await filtrarTareasReferidosStale(data || [])).filter(tareaEstaPendienteParaVistaStaff);
 
                 // Mostrar cada tarea pendiente solo en un "día activo":
                 // due_date (si aún no vence) o hoy (si ya está vencida).
@@ -2758,16 +2796,22 @@ document.addEventListener('click', async (e) => {
             await cargarTareasStaff();
             await cargarResumenDashboardStaff();
             if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
-            const t = staffTasksCache.find(x => x.id === taskId) || null;
-            if (t) {
-                mostrarDetalleEventoCalendario(t);
+            await refrescarVistasDiaStaffSiVisibles();
+            if (nextStatus === 'completed') {
+                const box = document.getElementById('staffCalendarEventDetail');
+                if (box) box.style.display = 'none';
             } else {
-                const { data } = await supabaseClient
-                    .from('tasks')
-                    .select('id, title, description, due_date, priority, status')
-                    .eq('id', taskId)
-                    .maybeSingle();
-                if (data) mostrarDetalleEventoCalendario(data);
+                const t = staffTasksCache.find(x => x.id === taskId) || null;
+                if (t) {
+                    mostrarDetalleEventoCalendario(t);
+                } else {
+                    const { data } = await supabaseClient
+                        .from('tasks')
+                        .select('id, title, description, due_date, priority, status')
+                        .eq('id', taskId)
+                        .maybeSingle();
+                    if (data) mostrarDetalleEventoCalendario(data);
+                }
             }
         } catch (err) {
             console.error('Error cambiando estado:', err);
@@ -2877,7 +2921,8 @@ document.addEventListener('click', async (e) => {
             if (error) throw error;
             await cargarToDosReservaEnModal();
             if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
-            cargarResumenDashboardStaff();
+            await cargarResumenDashboardStaff();
+            await refrescarVistasDiaStaffSiVisibles();
         } catch (err) {
             console.error('Error actualizando to-do:', err);
             alert('No se pudo actualizar el to-do.');
@@ -2899,7 +2944,8 @@ document.addEventListener('click', async (e) => {
             if (error) throw error;
             await cargarToDosReservaEnModal();
             if (typeof staffCalendar !== 'undefined' && staffCalendar) staffCalendar.refetchEvents();
-            cargarResumenDashboardStaff();
+            await cargarResumenDashboardStaff();
+            await refrescarVistasDiaStaffSiVisibles();
         } catch (err) {
             console.error('Error borrando to-do:', err);
             alert('No se pudo borrar el to-do.');
