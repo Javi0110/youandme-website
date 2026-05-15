@@ -1421,6 +1421,41 @@ function tareaEstaPendienteParaVistaStaff(t) {
     return s !== 'completed';
 }
 
+/** Día local (YYYY-MM-DD) en que quedó completada la tarea; usa updated_at (se actualiza al marcar completada). */
+function obtenerDiaLocalCompletadaTarea(t) {
+    if (!t || t.status !== 'completed') return null;
+    return normalizarFechaISO(t.updated_at || t.created_at);
+}
+
+/**
+ * Elimina de Supabase las tareas completadas cuyo día de finalización (local) es anterior a hoy.
+ * Así, al día siguiente ya no aparecen en "Completadas" ni quedan acumuladas en la base.
+ */
+async function purgarTareasCompletadasDeDiasAnteriores(uid) {
+    if (!supabaseClient || !uid) return;
+    const hoy = obtenerHoyISO();
+    try {
+        const { data, error } = await supabaseClient
+            .from('tasks')
+            .select('id, updated_at, created_at')
+            .eq('status', 'completed')
+            .or(`created_by.eq.${uid},assigned_to.eq.${uid}`);
+        if (error || !Array.isArray(data) || data.length === 0) return;
+        const ids = data
+            .filter(row => {
+                const dia = normalizarFechaISO(row.updated_at || row.created_at);
+                return dia && dia < hoy;
+            })
+            .map(row => row.id)
+            .filter(Boolean);
+        if (ids.length === 0) return;
+        const { error: delErr } = await supabaseClient.from('tasks').delete().in('id', ids);
+        if (delErr) console.warn('No se pudieron eliminar tareas completadas de días anteriores:', delErr);
+    } catch (e) {
+        console.warn('purgarTareasCompletadasDeDiasAnteriores:', e);
+    }
+}
+
 /** Si el desglose o la pantalla de “detalle del día” están abiertas, vuelve a pintarlas tras cambiar estado de una tarea. */
 async function refrescarVistasDiaStaffSiVisibles() {
     const breakdown = document.getElementById('staffDayBreakdown');
@@ -1789,6 +1824,7 @@ async function cargarTareasStaff() {
     if (!listEl || !supabaseClient || !currentStaffSession) return;
     const uid = currentStaffSession.user.id;
     try {
+        await purgarTareasCompletadasDeDiasAnteriores(uid);
         const { data, error } = await supabaseClient
             .from('tasks')
             .select('*')
@@ -1820,9 +1856,14 @@ function prioridadTexto(priority) {
 function renderizarTareasStaff(tareas) {
     const listEl = document.getElementById('staffTasksList');
     if (!listEl) return;
+    const hoy = obtenerHoyISO();
     const pending = tareas.filter(t => (t.status || 'pending') === 'pending');
     const inProgress = tareas.filter(t => t.status === 'in_progress');
-    const completed = tareas.filter(t => t.status === 'completed');
+    const completed = tareas.filter(t => {
+        if (t.status !== 'completed') return false;
+        const dia = obtenerDiaLocalCompletadaTarea(t);
+        return dia === hoy;
+    });
 
     function renderColumn(title, items, status) {
         const frag = items.map(t => {
@@ -1861,7 +1902,7 @@ function renderizarTareasStaff(tareas) {
       <div class="staff-tasks-columns">
         ${renderColumn('Pendientes', pending, 'pending')}
         ${renderColumn('En progreso', inProgress, 'in_progress')}
-        ${renderColumn('Completadas', completed, 'completed')}
+        ${renderColumn('Completadas (hoy)', completed, 'completed')}
       </div>`;
 
     listEl.querySelectorAll('.staff-task-checkbox').forEach(cb => {
