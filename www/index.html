@@ -288,48 +288,8 @@
                 <h2 class="section-title">Nuestros Servicios de Terapia</h2>
                 <p class="section-subtitle">Ofrecemos servicios especializados para apoyar el desarrollo de tu niño/a</p>
                 
-                <div class="servicios-grid">
-                    <div class="servicio-card">
-                        <div class="servicio-imagen"><img src="servicios/terapia-ocupacional.png" alt="Terapia Ocupacional"></div>
-                        <h3>Terapia Ocupacional</h3>
-                        <p>Ayudamos a desarrollar las habilidades necesarias para las actividades diarias, el juego y el aprendizaje.</p>
-                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia Ocupacional')">Solicitar Servicio</button>
-                    </div>
-
-                    <div class="servicio-card">
-                        <div class="servicio-imagen"><img src="servicios/terapia-habla-lenguaje.png" alt="Terapia de Habla y Lenguaje"></div>
-                        <h3>Terapia de Habla y Lenguaje</h3>
-                        <p>Trabajamos en la comunicación, articulación y desarrollo del lenguaje expresivo y receptivo.</p>
-                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia de Habla y Lenguaje')">Solicitar Servicio</button>
-                    </div>
-
-                    <div class="servicio-card">
-                        <div class="servicio-imagen"><img src="servicios/terapia-oromotora.png" alt="Terapia Oromotora"></div>
-                        <h3>Terapia Oromotora</h3>
-                        <p>Mejoramos las funciones de los músculos de la boca para alimentación y habla.</p>
-                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia Oromotora')">Solicitar Servicio</button>
-                    </div>
-
-                    <div class="servicio-card">
-                        <div class="servicio-imagen"><img src="servicios/terapia-disfagia.png" alt="Terapia de Disfagia"></div>
-                        <h3>Terapia de Disfagia</h3>
-                        <p>Tratamiento especializado para dificultades en la deglución y alimentación.</p>
-                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia de Disfagia')">Solicitar Servicio</button>
-                    </div>
-
-                    <div class="servicio-card">
-                        <div class="servicio-imagen"><img src="servicios/terapia-psicologica.png" alt="Terapia Psicológica"></div>
-                        <h3>Terapia Psicológica</h3>
-                        <p>Apoyo emocional y conductual para el bienestar integral de tu niño/a.</p>
-                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia Psicológica')">Solicitar Servicio</button>
-                    </div>
-
-                    <div class="servicio-card">
-                        <div class="servicio-imagen"><img src="servicios/terapia-integracion-sensorial.png" alt="Terapia Ocupacional con Enfoque en Integración Sensorial"></div>
-                        <h3>Terapia Ocupacional con Enfoque en Integración Sensorial</h3>
-                        <p>Trabajamos el procesamiento sensorial para mejorar la regulación y respuesta a estímulos.</p>
-                        <button class="btn btn-primary" onclick="abrirModalServicio('Terapia Ocupacional con Enfoque en Integración Sensorial')">Solicitar Servicio</button>
-                    </div>
+                <div class="servicios-grid" id="serviciosGrid">
+                    <!-- Se llena dinámicamente desde script.js (editable en Admin → Manejar servicios) -->
                 </div>
 
                 <div class="cta-box">
@@ -1035,6 +995,7 @@
                     <div class="admin-tabs">
                         <button class="admin-tab-btn active" data-tab="reservas" onclick="mostrarTabAdmin('reservas')">Reservas</button>
                         <button class="admin-tab-btn" data-tab="solicitudes" onclick="mostrarTabAdmin('solicitudes')">Solicitudes de servicios</button>
+                        <button class="admin-tab-btn" data-tab="servicios" onclick="mostrarTabAdmin('servicios')">Manejar servicios</button>
                         <button class="admin-tab-btn" data-tab="actividades" onclick="mostrarTabAdmin('actividades')">Manejar actividades</button>
                         <button class="admin-tab-btn" data-tab="disponibilidad" onclick="mostrarTabAdmin('disponibilidad')">Manejar disponibilidades</button>
                     </div>
@@ -1153,6 +1114,43 @@
                                 <button onclick="filtrarSolicitudes('agendadas')" class="filtro-btn" id="filtroAgendadas">Agendadas</button>
                             </div>
                             <div id="listaSolicitudesAdmin"></div>
+                        </div>
+                    </div>
+
+                    <div id="tabServicios" class="admin-tab-content">
+                        <div class="admin-section">
+                            <h3>Manejar servicios</h3>
+                            <p style="color: #666; margin-bottom: 1rem;">Añade, edita o elimina los servicios que aparecen en la página pública y que las familias pueden solicitar.</p>
+                            <button onclick="mostrarFormularioServicio()" class="btn btn-primary" style="margin-bottom: 2rem;">+ Agregar nuevo servicio</button>
+                            <div id="formularioServicio" class="admin-form-container" style="display: none;">
+                                <h4 id="tituloFormularioServicio">Agregar nuevo servicio</h4>
+                                <form id="servicioAdminForm">
+                                    <input type="hidden" id="servicioEditId">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Nombre del servicio:</label>
+                                            <input type="text" id="servicioNombreAdmin" required placeholder="ej: Terapia Física">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Orden (menor = primero):</label>
+                                            <input type="number" id="servicioOrdenAdmin" value="1" min="0" step="1" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Descripción:</label>
+                                        <textarea id="servicioDescripcionAdmin" rows="3" required placeholder="Breve descripción del servicio"></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>URL o ruta de imagen:</label>
+                                        <input type="text" id="servicioImagenAdmin" placeholder="servicios/terapia-fisica.png o https://...">
+                                    </div>
+                                    <div style="display: flex; gap: 1rem;">
+                                        <button type="submit" class="btn btn-primary">Guardar servicio</button>
+                                        <button type="button" onclick="cancelarFormularioServicio()" class="btn btn-secondary">Cancelar</button>
+                                    </div>
+                                </form>
+                            </div>
+                            <div id="listaServiciosAdmin"></div>
                         </div>
                     </div>
                 </div>

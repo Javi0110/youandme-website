@@ -4703,6 +4703,342 @@ if (document.readyState === 'loading') {
     inicializarFormularios();
 }
 
+// ==================== CATÁLOGO DE SERVICIOS (público + admin) ====================
+
+const SERVICIOS_STORAGE_KEY = 'youme_servicios';
+const SERVICIOS_DEFAULT = [
+    {
+        id: 'svc-to',
+        nombre: 'Terapia Ocupacional',
+        descripcion: 'Ayudamos a desarrollar las habilidades necesarias para las actividades diarias, el juego y el aprendizaje.',
+        imagen: 'servicios/terapia-ocupacional.png',
+        orden: 1
+    },
+    {
+        id: 'svc-habla',
+        nombre: 'Terapia de Habla y Lenguaje',
+        descripcion: 'Trabajamos en la comunicación, articulación y desarrollo del lenguaje expresivo y receptivo.',
+        imagen: 'servicios/terapia-habla-lenguaje.png',
+        orden: 2
+    },
+    {
+        id: 'svc-oromotora',
+        nombre: 'Terapia Oromotora',
+        descripcion: 'Mejoramos las funciones de los músculos de la boca para alimentación y habla.',
+        imagen: 'servicios/terapia-oromotora.png',
+        orden: 3
+    },
+    {
+        id: 'svc-disfagia',
+        nombre: 'Terapia de Disfagia',
+        descripcion: 'Tratamiento especializado para dificultades en la deglución y alimentación.',
+        imagen: 'servicios/terapia-disfagia.png',
+        orden: 4
+    },
+    {
+        id: 'svc-psico',
+        nombre: 'Terapia Psicológica',
+        descripcion: 'Apoyo emocional y conductual para el bienestar integral de tu niño/a.',
+        imagen: 'servicios/terapia-psicologica.png',
+        orden: 5
+    },
+    {
+        id: 'svc-sensorial',
+        nombre: 'Terapia Ocupacional con Enfoque en Integración Sensorial',
+        descripcion: 'Trabajamos el procesamiento sensorial para mejorar la regulación y respuesta a estímulos.',
+        imagen: 'servicios/terapia-integracion-sensorial.png',
+        orden: 6
+    },
+    {
+        id: 'svc-fisica',
+        nombre: 'Terapia Física',
+        descripcion: 'Mejoramos la fuerza, el equilibrio, la movilidad y las habilidades motoras gruesas para el desarrollo físico.',
+        imagen: 'servicios/terapia-fisica.png',
+        orden: 7
+    }
+];
+
+function leerServiciosLocal() {
+    try {
+        const raw = localStorage.getItem(SERVICIOS_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) && parsed.length ? parsed : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function guardarServiciosLocal(lista) {
+    localStorage.setItem(SERVICIOS_STORAGE_KEY, JSON.stringify(lista || []));
+}
+
+function ordenarServicios(lista) {
+    return [...(lista || [])].sort((a, b) => {
+        const oa = Number(a.orden);
+        const ob = Number(b.orden);
+        const na = Number.isFinite(oa) ? oa : 9999;
+        const nb = Number.isFinite(ob) ? ob : 9999;
+        if (na !== nb) return na - nb;
+        return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
+    });
+}
+
+async function obtenerListaServicios() {
+    if (supabaseClient) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('servicios')
+                .select('*')
+                .order('orden', { ascending: true });
+            if (!error && Array.isArray(data) && data.length > 0) {
+                const lista = ordenarServicios(data);
+                guardarServiciosLocal(lista);
+                return lista;
+            }
+        } catch (e) {
+            console.warn('No se pudieron cargar servicios desde Supabase:', e?.message || e);
+        }
+    }
+
+    const local = leerServiciosLocal();
+    if (local) return ordenarServicios(local);
+
+    const defaults = ordenarServicios(SERVICIOS_DEFAULT.map(s => ({ ...s })));
+    guardarServiciosLocal(defaults);
+    return defaults;
+}
+
+function esUuid(valor) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(valor || ''));
+}
+
+async function guardarServicioItem(payload, editId) {
+    let lista = await obtenerListaServicios();
+    let guardado = null;
+
+    if (supabaseClient) {
+        try {
+            const row = {
+                nombre: payload.nombre,
+                descripcion: payload.descripcion,
+                imagen: payload.imagen || null,
+                orden: payload.orden
+            };
+            if (editId && esUuid(editId)) {
+                const { data, error } = await supabaseClient
+                    .from('servicios')
+                    .update(row)
+                    .eq('id', editId)
+                    .select('*')
+                    .single();
+                if (error) throw error;
+                guardado = data;
+            } else if (!editId) {
+                const { data, error } = await supabaseClient
+                    .from('servicios')
+                    .insert([row])
+                    .select('*')
+                    .single();
+                if (error) throw error;
+                guardado = data;
+            }
+        } catch (e) {
+            console.warn('Servicio: no se pudo sincronizar con Supabase, se guarda en local:', e?.message || e);
+        }
+    }
+
+    if (editId) {
+        const idx = lista.findIndex(s => String(s.id) === String(editId));
+        if (idx === -1) throw new Error('Servicio no encontrado');
+        lista[idx] = { ...lista[idx], ...payload, id: guardado?.id || lista[idx].id };
+        guardado = lista[idx];
+    } else {
+        guardado = guardado || { id: `svc-${Date.now()}`, ...payload };
+        lista.push(guardado);
+    }
+
+    lista = ordenarServicios(lista);
+    guardarServiciosLocal(lista);
+    return guardado;
+}
+
+async function eliminarServicioItem(servicioId) {
+    let lista = await obtenerListaServicios();
+    lista = lista.filter(s => String(s.id) !== String(servicioId));
+    guardarServiciosLocal(lista);
+
+    if (supabaseClient && esUuid(servicioId)) {
+        try {
+            const { error } = await supabaseClient.from('servicios').delete().eq('id', servicioId);
+            if (error) throw error;
+        } catch (e) {
+            console.warn('Servicio eliminado en local; Supabase no disponible:', e?.message || e);
+        }
+    }
+    return lista;
+}
+
+async function cargarServiciosPublicos() {
+    const grid = document.getElementById('serviciosGrid');
+    if (!grid) return;
+
+    const servicios = await obtenerListaServicios();
+    if (!servicios.length) {
+        grid.innerHTML = '<p style="color:#666;">Pronto publicaremos nuestros servicios. Contáctanos para más información.</p>';
+        return;
+    }
+
+    grid.innerHTML = servicios.map(s => {
+        const nombre = escaparHtml(s.nombre);
+        const desc = escaparHtml(s.descripcion);
+        const img = escaparHtml(s.imagen || 'servicios/terapia-ocupacional.png');
+        return `
+            <div class="servicio-card">
+                <div class="servicio-imagen"><img src="${img}" alt="${nombre}"></div>
+                <h3>${nombre}</h3>
+                <p>${desc}</p>
+                <button type="button" class="btn btn-primary" data-solicitar-servicio="${nombre}">Solicitar Servicio</button>
+            </div>`;
+    }).join('');
+
+    grid.querySelectorAll('[data-solicitar-servicio]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // dataset ya decodifica entidades HTML básicas; usamos textContent del h3 hermano como respaldo
+            const card = btn.closest('.servicio-card');
+            const titulo = card?.querySelector('h3')?.textContent?.trim();
+            abrirModalServicio(titulo || btn.getAttribute('data-solicitar-servicio') || '');
+        });
+    });
+}
+
+function mostrarFormularioServicio() {
+    const formWrap = document.getElementById('formularioServicio');
+    const form = document.getElementById('servicioAdminForm');
+    const titulo = document.getElementById('tituloFormularioServicio');
+    if (!formWrap || !form) return;
+    form.reset();
+    document.getElementById('servicioEditId').value = '';
+    document.getElementById('servicioOrdenAdmin').value = String((leerServiciosLocal() || SERVICIOS_DEFAULT).length + 1);
+    if (titulo) titulo.textContent = 'Agregar nuevo servicio';
+    formWrap.style.display = 'block';
+    formWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelarFormularioServicio() {
+    const formWrap = document.getElementById('formularioServicio');
+    const form = document.getElementById('servicioAdminForm');
+    if (form) form.reset();
+    if (document.getElementById('servicioEditId')) document.getElementById('servicioEditId').value = '';
+    if (formWrap) formWrap.style.display = 'none';
+}
+
+async function cargarServiciosAdmin() {
+    const container = document.getElementById('listaServiciosAdmin');
+    if (!container) return;
+
+    try {
+        const servicios = await obtenerListaServicios();
+        if (!servicios.length) {
+            container.innerHTML = '<div class="no-data">No hay servicios. Haz clic en "Agregar nuevo servicio" para comenzar.</div>';
+            return;
+        }
+
+        container.innerHTML = servicios.map(s => `
+            <div class="evento-admin-item">
+                <div class="evento-admin-info">
+                    <h4>${escaparHtml(s.nombre)}</h4>
+                    <p>${escaparHtml(s.descripcion)}</p>
+                    <p><strong>Orden:</strong> ${escaparHtml(s.orden)} ${s.imagen ? `| <strong>Imagen:</strong> ${escaparHtml(s.imagen)}` : ''}</p>
+                </div>
+                <div class="evento-admin-actions">
+                    <button type="button" class="btn-edit" data-editar-servicio="${escaparHtml(s.id)}">Editar</button>
+                    <button type="button" class="btn-delete" data-eliminar-servicio="${escaparHtml(s.id)}">Eliminar</button>
+                </div>
+            </div>
+        `).join('');
+
+        container.querySelectorAll('[data-editar-servicio]').forEach(btn => {
+            btn.addEventListener('click', () => editarServicio(btn.getAttribute('data-editar-servicio')));
+        });
+        container.querySelectorAll('[data-eliminar-servicio]').forEach(btn => {
+            btn.addEventListener('click', () => eliminarServicio(btn.getAttribute('data-eliminar-servicio')));
+        });
+    } catch (error) {
+        console.error('Error cargando servicios admin:', error);
+        container.innerHTML = '<div class="no-data">Error al cargar servicios. Recarga la página.</div>';
+    }
+}
+
+async function editarServicio(servicioId) {
+    try {
+        const servicios = await obtenerListaServicios();
+        const servicio = servicios.find(s => String(s.id) === String(servicioId));
+        if (!servicio) {
+            alert('Servicio no encontrado');
+            return;
+        }
+
+        document.getElementById('servicioEditId').value = servicio.id;
+        document.getElementById('servicioNombreAdmin').value = servicio.nombre || '';
+        document.getElementById('servicioDescripcionAdmin').value = servicio.descripcion || '';
+        document.getElementById('servicioImagenAdmin').value = servicio.imagen || '';
+        document.getElementById('servicioOrdenAdmin').value = servicio.orden ?? 1;
+        document.getElementById('tituloFormularioServicio').textContent = 'Editar servicio';
+        document.getElementById('formularioServicio').style.display = 'block';
+        document.getElementById('formularioServicio').scrollIntoView({ behavior: 'smooth' });
+    } catch (error) {
+        console.error('Error cargando servicio:', error);
+        alert('Error al cargar el servicio. Intenta de nuevo.');
+    }
+}
+
+async function eliminarServicio(servicioId) {
+    if (!confirm('¿Eliminar este servicio? Dejará de mostrarse en la página pública.')) return;
+
+    try {
+        await eliminarServicioItem(servicioId);
+        cancelarFormularioServicio();
+        await cargarServiciosAdmin();
+        await cargarServiciosPublicos();
+        alert('Servicio eliminado correctamente');
+    } catch (error) {
+        console.error('Error eliminando servicio:', error);
+        alert('Error al eliminar el servicio. Intenta de nuevo.');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('servicioAdminForm');
+    if (!form || form.dataset.serviciosHandler) return;
+    form.dataset.serviciosHandler = 'true';
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const editId = document.getElementById('servicioEditId').value;
+        const payload = {
+            nombre: document.getElementById('servicioNombreAdmin').value.trim(),
+            descripcion: document.getElementById('servicioDescripcionAdmin').value.trim(),
+            imagen: document.getElementById('servicioImagenAdmin').value.trim() || null,
+            orden: parseInt(document.getElementById('servicioOrdenAdmin').value, 10) || 1
+        };
+        if (!payload.nombre || !payload.descripcion) {
+            alert('Nombre y descripción son obligatorios.');
+            return;
+        }
+
+        try {
+            await guardarServicioItem(payload, editId || null);
+            cancelarFormularioServicio();
+            await cargarServiciosAdmin();
+            await cargarServiciosPublicos();
+            alert(editId ? 'Servicio actualizado correctamente' : 'Servicio agregado correctamente');
+        } catch (error) {
+            console.error('Error guardando servicio:', error);
+            alert('Error al guardar el servicio. Intenta de nuevo.');
+        }
+    });
+});
+
 // ==================== SOLICITUD DE SERVICIOS ====================
 
 // Abrir modal de servicio
@@ -4993,6 +5329,8 @@ function mostrarTabAdmin(tabName) {
         cargarSolicitudesFechaAdmin();
     } else if (tabName === 'solicitudes') {
         cargarSolicitudesAdmin();
+    } else if (tabName === 'servicios') {
+        cargarServiciosAdmin();
     }
 }
 
@@ -6421,6 +6759,9 @@ function inicializarTodo() {
         inicializarSupabase();
         inicializarStaffPortal();
 
+        // Catálogo público de servicios (incluye Terapia Física; editable desde Admin)
+        cargarServiciosPublicos();
+
         // Inicializar modales
         inicializarModales();
         inicializarModalServicios();
@@ -6508,6 +6849,12 @@ window.eliminarSolicitud = eliminarSolicitud;
 window.aprobarSolicitudFecha = aprobarSolicitudFecha;
 window.rechazarSolicitudFecha = rechazarSolicitudFecha;
 window.eliminarSolicitudFecha = eliminarSolicitudFecha;
+window.mostrarFormularioServicio = mostrarFormularioServicio;
+window.cancelarFormularioServicio = cancelarFormularioServicio;
+window.editarServicio = editarServicio;
+window.eliminarServicio = eliminarServicio;
+window.abrirModalServicio = abrirModalServicio;
+window.mostrarTabAdmin = mostrarTabAdmin;
 
 // Ejecutar cuando el DOM esté listo
 if (document.readyState === 'loading') {
